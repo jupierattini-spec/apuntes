@@ -1,0 +1,834 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Redundancia de Capa 3</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: una diapositiva a la vez, ocupa la pantalla; barra inferior de navegación. Demos con SVG y salidas IOS vivas. */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#15212c; --muted:#5a6876; --line:#d3dae1;
+  --accent:#1c63a8; --accent-ink:#ffffff; --accent-soft:#e1ecf7;
+  --amber:#a8650a; --amber-soft:#fbefdc; --ok:#1f7a4a; --ok-soft:#e0f2e8; --bad:#b0322b; --bad-soft:#f9e3e1;
+  --term-bg:#0f1b26; --term-fg:#d2dee9; --term-dim:#7f93a6; --term-hl:#ffd27a; --term-prompt:#7cc0ff;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d151d; --panel:#16212c; --ink:#e3eaf1; --muted:#97a6b4; --line:#2a3846;
+  --accent:#5aa6ea; --accent-ink:#06121c; --accent-soft:#1a3043;
+  --amber:#f0b25a; --amber-soft:#3a2a12; --ok:#5fcf91; --ok-soft:#14301f; --bad:#f08a80; --bad-soft:#3b1a17;
+  --term-bg:#0a121a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d151d; --panel:#16212c; --ink:#e3eaf1; --muted:#97a6b4; --line:#2a3846;
+  --accent:#5aa6ea; --accent-ink:#06121c; --accent-soft:#1a3043;
+  --amber:#f0b25a; --amber-soft:#3a2a12; --ok:#5fcf91; --ok-soft:#14301f; --bad:#f08a80; --bad-soft:#3b1a17;
+  --term-bg:#0a121a; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.5;overflow:hidden}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(2rem,5vw,3.4rem);font-weight:800;line-height:1.05}
+h2{font-size:clamp(1.4rem,2.8vw,2rem);font-weight:800}
+h3{font-size:1.05rem;font-weight:700}
+p{margin:0}
+ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px}
+code{font-family:var(--f-mono);font-size:.86em;background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+button{font:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.eyebrow{font-family:var(--f-display);font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+
+.deck{height:100%;display:flex;flex-direction:column}
+.stage{flex:1;min-height:0;position:relative}
+.slide{position:absolute;inset:0;overflow-y:auto;padding-block:28px 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.slide[hidden]{display:none!important}
+.inner{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px;min-height:100%}
+.slide.enter .inner{animation:enter .35s ease-out}
+@keyframes enter{from{opacity:.25;transform:translateY(8px)}to{opacity:1;transform:none}}
+.head{display:flex;flex-direction:column;gap:4px}
+.lead{font-size:1.1rem;color:var(--muted);max-width:70ch}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.cols.w37{grid-template-columns:minmax(0,3fr) minmax(0,7fr)}
+.cols.w55{grid-template-columns:minmax(0,5fr) minmax(0,5fr)}
+.cols.sim{grid-template-columns:minmax(0,4fr) minmax(0,6fr)}
+.term.sm{font-size:11px;padding:10px 12px}
+@media (max-width:860px){.cols,.cols.w37,.cols.w55,.cols.sim{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.note{border-left:4px solid var(--amber);background:var(--amber-soft);padding:10px 14px;border-radius:6px;font-size:.95rem}
+.fix{border-left:4px solid var(--ok);background:var(--ok-soft);padding:10px 14px;border-radius:6px;font-size:.95rem}
+.term{background:var(--term-bg);color:var(--term-fg);font-family:var(--f-mono);font-size:12.5px;line-height:1.45;border-radius:8px;padding:12px 14px;white-space:pre;overflow-x:auto;min-width:0;border:1px solid var(--line)}
+.term .p{color:var(--term-prompt)} .term .h{color:var(--term-hl)} .term .d{color:var(--term-dim)}
+.ctrls{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--panel)}
+.seg button{background:transparent;border:0;padding:6px 12px;color:var(--ink);font-size:.9rem}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.ctl{display:flex;flex-direction:column;gap:3px;font-size:.85rem;color:var(--muted)}
+.ctl select,.ctl input[type=number]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+.tog{display:inline-flex;gap:6px;align-items:center;font-size:.92rem;cursor:pointer}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:6px;padding:7px 14px;font-weight:700}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.btn.warn{background:var(--bad);color:var(--panel)}
+.badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.badge.ok{background:var(--ok-soft);color:var(--ok)} .badge.bad{background:var(--bad-soft);color:var(--bad)} .badge.blue{background:var(--accent-soft);color:var(--accent)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-display);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td code{white-space:nowrap}
+svg{width:100%;height:auto;display:block}
+.dia text{font-family:var(--f-display);font-weight:700;font-size:13px;fill:var(--ink)}
+.dia .lbl{font-family:var(--f-mono);font-weight:400;font-size:10px;fill:var(--muted)}
+.dia .box{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.dia .box.act{fill:var(--ok-soft);stroke:var(--ok);stroke-width:2.5}
+.dia .box.bk{fill:var(--panel);stroke:var(--muted)}
+.dia .box.off{fill:var(--bad-soft);stroke:var(--bad);stroke-dasharray:4 3}
+.dia .host{fill:var(--panel);stroke:var(--line)}
+.dia .wire{stroke:var(--muted);stroke-width:2;fill:none}
+.dia .wire.down{stroke:var(--bad);stroke-dasharray:5 4}
+.dia .wire.ok{stroke:var(--ok)}
+.dia .flow{stroke:var(--ok);stroke-width:3;fill:none;stroke-dasharray:8 6;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-14}}
+.dia .pkt{fill:var(--amber)}
+.dia .clk{cursor:pointer}
+.log{font-family:var(--f-mono);font-size:12px;color:var(--muted);max-height:130px;overflow:auto;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.steps{grid-template-columns:minmax(0,1fr)}}
+.steps div{border-top:4px solid var(--accent);background:var(--panel);border-radius:0 0 8px 8px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.steps b{font-family:var(--f-display);font-size:1.05rem}
+.steps div.on{border-top-color:var(--amber);background:var(--amber-soft)}
+.mac{display:flex;flex-wrap:wrap;gap:6px;font-family:var(--f-mono);font-size:clamp(1.3rem,3.5vw,2.2rem);font-weight:600}
+.mac span{padding:6px 10px;border-radius:6px}
+.mac .v{background:var(--accent-soft);color:var(--accent)} .mac .w{background:var(--amber-soft);color:var(--amber)} .mac .g{background:var(--ok-soft);color:var(--ok)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.annot .ln{display:block;padding:0 6px;margin:0 -6px;border-radius:3px;cursor:pointer}
+.annot .ln:hover,.annot .ln.sel{background:rgba(255,210,122,.16)}
+.annot .ln.k{color:var(--term-hl)}
+.explain{min-height:110px}
+.cover{justify-content:center}
+.cover .meta{display:flex;gap:10px;flex-wrap:wrap;color:var(--muted)}
+.agenda{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.agenda{grid-template-columns:minmax(0,1fr)}}
+.agenda button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;color:var(--ink);display:flex;flex-direction:column;gap:4px}
+.agenda button:hover{border-color:var(--accent)}
+.agenda small{color:var(--muted)}
+.result{font-family:var(--f-display);font-size:1.25rem;font-weight:800}
+
+nav.bar{flex:none;display:flex;align-items:center;gap:10px;padding-block:8px calc(8px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-top:1px solid var(--line);background:var(--panel)}
+nav.bar .prog{flex:1;height:5px;background:var(--line);border-radius:3px;overflow:hidden;min-width:40px}
+nav.bar .prog i{display:block;height:100%;background:var(--accent);transition:width .25s}
+nav.bar button{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px 12px}
+nav.bar .count{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.9rem;white-space:nowrap}
+nav.bar select{font:inherit;font-size:.85rem;max-width:34vw;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="deck">
+<div class="stage" id="stage">
+
+<!-- 1 Portada -->
+<section class="slide" data-title="Portada"><div class="inner cover">
+  <span class="eyebrow">ARY6112 · Troubleshooting · Unidad 2.5.1</span>
+  <h1>Resolución de problemas de redundancia de capa 3</h1>
+  <p class="lead">EtherChannel de capa 3, HSRP y VRRP: cómo funcionan, cómo se verifican y qué mirar cuando fallan.</p>
+  <div class="meta"><span class="badge blue">Routing y Switching Corporativo</span><span class="badge blue">Usa ← → o los botones de abajo</span></div>
+  <div class="note">Estos contenidos pertenecen al temario de CCNP ENCOR 350-401 (capa 2 y servicios IP), no a ENARSI 300-410. Se incluyen como refuerzo para la asignatura de Diseño de Arquitectura de Red.</div>
+</div></section>
+
+<!-- 2 Agenda -->
+<section class="slide" data-title="Agenda"><div class="inner">
+  <div class="head"><span class="eyebrow">Agenda</span><h2>Lo que veremos</h2></div>
+  <div class="agenda" id="agenda"></div>
+</div></section>
+
+<!-- 3 Método -->
+<section class="slide" data-title="Método de troubleshooting"><div class="inner">
+  <div class="head"><span class="eyebrow">Método</span><h2>Un método antes que los comandos</h2><p class="lead">Toda la unidad sigue el mismo ciclo. Pasa el cursor o toca cada paso para ver qué significa en un problema de FHRP.</p></div>
+  <div class="steps" id="method">
+    <div tabindex="0" data-x="Ticket: “los PCs de la VLAN 10 pierden el gateway cada cierto tiempo”. ¿Desde cuándo? ¿A todos o a algunos? ¿Hubo cambios?"><b>1. Definir</b><span>Qué falla, para quién y desde cuándo.</span></div>
+    <div tabindex="0" data-x="show standby brief en ambos distribuidores, show logging, show etherchannel summary, show track."><b>2. Recolectar</b><span>Comandos show en los equipos involucrados.</span></div>
+    <div tabindex="0" data-x="Los dos routers dicen Active y el log muestra BADAUTH: los hellos llegan pero se rechazan."><b>3. Analizar</b><span>Comparar lo observado con el diseño.</span></div>
+    <div tabindex="0" data-x="Igualar la clave de autenticación en el router que quedó distinto. Un solo cambio, el mínimo."><b>4. Corregir</b><span>El cambio mínimo sobre la causa raíz.</span></div>
+    <div tabindex="0" data-x="show standby brief: un Active, un Standby. ASW1 deja de registrar MAC flapping."><b>5. Verificar</b><span>Los mismos comandos confirman el resultado.</span></div>
+  </div>
+  <div class="panel"><span class="eyebrow">Ejemplo</span><p id="methodX">Selecciona un paso.</p></div>
+</div></section>
+
+<!-- 4 EtherChannel L3 concepto -->
+<section class="slide" data-title="EtherChannel de capa 3"><div class="inner">
+  <div class="head"><span class="eyebrow">EtherChannel L3</span><h2>Varios puertos enrutados, una sola interfaz lógica</h2><p class="lead">Los puertos físicos se agrupan en un Port-channel. La dirección IP y el protocolo de enrutamiento viven en el Port-channel, no en los miembros.</p></div>
+  <div class="cols w55">
+    <div class="panel">
+      <svg viewBox="0 0 420 200" class="dia" id="ecSvg" role="img" aria-label="Dos switches de capa 3 unidos por dos enlaces agrupados en Port-channel1">
+        <rect class="box" x="20" y="70" width="90" height="56" rx="6"/><text x="65" y="103" text-anchor="middle">SW1</text>
+        <rect class="box" x="310" y="70" width="90" height="56" rx="6"/><text x="355" y="103" text-anchor="middle">SW2</text>
+        <line class="wire" id="ecL1" x1="110" y1="88" x2="310" y2="88"/>
+        <line class="wire" id="ecL2" x1="110" y1="108" x2="310" y2="108"/>
+        <ellipse id="ecRing" cx="210" cy="98" rx="20" ry="24" fill="none" stroke="var(--accent)" stroke-width="2" opacity="0"/>
+        <text class="lbl" x="116" y="80">Gi1/0/1</text><text class="lbl" x="116" y="124">Gi1/0/2</text>
+        <text class="lbl" x="262" y="80">Gi1/0/1</text><text class="lbl" x="262" y="124">Gi1/0/2</text>
+        <text class="lbl" id="ecIp1" x="20" y="150">sin IP en físicas</text>
+        <text class="lbl" id="ecIp2" x="400" y="150" text-anchor="end"></text>
+        <text id="ecPo" x="210" y="56" text-anchor="middle" opacity="0">Port-channel1 · 2 Gbps</text>
+        <circle class="pkt" id="ecPkt" r="5" cx="-20" cy="0"/>
+      </svg>
+      <div class="ctrls"><div class="seg" id="ecSeg"><button aria-pressed="true" data-v="0">Puertos sueltos</button><button aria-pressed="false" data-v="1">Agrupados en Po1</button></div><button class="btn ghost" id="ecSend">Enviar tráfico</button></div>
+    </div>
+    <div class="panel">
+      <h3>Qué cambia al agruparlos</h3>
+      <ul>
+        <li>Un solo vecino OSPF/EIGRP en vez de uno por enlace.</li>
+        <li>El tráfico se reparte por flujo (hash de IP/MAC/puerto), no por paquete.</li>
+        <li>Si cae un miembro, el Port-channel sigue arriba con los demás.</li>
+        <li>Todos los miembros deben ser iguales: velocidad, dúplex y tipo de puerto.</li>
+      </ul>
+      <div class="term" id="ecOut"></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 5 Orden de configuración -->
+<section class="slide" data-title="Orden de configuración L3"><div class="inner">
+  <div class="head"><span class="eyebrow">EtherChannel L3</span><h2>El orden de los comandos decide la capa</h2><p class="lead">El Port-channel hereda el tipo de los puertos físicos cuando se crea con <code>channel-group</code>. Compara los dos caminos.</p></div>
+  <div class="ctrls"><div class="seg" id="ordSeg"><button aria-pressed="true" data-v="ok">Orden correcto</button><button aria-pressed="false" data-v="bad">Se olvidó no switchport</button></div></div>
+  <div class="cols">
+    <div class="term" id="ordCfg"></div>
+    <div class="term" id="ordOut"></div>
+  </div>
+  <div id="ordNote"></div>
+</div></section>
+
+<!-- 6 Negociación -->
+<section class="slide" data-title="Negociación LACP y PAgP"><div class="inner">
+  <div class="head"><span class="eyebrow">EtherChannel L3</span><h2>¿Se forma el canal? Depende de los modos</h2><p class="lead">Elige el modo de cada extremo y observa el resultado y la salida de <code>show etherchannel summary</code>.</p></div>
+  <div class="cols w37">
+    <div class="panel">
+      <label class="ctl">SW1<select id="mA"><option>active</option><option>passive</option><option>desirable</option><option>auto</option><option>on</option></select></label>
+      <label class="ctl">SW2<select id="mB"><option>active</option><option selected>passive</option><option>desirable</option><option>auto</option><option>on</option></select></label>
+      <div class="result" id="negRes"></div>
+      <p id="negWhy"></p>
+    </div>
+    <div class="panel">
+      <div class="term" id="negOut"></div>
+      <div class="tbl"><table><thead><tr><th>Protocolo</th><th>Modos</th><th>Forma canal con</th></tr></thead><tbody>
+        <tr><td>LACP (IEEE 802.3ad)</td><td><code>active</code> / <code>passive</code></td><td>active–active, active–passive</td></tr>
+        <tr><td>PAgP (Cisco)</td><td><code>desirable</code> / <code>auto</code></td><td>desirable–desirable, desirable–auto</td></tr>
+        <tr><td>Estático</td><td><code>on</code></td><td>Solo on–on, sin negociación</td></tr>
+      </tbody></table></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 7 Causas EtherChannel -->
+<section class="slide" data-title="Fallas de EtherChannel L3"><div class="inner">
+  <div class="head"><span class="eyebrow">EtherChannel L3</span><h2>Qué revisar cuando el canal no levanta</h2><p class="lead">Los mismos parámetros que en capa 2, más una pregunta extra: ¿la interfaz es realmente de capa 3?</p></div>
+  <div class="tbl panel"><table>
+    <thead><tr><th>Causa</th><th>Cómo se ve</th><th>Comando</th></tr></thead>
+    <tbody>
+      <tr><td>Parámetros distintos entre miembros (velocidad, dúplex)</td><td>Puertos suspendidos <code>(s)</code></td><td><code>show etherchannel summary</code>, <code>show interfaces status</code></td></tr>
+      <tr><td>Modos que no negocian (passive–passive, auto–auto)</td><td>Port-channel <code>(RD)</code>, puertos <code>(I)</code></td><td><code>show lacp neighbor</code>, <code>show pagp neighbor</code></td></tr>
+      <tr><td>LACP en un lado y PAgP o <code>on</code> en el otro</td><td>No se agrupa; con <code>on</code> puede haber bucles en L2</td><td><code>show etherchannel summary</code> en ambos extremos</td></tr>
+      <tr><td>Port-channel creado como capa 2</td><td>Flag <code>S</code>; <code>ip address</code> es rechazado</td><td><code>show interfaces port-channel1 switchport</code></td></tr>
+      <tr><td>IP en un miembro en vez del Port-channel</td><td>El miembro sale del canal o no hay vecino de enrutamiento</td><td><code>show ip interface brief</code></td></tr>
+      <tr><td>Subred distinta en cada extremo</td><td>Canal arriba, sin vecino OSPF/EIGRP</td><td><code>show ip ospf neighbor</code>, <code>show run interface po1</code></td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<!-- 8 HSRP concepto -->
+<section class="slide" data-title="HSRP: el router virtual"><div class="inner">
+  <div class="head"><span class="eyebrow">HSRP</span><h2>Un gateway virtual que nunca cambia para los PCs</h2><p class="lead">Los PCs usan como gateway la IP virtual. Cuando preguntan por ARP, responde el router Active con la MAC virtual. Si el Active falla, el Standby toma la misma IP y la misma MAC.</p></div>
+  <div class="cols w55">
+    <div class="panel">
+      <svg viewBox="0 0 420 260" class="dia" id="arpSvg" role="img" aria-label="PC enviando ARP por la IP virtual; responde el router activo">
+        <line class="wire" x1="110" y1="60" x2="210" y2="140"/><line class="wire" x1="310" y1="60" x2="210" y2="140"/><line class="wire" x1="210" y1="168" x2="210" y2="214"/>
+        <rect class="box act" id="arpR1" x="30" y="30" width="160" height="44" rx="6"/><text x="110" y="50" text-anchor="middle">R1 · Active</text><text class="lbl" x="110" y="66" text-anchor="middle">10.10.10.2 · prio 110</text>
+        <rect class="box bk" id="arpR2" x="230" y="30" width="160" height="44" rx="6"/><text x="310" y="50" text-anchor="middle" id="arpR2t">R2 · Standby</text><text class="lbl" x="310" y="66" text-anchor="middle">10.10.10.3 · prio 100</text>
+        <rect class="box" x="170" y="140" width="80" height="28" rx="4"/><text x="210" y="159" text-anchor="middle">SW</text>
+        <rect class="host" x="160" y="214" width="100" height="30" rx="4"/><text x="210" y="234" text-anchor="middle">PC1</text>
+        <text class="lbl" x="210" y="16" text-anchor="middle">IP virtual 10.10.10.1 · MAC virtual 0000.0c07.ac0a</text>
+        <circle class="pkt" id="arpPkt" r="6" cx="-20" cy="0"/>
+      </svg>
+      <div class="ctrls"><button class="btn" id="arpGo">PC1: ARP por 10.10.10.1</button><button class="btn ghost" id="arpFail">Apagar R1</button></div>
+      <div class="term" id="arpOut"></div>
+    </div>
+    <div class="panel">
+      <h3>Piezas de HSRP</h3>
+      <ul>
+        <li><b>Grupo</b>: identifica al router virtual en la VLAN.</li>
+        <li><b>Active</b>: reenvía el tráfico y responde ARP por la IP virtual.</li>
+        <li><b>Standby</b>: vigila al Active y lo reemplaza si deja de oír sus hellos (hold 10 s).</li>
+        <li><b>Estados</b>: Initial → Learn → Listen → Speak → Standby → Active.</li>
+        <li><b>Hellos</b>: UDP 1985, cada 3 s, a 224.0.0.2 (v1) o 224.0.0.102 (v2).</li>
+      </ul>
+      <div class="fix">Por defecto HSRP usa una MAC virtual, así el cambio de router es transparente para los PCs. Con <code>standby use-bia</code> se puede usar la MAC física, pero solo en casos especiales.</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 9 Simulador HSRP -->
+<section class="slide" data-title="Simulador de HSRP"><div class="inner">
+  <div class="head"><span class="eyebrow">HSRP en vivo</span><h2>Prioridad, preempt y tracking</h2><p class="lead">Cambia los parámetros y provoca fallas. Las salidas de <code>show standby brief</code> se actualizan como en los equipos reales.</p></div>
+  <div class="cols sim">
+    <div class="panel">
+      <svg viewBox="0 0 420 250" class="dia" id="hsSvg" role="img" aria-label="DSW1 y DSW2 con uplinks a CORE y la VLAN 10 debajo">
+        <rect class="box" x="170" y="10" width="80" height="30" rx="4"/><text x="210" y="30" text-anchor="middle">CORE</text>
+        <line class="wire clk" id="hsUp1" x1="190" y1="40" x2="110" y2="96"/><line class="wire" id="hsUp2" x1="230" y1="40" x2="310" y2="96"/>
+        <text class="lbl" x="104" y="64">uplink (track 1)</text>
+        <rect class="box clk" id="hsR1" x="50" y="96" width="120" height="50" rx="6"/><text x="110" y="117" text-anchor="middle" id="hsR1a">DSW1</text><text class="lbl" x="110" y="134" text-anchor="middle" id="hsR1b"></text>
+        <rect class="box" id="hsR2" x="250" y="96" width="120" height="50" rx="6"/><text x="310" y="117" text-anchor="middle" id="hsR2a">DSW2</text><text class="lbl" x="310" y="134" text-anchor="middle" id="hsR2b"></text>
+        <line class="wire" x1="110" y1="146" x2="210" y2="196"/><line class="wire" x1="310" y1="146" x2="210" y2="196"/>
+        <path class="flow" id="hsFlow" d=""/>
+        <rect class="host" x="150" y="196" width="120" height="34" rx="4"/><text x="210" y="217" text-anchor="middle">PCs VLAN 10</text>
+      </svg>
+      <div class="ctrls">
+        <button class="btn warn" id="hsUpBtn">Cortar uplink de DSW1</button>
+        <button class="btn ghost" id="hsPwr">Apagar DSW1</button>
+        <button class="btn ghost" id="hsReset">Restablecer</button>
+      </div>
+      <div class="log" id="hsLog" aria-live="polite"></div>
+    </div>
+    <div class="panel">
+      <div class="ctrls">
+        <label class="ctl">Prioridad DSW1<input type="number" id="p1" min="1" max="255" value="110"></label>
+        <label class="ctl">Prioridad DSW2<input type="number" id="p2" min="1" max="255" value="100"></label>
+        <label class="ctl">Decremento track<input type="number" id="dec" min="0" max="255" value="20"></label>
+      </div>
+      <div class="ctrls">
+        <label class="tog"><input type="checkbox" id="pre1" checked> preempt en DSW1</label>
+        <label class="tog"><input type="checkbox" id="pre2" checked> preempt en DSW2</label>
+        <label class="tog"><input type="checkbox" id="auth"> clave distinta en DSW2</label>
+        <label class="tog"><input type="checkbox" id="ver"> DSW1 en versión 2</label>
+      </div>
+      <div class="term sm" id="hsOut"></div>
+      <p id="hsWhy" class="note"></p>
+    </div>
+  </div>
+</div></section>
+
+<!-- 10 MAC virtual -->
+<section class="slide" data-title="MAC virtual"><div class="inner">
+  <div class="head"><span class="eyebrow">Direcciones virtuales</span><h2>La MAC virtual delata protocolo, versión y grupo</h2><p class="lead">Mueve el número de grupo y cambia de protocolo para ver cómo se arma la dirección.</p></div>
+  <div class="panel">
+    <div class="ctrls">
+      <div class="seg" id="macSeg"><button aria-pressed="true" data-v="h1">HSRPv1</button><button aria-pressed="false" data-v="h2">HSRPv2</button><button aria-pressed="false" data-v="vr">VRRP</button></div>
+      <label class="ctl" style="flex:1;min-width:200px"><span>Grupo: <b id="macG"></b></span><input type="range" id="macR" min="1" max="255" value="10"></label>
+    </div>
+    <div class="mac" id="macBox"></div>
+    <div class="legend"><span><i style="background:var(--accent-soft);outline:1px solid var(--accent)"></i>OUI del fabricante</span><span><i style="background:var(--amber-soft);outline:1px solid var(--amber)"></i>Código fijo del protocolo</span><span><i style="background:var(--ok-soft);outline:1px solid var(--ok)"></i>Grupo en hexadecimal</span></div>
+    <p id="macTxt"></p>
+  </div>
+</div></section>
+
+<!-- 11 Verificación anotada -->
+<section class="slide" data-title="Leer show standby"><div class="inner">
+  <div class="head"><span class="eyebrow">Verificación HSRP</span><h2>Cómo leer <code>show standby</code></h2><p class="lead">Toca una línea de la salida para ver qué significa y qué falla podría revelar.</p></div>
+  <div class="cols">
+    <div class="term annot" id="annot"></div>
+    <div class="panel explain"><span class="eyebrow">Interpretación</span><p id="annotX">Selecciona una línea resaltada.</p></div>
+  </div>
+</div></section>
+
+<!-- 12 Tracking -->
+<section class="slide" data-title="Tracking con objetos"><div class="inner">
+  <div class="head"><span class="eyebrow">Tracking</span><h2>Que HSRP reaccione a la caída del uplink</h2><p class="lead">Sin tracking, HSRP solo detecta la caída del router o de la ruta de los hellos. Si cae el uplink, el Active sigue atrayendo el tráfico y lo envía por un camino peor, o lo pierde.</p></div>
+  <div class="cols">
+    <div class="term" id="trkCfg"></div>
+    <div class="panel">
+      <h3>La regla que debe cumplirse</h3>
+      <p class="result">prioridad − decremento &lt; prioridad del par</p>
+      <div class="ctrls"><label class="ctl">Decremento<input type="range" id="trkR" min="0" max="40" value="20" step="1"></label><span id="trkV" class="badge blue"></span></div>
+      <p id="trkTxt"></p>
+      <div class="fix">Además, el router par necesita <code>preempt</code>: sin él, aunque su prioridad pase a ser mayor, no toma el rol.</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 13 VRRP -->
+<section class="slide" data-title="VRRP"><div class="inner">
+  <div class="head"><span class="eyebrow">VRRP</span><h2>VRRP: la alternativa estándar</h2><p class="lead">Virtual Router Redundancy Protocol (Protocolo de Redundancia de Router Virtual). Misma idea que HSRP, con otros nombres y algunas diferencias que importan al diagnosticar.</p></div>
+  <div class="cols">
+    <div class="panel">
+      <ul>
+        <li><b>Estándar IETF</b>: VRRPv2 en RFC 3768; VRRPv3 (IPv4 e IPv6) en RFC 5798, actualizado por RFC 9568.</li>
+        <li><b>Roles</b>: Master y Backup.</li>
+        <li><b>Grupos (VRID)</b>: 1 a 255.</li>
+        <li><b>Prioridad</b>: 1 a 254 configurable, 100 por defecto. 255 se reserva al dueño de la IP virtual; 0 lo usa el Master para renunciar.</li>
+        <li><b>Anuncios</b>: cada 1 s, protocolo IP 112 a 224.0.0.18.</li>
+        <li><b>Preempt</b>: activado por defecto (en HSRP no).</li>
+        <li><b>Dueño de la IP</b>: la IP virtual puede ser la IP real de un router; ese router es Master con prioridad 255.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>Master Down interval</h3>
+      <p>Tiempo que un Backup espera sin anuncios antes de declararse Master.</p>
+      <p class="result">3 × anuncio + (256 − prioridad) / 256</p>
+      <label class="ctl">Prioridad del Backup: <b id="mdP"></b><input type="range" id="mdR" min="1" max="255" value="100"></label>
+      <div class="term" id="mdOut"></div>
+      <p class="note">La columna <b>Time</b> de <code>show vrrp brief</code> muestra este valor en milisegundos. A mayor prioridad, menor espera: así el Backup preferido se adelanta.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- 14 Configuración VRRP -->
+<section class="slide" data-title="Configuración de VRRP"><div class="inner">
+  <div class="head"><span class="eyebrow">VRRP</span><h2>Configuración: sintaxis clásica y VRRPv3</h2><p class="lead">Muchos equipos IOS-XE actuales usan VRRPv3. Cambia de pestaña para comparar.</p></div>
+  <div class="ctrls"><div class="seg" id="vcSeg"><button aria-pressed="true" data-v="v2">VRRPv2 (IOS clásico)</button><button aria-pressed="false" data-v="v3">VRRPv3 (IOS-XE)</button></div></div>
+  <div class="tbl panel"><table><thead><tr><th>Tarea</th><th>Comando</th></tr></thead><tbody id="vcBody"></tbody></table></div>
+  <p class="note" id="vcNote"></p>
+</div></section>
+
+<!-- 15 Balanceo con dos grupos -->
+<section class="slide" data-title="Balanceo con dos grupos"><div class="inner">
+  <div class="head"><span class="eyebrow">VRRP</span><h2>Repartir la carga con dos grupos</h2><p class="lead">Cada switch es Master de un grupo y Backup del otro. La mitad de los hosts usa 192.168.1.1 y la otra mitad 192.168.1.2 (por ejemplo, con dos pools DHCP). Apaga un switch y mira cómo el otro asume ambos grupos.</p></div>
+  <div class="cols">
+    <div class="panel">
+      <svg viewBox="0 0 420 240" class="dia" id="lbSvg" role="img" aria-label="Switch-A master del grupo 1 y Switch-B master del grupo 2">
+        <rect class="box" id="lbA" x="40" y="20" width="140" height="56" rx="6"/><text x="110" y="42" text-anchor="middle">Switch-A</text><text class="lbl" x="110" y="60" text-anchor="middle" id="lbAt"></text>
+        <rect class="box" id="lbB" x="240" y="20" width="140" height="56" rx="6"/><text x="310" y="42" text-anchor="middle">Switch-B</text><text class="lbl" x="310" y="60" text-anchor="middle" id="lbBt"></text>
+        <path class="flow" id="lbF1" d=""/><path class="flow" id="lbF2" d="" style="stroke:var(--accent)"/>
+        <rect class="host" x="40" y="180" width="140" height="40" rx="4"/><text x="110" y="198" text-anchor="middle">Hosts grupo 1</text><text class="lbl" x="110" y="212" text-anchor="middle">gw 192.168.1.1</text>
+        <rect class="host" x="240" y="180" width="140" height="40" rx="4"/><text x="310" y="198" text-anchor="middle">Hosts grupo 2</text><text class="lbl" x="310" y="212" text-anchor="middle">gw 192.168.1.2</text>
+      </svg>
+      <div class="ctrls"><div class="seg" id="lbSeg"><button aria-pressed="true" data-v="both">Ambos arriba</button><button aria-pressed="false" data-v="A">Falla Switch-A</button><button aria-pressed="false" data-v="B">Falla Switch-B</button></div></div>
+    </div>
+    <div class="panel"><div class="term sm" id="lbOut"></div>
+    <div class="fix">En la presentación original esta figura se llamaba “IP principal y secundaria”. En realidad son dos grupos VRRP independientes, cada uno con su IP virtual.</div></div>
+  </div>
+</div></section>
+
+<!-- 16 Simulador VRRP -->
+<section class="slide" data-title="Simulador de VRRP"><div class="inner">
+  <div class="head"><span class="eyebrow">VRRP en vivo</span><h2>Tracking, dueño de la IP y ACL</h2><p class="lead">DSW1 tiene prioridad 120 y track con decremento 30; DSW2 tiene 100. Activa los escenarios y observa <code>show vrrp brief</code>.</p></div>
+  <div class="cols sim">
+    <div class="panel">
+      <svg viewBox="0 0 420 220" class="dia" id="vrSvg" role="img" aria-label="DSW1 y DSW2 en VRRP grupo 20">
+        <rect class="box" x="170" y="8" width="80" height="28" rx="4"/><text x="210" y="27" text-anchor="middle">CORE</text>
+        <line class="wire" id="vrUp1" x1="190" y1="36" x2="110" y2="86"/><line class="wire" x1="230" y1="36" x2="310" y2="86"/>
+        <rect class="box" id="vrR1" x="50" y="86" width="120" height="50" rx="6"/><text x="110" y="107" text-anchor="middle" id="vrR1a">DSW1</text><text class="lbl" x="110" y="124" text-anchor="middle" id="vrR1b"></text>
+        <rect class="box" id="vrR2" x="250" y="86" width="120" height="50" rx="6"/><text x="310" y="107" text-anchor="middle" id="vrR2a">DSW2</text><text class="lbl" x="310" y="124" text-anchor="middle" id="vrR2b"></text>
+        <text class="lbl" id="vrAcl" x="310" y="152" text-anchor="middle"></text>
+        <line class="wire" x1="110" y1="136" x2="210" y2="176"/><line class="wire" x1="310" y1="136" x2="210" y2="176"/>
+        <path class="flow" id="vrFlow" d=""/>
+        <rect class="host" x="140" y="176" width="140" height="32" rx="4"/><text x="210" y="196" text-anchor="middle">Servidores VLAN 20</text>
+      </svg>
+      <div class="ctrls">
+        <label class="tog"><input type="checkbox" id="vrDown"> Cortar uplink de DSW1</label>
+        <label class="tog"><input type="checkbox" id="vrOwn"> IP virtual = IP de DSW1 (10.10.20.2)</label>
+        <label class="tog"><input type="checkbox" id="vrAclT"> ACL en DSW2 sin permitir VRRP</label>
+      </div>
+    </div>
+    <div class="panel"><div class="term sm" id="vrOut"></div><p id="vrWhy" class="note"></p></div>
+  </div>
+</div></section>
+
+<!-- 17 Comparación -->
+<section class="slide" data-title="HSRP frente a VRRP"><div class="inner">
+  <div class="head"><span class="eyebrow">Comparación</span><h2>HSRP y VRRP lado a lado</h2></div>
+  <div class="tbl panel"><table>
+    <thead><tr><th>Característica</th><th>HSRPv1</th><th>HSRPv2</th><th>VRRP</th></tr></thead>
+    <tbody>
+      <tr><td>Origen</td><td>Cisco</td><td>Cisco</td><td>IETF (RFC 3768 / 5798)</td></tr>
+      <tr><td>Roles</td><td colspan="2">Active / Standby</td><td>Master / Backup</td></tr>
+      <tr><td>Grupos</td><td>0–255</td><td>0–4095</td><td>1–255</td></tr>
+      <tr><td>MAC virtual</td><td><code>0000.0c07.acXX</code></td><td><code>0000.0c9f.fXXX</code></td><td><code>0000.5e00.01XX</code></td></tr>
+      <tr><td>Transporte</td><td>UDP 1985 → 224.0.0.2</td><td>UDP 1985 → 224.0.0.102</td><td>IP 112 → 224.0.0.18</td></tr>
+      <tr><td>Temporizadores</td><td colspan="2">Hello 3 s, hold 10 s</td><td>Anuncio 1 s, master down ≈ 3,6 s</td></tr>
+      <tr><td>Preempt por defecto</td><td colspan="2">No</td><td>Sí</td></tr>
+      <tr><td>IP virtual = IP real</td><td colspan="2">No</td><td>Sí (dueño, prioridad 255)</td></tr>
+      <tr><td>IPv6</td><td>No</td><td>Sí</td><td>VRRPv3</td></tr>
+      <tr><td>Tracking en IOS</td><td colspan="2">Interfaz u objeto</td><td>Solo objeto</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lead">GLBP es una tercera opción de Cisco que balancea carga dentro de un solo grupo; no se trata en esta unidad.</p>
+</div></section>
+
+<!-- 18 Síntoma causa comando -->
+<section class="slide" data-title="Síntoma, causa y comando"><div class="inner">
+  <div class="head"><span class="eyebrow">Troubleshooting FHRP</span><h2>Del síntoma a la causa</h2><p class="lead">Toca un síntoma para ver dónde mirar primero.</p></div>
+  <div class="cols w37">
+    <div class="panel" id="symList" style="gap:8px"></div>
+    <div class="panel"><span class="eyebrow" id="symT"></span><div id="symX"></div><div class="term" id="symOut"></div></div>
+  </div>
+</div></section>
+
+<!-- 19 Resumen -->
+<section class="slide" data-title="Resumen"><div class="inner">
+  <div class="head"><span class="eyebrow">Resumen</span><h2>Lo que hay que llevarse</h2></div>
+  <div class="cols">
+    <div class="panel"><h3>EtherChannel L3</h3><ul>
+      <li><code>no switchport</code> en las físicas, luego <code>channel-group</code>, luego la IP en el Port-channel.</li>
+      <li>Busca <code>RU</code> y puertos <code>(P)</code> en <code>show etherchannel summary</code>.</li>
+      <li>passive–passive y auto–auto nunca forman canal.</li></ul></div>
+    <div class="panel"><h3>HSRP</h3><ul>
+      <li>Misma IP virtual, grupo, versión y clave en todos los routers del grupo.</li>
+      <li>preempt viene desactivado: actívalo en el principal.</li>
+      <li>prioridad − decremento debe quedar bajo la del par.</li></ul></div>
+    <div class="panel"><h3>VRRP</h3><ul>
+      <li>Estándar, preempt activo por defecto, anuncios cada 1 s.</li>
+      <li>El dueño de la IP (255) no cede aunque el tracking falle.</li>
+      <li>Las ACL deben permitir el protocolo 112 hacia 224.0.0.18.</li></ul></div>
+    <div class="panel"><h3>Diagnóstico</h3><ul>
+      <li>Dos Active o dos Master: los mensajes no llegan o se rechazan.</li>
+      <li>El log separa ambos casos (por ejemplo, BADAUTH).</li>
+      <li>Verifica siempre con los mismos comandos que usaste para diagnosticar.</li></ul></div>
+  </div>
+</div></section>
+
+<!-- 20 Referencias -->
+<section class="slide" data-title="Referencias"><div class="inner">
+  <div class="head"><span class="eyebrow">Referencias</span><h2>Bibliografía</h2></div>
+  <div class="panel"><ul>
+    <li>Edgeworth, Garza Rios, Gooley, Hucaby. <i>CCNP and CCIE Enterprise Core ENCOR 350-401 Official Cert Guide</i>, 2.ª ed. Cisco Press. Capítulos de EtherChannel y de First-Hop Redundancy.</li>
+    <li>Wallace, K. <i>CCNP Routing and Switching TSHOOT 300-135 Official Cert Guide</i>. Cap. 8, Troubleshooting First-Hop Redundancy Protocols (fuente de casos; examen retirado en 2020).</li>
+    <li>IETF <a href="https://www.rfc-editor.org/rfc/rfc3768" target="_blank" rel="noopener">RFC 3768</a> (VRRPv2) y <a href="https://www.rfc-editor.org/rfc/rfc5798" target="_blank" rel="noopener">RFC 5798</a> / <a href="https://www.rfc-editor.org/rfc/rfc9568" target="_blank" rel="noopener">RFC 9568</a> (VRRPv3).</li>
+    <li>Cisco. <i>IP Application Services Configuration Guide</i> (HSRP, VRRPv3) para Cisco IOS XE.</li>
+  </ul></div>
+</div></section>
+
+</div>
+<nav class="bar" aria-label="Navegación de diapositivas">
+  <button id="prev" aria-label="Diapositiva anterior">←</button>
+  <span class="count" id="count"></span>
+  <div class="prog"><i id="prog"></i></div>
+  <select id="jump" aria-label="Ir a diapositiva"></select>
+  <button id="next" aria-label="Diapositiva siguiente">→</button>
+</nav>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const pad=(s,n)=>{s=String(s);return s.length>=n?s+" ":s+" ".repeat(n-s.length)};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+function seg(id,cb){const el=$(id);el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;el.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.v)});}
+function animate(pkt,pts,ms){return new Promise(res=>{
+  if(reduce){pkt.setAttribute("cx",pts[pts.length-1][0]);pkt.setAttribute("cy",pts[pts.length-1][1]);return res()}
+  const segs=pts.length-1;const t0=performance.now();
+  function f(t){let k=Math.min(1,(t-t0)/ms);const s=Math.min(segs-1,Math.floor(k*segs));const u=k*segs-s;
+    const a=pts[s],b=pts[s+1];pkt.setAttribute("cx",a[0]+(b[0]-a[0])*u);pkt.setAttribute("cy",a[1]+(b[1]-a[1])*u);
+    if(k<1)requestAnimationFrame(f);else res();}
+  requestAnimationFrame(f);});}
+const EC_FLAGS=`Flags:  D - down        P - bundled in port-channel
+        I - stand-alone s - suspended
+        R - Layer3      S - Layer2
+        U - in use      f - failed to allocate aggregator`;
+const ecLine=(po,prot,ports)=>EC_FLAGS+`\n\nGroup  Port-channel  Protocol    Ports\n------+-------------+-----------+------------------------\n1      ${pad(po,15)}${pad(prot,10)}${ports}`;
+
+/* ---------- navegación ---------- */
+const slides=$$(".slide");let cur=0;
+$("#jump").innerHTML=slides.map((s,i)=>`<option value="${i}">${i+1}. ${esc(s.dataset.title)}</option>`).join("");
+function go(i,push){
+  i=Math.max(0,Math.min(slides.length-1,i));
+  slides.forEach((s,k)=>{s.hidden=k!==i;s.classList.toggle("enter",k===i)});
+  slides[i].scrollTop=0;cur=i;
+  $("#count").textContent=`${i+1} / ${slides.length}`;
+  $("#prog").style.width=((i+1)/slides.length*100)+"%";
+  $("#jump").value=i;
+  $("#prev").disabled=i===0;$("#next").disabled=i===slides.length-1;
+  if(push!==false){try{history.replaceState(null,"","#s"+(i+1))}catch(e){}}
+}
+$("#prev").onclick=()=>go(cur-1);$("#next").onclick=()=>go(cur+1);
+$("#jump").onchange=e=>go(+e.target.value);
+document.addEventListener("keydown",e=>{
+  if(e.target.closest("input,select,textarea"))return;
+  if(e.key==="ArrowRight"||e.key==="PageDown"){go(cur+1);e.preventDefault()}
+  else if(e.key==="ArrowLeft"||e.key==="PageUp"){go(cur-1);e.preventDefault()}
+  else if(e.key==="Home")go(0);else if(e.key==="End")go(slides.length-1);
+});
+let tx=null;$("#stage").addEventListener("touchstart",e=>{tx=e.touches[0].clientX},{passive:true});
+$("#stage").addEventListener("touchend",e=>{if(tx===null)return;const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>70&&!e.target.closest(".term,input,.tbl,svg"))go(cur+(dx<0?1:-1));tx=null});
+
+/* agenda */
+const ag=[[3,"Método de troubleshooting","El ciclo que usaremos en toda la unidad"],[4,"EtherChannel de capa 3","Concepto, orden de configuración, negociación y fallas"],[8,"HSRP","Router virtual, simulador, MAC virtual y verificación"],[12,"Tracking","Cómo reaccionar a la caída de un uplink"],[13,"VRRP","Estándar, configuración, balanceo y simulador"],[18,"Del síntoma a la causa","Guía rápida de diagnóstico"]];
+$("#agenda").innerHTML=ag.map(a=>`<button data-go="${a[0]-1}"><small>Diapositiva ${a[0]}</small><b>${a[1]}</b><small>${a[2]}</small></button>`).join("");
+$("#agenda").onclick=e=>{const b=e.target.closest("[data-go]");if(b)go(+b.dataset.go)};
+
+/* método */
+$$("#method div").forEach(d=>{const f=()=>{$$("#method div").forEach(x=>x.classList.toggle("on",x===d));$("#methodX").textContent=d.dataset.x};d.addEventListener("mouseenter",f);d.addEventListener("focus",f);d.addEventListener("click",f)});
+
+/* ---------- 4 EtherChannel ---------- */
+let ecOn=false;
+function ecRender(){
+  $("#ecRing").setAttribute("opacity",ecOn?1:0);$("#ecPo").setAttribute("opacity",ecOn?1:0);
+  $("#ecIp1").textContent=ecOn?"Po1: 10.0.1.1/30":"Gi1/0/1: 10.0.1.1 · Gi1/0/2: 10.0.2.1";
+  $("#ecIp2").textContent=ecOn?"Po1: 10.0.1.2/30":"Gi1/0/1: 10.0.1.2 · Gi1/0/2: 10.0.2.2";
+  $("#ecOut").innerHTML=ecOn?esc(`SW1#show ip ospf neighbor
+Neighbor ID     State      Address         Interface
+10.255.0.2      FULL/  -   10.0.1.2        Port-channel1`):esc(`SW1#show ip ospf neighbor
+Neighbor ID     State      Address         Interface
+10.255.0.2      FULL/  -   10.0.1.2        GigabitEthernet1/0/1
+10.255.0.2      FULL/  -   10.0.2.2        GigabitEthernet1/0/2`);
+}
+seg("#ecSeg",v=>{ecOn=v==="1";ecRender()});ecRender();
+$("#ecSend").onclick=async()=>{const p=$("#ecPkt");for(let i=0;i<4;i++){const y=(ecOn?(i%2?108:88):(i%2?108:88));await animate(p,[[110,y],[310,y]],450)}p.setAttribute("cx",-20)};
+
+/* ---------- 5 Orden ---------- */
+function ordRender(v){
+  const ok=v==="ok";
+  $("#ordCfg").innerHTML=ok?`<span class="d">! 1. Primero, capa 3 en las físicas</span>
+SW1(config)# interface range gi1/0/1-2
+SW1(config-if-range)# <span class="h">no switchport</span>
+<span class="d">! 2. Luego, el grupo</span>
+SW1(config-if-range)# channel-group 1 mode active
+<span class="d">! 3. La IP va en el Port-channel</span>
+SW1(config-if-range)# interface port-channel1
+SW1(config-if)# ip address 10.0.1.1 255.255.255.252`:`<span class="d">! Se crea el grupo con los puertos aún en capa 2</span>
+SW1(config)# interface range gi1/0/1-2
+SW1(config-if-range)# channel-group 1 mode active
+SW1(config-if-range)# interface port-channel1
+SW1(config-if)# ip address 10.0.1.1 255.255.255.252
+<span class="h">                 ^
+% Invalid input detected at '^' marker.</span>`;
+  $("#ordOut").innerHTML=esc("SW1#show etherchannel summary\n"+ecLine(ok?"Po1(RU)":"Po1(SU)","LACP","Gi1/0/1(P)  Gi1/0/2(P)"));
+  $("#ordNote").innerHTML=ok?`<div class="fix"><b>RU</b>: capa 3 (R) y en uso (U). Los puertos (P) están agrupados.</div>`:`<div class="note"><b>SU</b>: el canal se formó, pero en capa 2 (S). Una interfaz switchport no acepta <code>ip address</code>. Solución: <code>no switchport</code> (en las físicas o en el Port-channel, según la plataforma) antes de asignar la IP.</div>`;
+}
+seg("#ordSeg",ordRender);ordRender("ok");
+
+/* ---------- 6 Negociación ---------- */
+function negRender(){
+  const a=$("#mA").value,b=$("#mB").value;
+  const P={active:"LACP",passive:"LACP",desirable:"PAgP",auto:"PAgP",on:"-"};
+  let ok=false,why="",ports="Gi1/0/1(I)  Gi1/0/2(I)",po="Po1(RD)";
+  if(a==="on"||b==="on"){ok=a===b;why=ok?"Modo estático: el canal se fuerza sin negociar. Funciona, pero no detecta errores de cableado ni de configuración.":"on no envía ni entiende LACP/PAgP: el otro extremo nunca encuentra pareja. En capa 2, esta mezcla puede causar bucles.";if(!ok)ports="Gi1/0/1(D)  Gi1/0/2(D)"}
+  else if(P[a]!==P[b]){why="Uno habla LACP y el otro PAgP: son protocolos distintos y no se entienden.";}
+  else if(P[a]==="LACP"){ok=a==="active"||b==="active";why=ok?"Al menos un extremo en active inicia el envío de LACPDU.":"Los dos en passive solo esperan; nadie inicia la negociación.";}
+  else{ok=a==="desirable"||b==="desirable";why=ok?"Al menos un extremo en desirable inicia la negociación PAgP.":"Los dos en auto solo esperan; nadie inicia la negociación.";}
+  if(ok){ports="Gi1/0/1(P)  Gi1/0/2(P)";po="Po1(RU)"}
+  $("#negRes").innerHTML=ok?`<span class="badge ok">Se forma el canal</span>`:`<span class="badge bad">No se forma</span>`;
+  $("#negWhy").textContent=why;
+  $("#negOut").innerHTML=esc("SW1#show etherchannel summary\n"+ecLine(po,P[a]==="-"?"-":P[a],ports));
+}
+$("#mA").onchange=negRender;$("#mB").onchange=negRender;negRender();
+
+/* ---------- 8 ARP ---------- */
+let r1Up=true;
+$("#arpGo").onclick=async()=>{
+  const p=$("#arpPkt");const tgt=r1Up?[110,74]:[310,74];
+  $("#arpOut").innerHTML=esc("PC1> arp -a 10.10.10.1\n… enviando ARP Request (broadcast)");
+  await animate(p,[[210,214],[210,154],tgt],700);
+  await animate(p,[tgt,[210,154],[210,214]],700);p.setAttribute("cx",-20);
+  $("#arpOut").innerHTML=esc(`PC1> arp -a 10.10.10.1
+  Internet Address      Physical Address      Type
+  10.10.10.1            00-00-0c-07-ac-0a     dynamic`)+`\n<span class="d">${r1Up?"Respondió R1 (Active).":"Respondió R2, ahora Active: la MAC es la misma, el PC no nota el cambio."}</span>`;
+};
+$("#arpFail").onclick=()=>{r1Up=!r1Up;
+  $("#arpR1").setAttribute("class","box "+(r1Up?"act":"off"));$("#arpR2").setAttribute("class","box "+(r1Up?"bk":"act"));
+  $("#arpR2t").textContent=r1Up?"R2 · Standby":"R2 · Active";
+  $("#arpFail").textContent=r1Up?"Apagar R1":"Encender R1";
+  $("#arpOut").innerHTML=r1Up?esc("%HSRP-5-STATECHANGE: Vlan10 Grp 10 state Speak -> Active  (R1, con preempt)"):esc("R2: %HSRP-5-STATECHANGE: Vlan10 Grp 10 state Standby -> Active\n(R2 dejó de oír hellos de R1 durante 10 s)");
+};
+$("#arpOut").textContent="Presiona el botón para ver el intercambio ARP.";
+
+/* ---------- 9 Simulador HSRP ---------- */
+const H={active:"DSW1",up:true,pwr:true,log:[]};
+const now=()=>{const d=new Date();return d.toTimeString().slice(0,8)};
+function hlog(s){H.log.unshift(now()+"  "+s);H.log=H.log.slice(0,30);$("#hsLog").textContent=H.log.join("\n")}
+function hsInputs(){return {p1:Math.max(1,Math.min(255,+$("#p1").value||0)),p2:Math.max(1,Math.min(255,+$("#p2").value||0)),dec:Math.max(0,+$("#dec").value||0),pre1:$("#pre1").checked,pre2:$("#pre2").checked,auth:$("#auth").checked,ver:$("#ver").checked}}
+function hsEval(trigger){
+  const I=hsInputs();
+  const e1=H.up?I.p1:Math.max(1,I.p1-I.dec), e2=I.p2;
+  const talk=!I.auth&&!I.ver&&H.pwr;
+  let st1,st2,why;
+  const prev=H.active;
+  if(!H.pwr){H.active="DSW2";st1="Init";st2="Active";why="DSW1 apagado: DSW2 deja de oír hellos, espera el hold time (10 s) y pasa a Active.";}
+  else if(!talk){st1="Active";st2="Active";H.active="BOTH";
+    why=I.auth?"Las claves no coinciden: cada router rechaza los hellos del otro (%HSRP-4-BADAUTH) y ambos quedan Active. Dos gateways con la misma MAC provocan MAC flapping en el acceso.":"DSW1 usa HSRPv2 (224.0.0.102, MAC 0000.0c9f.f00a) y DSW2 HSRPv1 (224.0.0.2): no se escuchan y ambos quedan Active.";}
+  else{
+    if(H.active==="BOTH")H.active=e1>e2?"DSW1":"DSW2"; // empate: gana la IP más alta (DSW2)
+    if(H.active==="DSW1"&&e2>e1&&I.pre2)H.active="DSW2";
+    else if(H.active==="DSW2"&&e1>e2&&I.pre1)H.active="DSW1";
+    st1=H.active==="DSW1"?"Active":"Standby";st2=H.active==="DSW2"?"Active":"Standby";
+    if(H.active==="DSW1"&&e2>e1&&!I.pre2)why=`DSW2 tiene más prioridad (${e2} > ${e1}) pero no tiene preempt: DSW1 sigue Active.`;
+    else if(H.active==="DSW2"&&e1>e2&&!I.pre1)why=`DSW1 tiene más prioridad (${e1} > ${e2}) pero no tiene preempt: no recupera el rol.`;
+    else if(!H.up&&H.active==="DSW1")why=`El uplink cayó, pero ${I.p1} − ${I.dec} = ${e1} sigue siendo ≥ ${e2}: DSW1 sigue atrayendo el tráfico sin salida hacia CORE.`;
+    else if(!H.up)why=`Uplink caído: ${I.p1} − ${I.dec} = ${e1} < ${e2}, y DSW2 tiene preempt. El gateway se movió a DSW2.`;
+    else why=H.active==="DSW1"?`DSW1 es Active con prioridad ${e1}. DSW2 (${e2}) está en Standby.`:`DSW2 es Active con prioridad ${e2}.`;
+  }
+  if(prev!==H.active&&trigger){if(H.active==="BOTH")hlog("%HSRP-5-STATECHANGE: Vlan10 Grp 10 state Standby -> Active (ambos)");else hlog(`%HSRP-5-STATECHANGE: ${H.active} Vlan10 Grp 10 -> Active`)}
+  const mac1=I.ver?"0000.0c9f.f00a":"0000.0c07.ac0a";
+  const row=(p,pre,st,act,sb)=>pad("Vl10",12)+pad("10",5)+pad(p,4)+(pre?"P ":"  ")+pad(st,8)+pad(act,16)+pad(sb,16)+"10.10.10.1";
+  const hdr="Interface   Grp  Pri P State   Active          Standby         Virtual IP\n";
+  let o1,o2;
+  if(!H.pwr)o1="% DSW1 apagado";
+  else o1=hdr+row(e1,I.pre1,st1,st1==="Active"?"local":"10.10.10.3",st1==="Active"?(talk?"10.10.10.3":"unknown"):"local");
+  o2=hdr+row(e2,I.pre2,st2,st2==="Active"?"local":"10.10.10.2",st2==="Active"?(talk?"10.10.10.2":"unknown"):"local");
+  $("#hsOut").innerHTML=`<span class="p">DSW1#</span>show standby brief\n${esc(o1)}\n\n<span class="p">DSW2#</span>show standby brief\n${esc(o2)}\n\n<span class="d">MAC virtual DSW1: ${mac1} · DSW2: 0000.0c07.ac0a</span>`;
+  $("#hsWhy").textContent=why;
+  const c=s=>s==="Active"?"box act":s==="Init"?"box off":"box bk";
+  $("#hsR1").setAttribute("class",c(st1)+" clk");$("#hsR2").setAttribute("class",c(st2));
+  $("#hsR1a").textContent="DSW1 · "+st1;$("#hsR2a").textContent="DSW2 · "+st2;
+  $("#hsR1b").textContent=H.pwr?`prio ${e1}${H.up?"":" (cfg "+I.p1+")"}`:"apagado";$("#hsR2b").textContent=`prio ${e2}`;
+  $("#hsUp1").setAttribute("class","wire clk"+(H.up&&H.pwr?"":" down"));
+  const toR1="M210 196 L110 146",toR2="M210 196 L310 146";const upR1=" M110 96 L190 40",upR2=" M310 96 L230 40";
+  $("#hsFlow").setAttribute("d",H.active==="BOTH"?toR1+" "+toR2:H.active==="DSW1"?toR1+(H.up?upR1:""):toR2+upR2);
+  $("#hsFlow").style.stroke=(H.active==="DSW1"&&!H.up)||H.active==="BOTH"?"var(--bad)":"var(--ok)";
+  $("#hsUpBtn").textContent=H.up?"Cortar uplink de DSW1":"Reponer uplink de DSW1";
+  $("#hsPwr").textContent=H.pwr?"Apagar DSW1":"Encender DSW1";
+}
+$("#hsUpBtn").onclick=()=>{H.up=!H.up;hlog(H.up?"%TRACK-6-STATE: 1 interface Po1 line-protocol Down -> Up":"%TRACK-6-STATE: 1 interface Po1 line-protocol Up -> Down");hsEval(true)};
+$("#hsUp1").addEventListener("click",()=>$("#hsUpBtn").click());
+$("#hsPwr").onclick=()=>{H.pwr=!H.pwr;hlog(H.pwr?"DSW1 encendido: Initial → Listen → Speak":"DSW1 apagado");hsEval(true)};
+$("#hsReset").onclick=()=>{$("#p1").value=110;$("#p2").value=100;$("#dec").value=20;$("#pre1").checked=true;$("#pre2").checked=true;$("#auth").checked=false;$("#ver").checked=false;H.up=true;H.pwr=true;H.active="DSW1";H.log=[];$("#hsLog").textContent="";hsEval(false)};
+["#p1","#p2","#dec","#pre1","#pre2","#auth","#ver"].forEach(s=>$(s).addEventListener("input",()=>hsEval(true)));
+hlog("Escenario inicial: DSW1 Active, DSW2 Standby");hsEval(false);
+
+/* ---------- 10 MAC ---------- */
+let macP="h1";
+function macRender(){
+  const r=$("#macR");r.max=macP==="h2"?4095:255;r.min=macP==="h1"?0:1;
+  const g=+r.value;$("#macG").textContent=g;
+  let parts,txt;
+  if(macP==="h1"){const h=g.toString(16).padStart(2,"0");parts=[["v","0000.0c"],["w","07.ac"],["g",h]];txt=`HSRPv1: OUI de Cisco 0000.0c, código 07.ac y el grupo ${g} = 0x${h}. Solo caben grupos 0 a 255.`}
+  else if(macP==="h2"){const h=g.toString(16).padStart(3,"0");parts=[["v","0000.0c"],["w","9f.f"],["g",h]];txt=`HSRPv2: 0000.0c9f.f más el grupo ${g} en tres dígitos hexadecimales (0x${h}). Admite grupos 0 a 4095.`}
+  else{const h=g.toString(16).padStart(2,"0");parts=[["v","0000.5e"],["w","00.01"],["g",h]];txt=`VRRP: OUI de IANA 0000.5e, bloque 00.01 y el VRID ${g} = 0x${h}. VRID válidos: 1 a 255.`}
+  $("#macBox").innerHTML=parts.map(p=>`<span class="${p[0]}">${p[1]}</span>`).join("");
+  $("#macTxt").textContent=txt;
+}
+seg("#macSeg",v=>{macP=v;if(v!=="h2"&&+$("#macR").value>255)$("#macR").value=10;macRender()});
+$("#macR").addEventListener("input",macRender);macRender();
+
+/* ---------- 11 anotado ---------- */
+const ann=[
+ ["R1#show standby vlan 10",""],
+ ["Vlan10 - Group 10","Interfaz y grupo. Si en el otro router el grupo es distinto, no se verán como pares."],
+ ["  State is Active","Estado actual. Dos routers Active en el mismo grupo indican que no intercambian hellos válidos."],
+ ["    2 state changes, last state change 2d03h","Muchos cambios recientes sugieren inestabilidad: flapping de un enlace o de un track."],
+ ["  Virtual IP address is 10.10.10.1","Debe coincidir en todos los routers del grupo; si no, el log muestra %HSRP-4-DIFFVIP1."],
+ ["  Active virtual MAC address is 0000.0c07.ac0a","La MAC que reciben los PCs. Su formato indica la versión: 0c07.ac es v1, 0c9f.f es v2."],
+ ["    Local virtual MAC address is 0000.0c07.ac0a (v1 default)",""],
+ ["  Hello time 3 sec, hold time 10 sec","Temporizadores. Si no coinciden, se usan los del Active, pero conviene igualarlos."],
+ ["  Authentication MD5, key-string","Hay autenticación. Una clave distinta produce %HSRP-4-BADAUTH y dos Active."],
+ ["  Preemption enabled","Si está deshabilitado, este router no recupera el rol aunque tenga más prioridad."],
+ ["  Active router is local",""],
+ ["  Standby router is 10.10.10.3, priority 100 (expires in 8.320 sec)","Quién es el Standby. Si dice unknown, el par no se ve."],
+ ["  Priority 110 (configured 110)","Prioridad efectiva y configurada. Si difieren, hay un track restando."],
+ ["    Track object 1 state Up decrement 20","Objeto seguido y cuánto resta al caer. Verifica que el resultado quede bajo la prioridad del par."],
+ ["  Group name is \"hsrp-Vl10-10\" (default)",""]];
+$("#annot").innerHTML=ann.map((a,i)=>`<span class="ln${a[1]?" k":""}" data-i="${i}" ${a[1]?'tabindex="0"':""}>${esc(a[0])}</span>`).join("");
+$("#annot").addEventListener("click",e=>{const l=e.target.closest(".ln");if(!l||!ann[l.dataset.i][1])return;$$("#annot .ln").forEach(x=>x.classList.toggle("sel",x===l));$("#annotX").textContent=ann[l.dataset.i][1]});
+$("#annot").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.classList.contains("ln"))e.target.click()});
+
+/* ---------- 12 tracking ---------- */
+function trkRender(){
+  const d=+$("#trkR").value,e=110-d;$("#trkV").textContent="decremento "+d;
+  $("#trkCfg").innerHTML=`<span class="d">! Objeto de seguimiento (sintaxis recomendada)</span>
+DSW1(config)# track 1 interface port-channel1 line-protocol
+DSW1(config)# interface vlan 10
+DSW1(config-if)# standby 10 priority 110
+DSW1(config-if)# standby 10 preempt
+DSW1(config-if)# standby 10 track 1 decrement <span class="h">${d}</span>
+
+<span class="d">! Al caer Po1:</span>
+DSW1#show standby vlan 10 | include Priority|Track
+  Priority ${e} (configured 110)
+    Track object 1 state Down decrement ${d}`;
+  $("#trkTxt").innerHTML=e<100?`<span class="badge ok">Conmuta</span> 110 − ${d} = ${e}, menor que 100: DSW2 (con preempt) toma el rol.`:e===100?`<span class="badge bad">Empate</span> 110 − ${d} = 100. Con prioridades iguales gana la IP más alta; depender de eso es frágil. Usa un decremento mayor.`:`<span class="badge bad">No conmuta</span> 110 − ${d} = ${e}, todavía ≥ 100: DSW1 sigue Active sin salida a CORE.`;
+}
+$("#trkR").addEventListener("input",trkRender);trkRender();
+
+/* ---------- 13 master down ---------- */
+function mdRender(){const p=+$("#mdR").value;$("#mdP").textContent=p===255?"255 (dueño)":p;const v=Math.floor((3+(256-p)/256)*1000)/1000;
+  $("#mdOut").innerHTML=esc(`3 × 1 s + (256 − ${p}) / 256 = ${v.toFixed(3)} s (IOS trunca a milisegundos)
+
+Interface   Grp Pri Time  Own Pre State   Master addr     Group addr
+Vl20        20  ${pad(p,4)}${pad(Math.round(v*1000),6)}${p===255?" Y  ":"    "} Y  ${p===255?"Master":"Backup"}  10.10.20.2      10.10.20.1`)}
+$("#mdR").addEventListener("input",mdRender);mdRender();
+
+/* ---------- 14 config VRRP ---------- */
+const vc={v2:[["Asignar IP virtual","vrrp 1 ip 192.168.1.1 [secondary]"],["Prioridad (100 por defecto)","vrrp 1 priority 200"],["Temporizador de anuncio (1 s por defecto)","vrrp 1 timers advertise [msec] 3"],["Aprender el temporizador del Master","vrrp 1 timers learn"],["Desactivar preempt (activo por defecto)","no vrrp 1 preempt"],["Retardo de preempt (0 s por defecto)","vrrp 1 preempt delay minimum 60"],["Autenticación de anuncios","vrrp 1 authentication md5 key-string CLAVE"],["Seguimiento de un objeto","vrrp 1 track 1 decrement 30"]],
+ v3:[["Habilitar VRRPv3 (global)","fhrp version vrrp v3"],["Crear el grupo","vrrp 1 address-family ipv4"],["Asignar IP virtual","  address 192.168.1.1 primary"],["Prioridad","  priority 200"],["Temporizador de anuncio (ms)","  timers advertise 1000"],["Preempt (activo por defecto)","  preempt delay minimum 60"],["Seguimiento de un objeto","  track 1 decrement 30"],["Grupo IPv6","vrrp 2 address-family ipv6\n  address FE80::1 primary"]]};
+const vcN={v2:"Comandos en modo interfaz. Es la sintaxis de la tabla original del curso (libro CCNP SWITCH).",v3:"VRRPv3 no tiene autenticación. Al activar fhrp version vrrp v3 se pierde la configuración VRRPv2 existente."};
+function vcRender(v){$("#vcBody").innerHTML=vc[v].map(r=>`<tr><td>${r[0]}</td><td><code style="white-space:pre">${esc(r[1])}</code></td></tr>`).join("");$("#vcNote").textContent=vcN[v]}
+seg("#vcSeg",vcRender);vcRender("v2");
+
+/* ---------- 15 balanceo ---------- */
+function lbRender(v){
+  const A=v!=="A",B=v!=="B";
+  $("#lbA").setAttribute("class","box "+(A?"act":"off"));$("#lbB").setAttribute("class","box "+(B?"act":"off"));
+  $("#lbAt").textContent=A?(B?"Master g1 · Backup g2":"Master g1 y g2"):"apagado";
+  $("#lbBt").textContent=B?(A?"Master g2 · Backup g1":"Master g1 y g2"):"apagado";
+  const m1=A?"M110 180 L110 76":"M110 180 L310 76", m2=B?"M310 180 L310 76":"M310 180 L110 76";
+  $("#lbF1").setAttribute("d",m1);$("#lbF2").setAttribute("d",m2);
+  const row=(g,p,pre,st,m,ip)=>pad("Vlan50",15)+pad(g,4)+pad(p,4)+pad(Math.floor((3+(256-p)/256)*1000),6)+"    "+(pre?" Y  ":"    ")+pad(st,8)+pad(m,16)+ip;
+  const H="Interface      Grp Pri Time  Own Pre State   Master addr     Group addr\n";
+  let s="";
+  s+=`Switch-A#show vrrp brief\n`+(A?H+row(1,200,1,"Master","192.168.1.10","192.168.1.1")+"\n"+row(2,100,0,B?"Backup":"Master",B?"192.168.1.11":"192.168.1.10","192.168.1.2"):"% equipo apagado");
+  s+=`\n\nSwitch-B#show vrrp brief\n`+(B?H+row(1,100,0,A?"Backup":"Master",A?"192.168.1.10":"192.168.1.11","192.168.1.1")+"\n"+row(2,200,1,"Master","192.168.1.11","192.168.1.2"):"% equipo apagado");
+  $("#lbOut").textContent=s;
+}
+seg("#lbSeg",lbRender);lbRender("both");
+
+/* ---------- 16 simulador VRRP ---------- */
+function vrRender(){
+  const down=$("#vrDown").checked,own=$("#vrOwn").checked,acl=$("#vrAclT").checked;
+  const vip=own?"10.10.20.2":"10.10.20.1";
+  const p1=own?255:(down?90:120),p2=100;
+  let m1,m2,why;
+  const d1master=p1>p2;
+  m1=d1master?"Master":"Backup";m2=d1master?"Backup":"Master";
+  if(acl&&d1master){m2="Master";}
+  if(own&&down)why="DSW1 es dueño de la IP virtual: su prioridad es 255 fija y el tracking no le resta. Sigue Master aunque no tenga salida. Solución: usar una IP virtual distinta de las IP reales.";
+  else if(acl&&d1master)why="La ACL de entrada en la SVI de DSW2 descarta los anuncios (protocolo 112 a 224.0.0.18). DSW2 se declara Master tras el Master Down interval. DSW1 sí oye a DSW2, pero como tiene más prioridad sigue Master: hay dos Master.";
+  else if(down)why="Uplink caído: 120 − 30 = 90 < 100. DSW2 se vuelve Master (preempt está activo por defecto en VRRP).";
+  else if(own)why="DSW1 es dueño de 10.10.20.2: prioridad 255 y Own = Y. Funciona, pero ese router nunca cede el rol mientras esté encendido.";
+  else why="Operación normal: DSW1 Master con 120, DSW2 Backup con 100.";
+  if(acl&&!d1master)why="DSW2 ya es Master; la ACL no cambia nada mientras DSW1 no necesite ser oído por DSW2. Reponer el uplink mostrará el problema.";
+  const t=p=>Math.floor((3+(256-p)/256)*1000);
+  const ma1=m1==="Master"?"10.10.20.2":"10.10.20.3", ma2=m2==="Master"?"10.10.20.3":(acl?"10.10.20.3":"10.10.20.2");
+  const H="Interface          Grp Pri Time  Own Pre State   Master addr     Group addr\n";
+  const row=(p,o,st,m)=>pad("Vl20",19)+pad(20,4)+pad(p,4)+pad(t(p),6)+(o?" Y  ":"    ")+" Y  "+pad(st,8)+pad(m,16)+vip;
+  $("#vrOut").innerHTML=`<span class="p">DSW1#</span>show vrrp brief\n${esc(H+row(p1,own,m1,ma1))}\n\n<span class="p">DSW2#</span>show vrrp brief\n${esc(H+row(p2,false,m2,ma2))}`+(acl?`\n\n<span class="p">DSW2#</span>show ip access-lists\n${esc(`Extended IP access list SERVIDORES-IN
+    10 permit tcp 10.10.20.0 0.0.0.255 any eq 443
+    20 permit udp 10.10.20.0 0.0.0.255 any eq domain
+    (deny implícito: descarta IP 112 → 224.0.0.18)`)}`:"");
+  $("#vrWhy").textContent=why;
+  const c=s=>s==="Master"?"box act":"box bk";
+  $("#vrR1").setAttribute("class",c(m1));$("#vrR2").setAttribute("class",c(m2));
+  $("#vrR1a").textContent="DSW1 · "+m1;$("#vrR2a").textContent="DSW2 · "+m2;
+  $("#vrR1b").textContent=`prio ${p1}${own?" (dueño)":down?" (cfg 120)":""}`;$("#vrR2b").textContent="prio 100";
+  $("#vrAcl").textContent=acl?"ACL SERVIDORES-IN ⟶ bloquea VRRP":"";
+  $("#vrUp1").setAttribute("class","wire"+(down?" down":""));
+  const f1="M210 176 L110 136"+(down?"":" M110 86 L190 36"),f2="M210 176 L310 136 M310 86 L230 36";
+  $("#vrFlow").setAttribute("d",m1==="Master"&&m2==="Master"?"M210 176 L110 136 M210 176 L310 136":m1==="Master"?f1:f2);
+  $("#vrFlow").style.stroke=(m1==="Master"&&(down||m2==="Master"))?"var(--bad)":"var(--ok)";
+}
+["#vrDown","#vrOwn","#vrAclT"].forEach(s=>$(s).addEventListener("change",vrRender));vrRender();
+
+/* ---------- 18 síntomas ---------- */
+const sym=[
+ ["Dos routers Active en HSRP","Los hellos no llegan (VLAN no permitida en la troncal, STP, ACL que filtra UDP 1985) o llegan y se rechazan (clave distinta, versión distinta). El log distingue ambos casos.",`DSW1#show standby brief
+Interface   Grp  Pri P State   Active          Standby         Virtual IP
+Vl10        10   110 P Active  local           unknown         10.10.10.1
+
+DSW1#show logging | include HSRP
+%HSRP-4-BADAUTH: Bad authentication from 10.10.10.3, group 10`],
+ ["El principal no recupera el rol","Falta preempt en el router de mayor prioridad. Ocurre típicamente tras un reinicio.",`DSW1#show standby brief
+Interface   Grp  Pri P State   Active          Standby         Virtual IP
+Vl10        10   110   Standby 10.10.10.3      local           10.10.10.1`],
+ ["Cae el uplink y nada cambia","Decremento insuficiente, falta preempt en el par, o (en VRRP) el router es dueño de la IP.",`DSW1#show standby vlan 10 | include Priority|Track
+  Priority 105 (configured 110)
+    Track object 1 state Down decrement 5`],
+ ["Dos Master en VRRP","Una ACL bloquea el protocolo 112, la VLAN no llega al par, o grupos/IP virtual distintos.",`DSW2#show vrrp brief
+Interface          Grp Pri Time  Own Pre State   Master addr     Group addr
+Vl20               20  100 3609       Y  Master  10.10.20.3      10.10.20.1`],
+ ["Port-channel L3 no levanta","Modos que no negocian, parámetros distintos entre miembros o puertos en capa 2.",`SW1#show etherchannel summary
+Group  Port-channel  Protocol    Ports
+1      Po1(RD)         LACP      Gi1/0/1(I)  Gi1/0/2(I)`],
+ ["MAC flapping del gateway en el acceso","Dos routers Active o Master responden con la misma MAC virtual por puertos distintos.",`ASW1#show logging | include MACFLAP
+%SW_MATM-4-MACFLAP_NOTIF: Host 0000.0c07.ac0a in vlan 10 is
+ flapping between port Gi1/0/1 and port Gi1/0/2`]];
+$("#symList").innerHTML=sym.map((s,i)=>`<button class="btn ghost" style="text-align:left;align-self:stretch" data-i="${i}">${esc(s[0])}</button>`).join("");
+function symShow(i){$$("#symList button").forEach((b,k)=>b.className=k===i?"btn":"btn ghost");$("#symT").textContent=sym[i][0];$("#symX").textContent=sym[i][1];$("#symOut").textContent=sym[i][2]}
+$("#symList").onclick=e=>{const b=e.target.closest("[data-i]");if(b)symShow(+b.dataset.i)};symShow(0);
+
+/* inicio */
+const m=(location.hash||"").match(/^#s(\d+)$/);
+go(m?(+m[1]-1):0,false);
+})();
+</script>
+
+</body></html>

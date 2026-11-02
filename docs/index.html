@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Material de Redes</title>
+<meta name="description" content="Repositorio de guías, presentaciones, diagramas y documentos de redes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF2F5;--surface:#FFFFFF;--sunk:#E3E9EE;--ink:#13202B;--muted:#56687A;--line:#CBD5DE;
+  --accent:#0B6A87;--accent-soft:#D6ECF3;--on-accent:#FFFFFF;
+  --f-display:"Archivo",system-ui,sans-serif;--f-body:"Source Sans 3",system-ui,sans-serif;--f-mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0D151C;--surface:#15212B;--sunk:#1B2934;--ink:#E2E9EF;--muted:#94A6B6;--line:#2A3A47;
+  --accent:#55B8D6;--accent-soft:#163543;--on-accent:#08141B;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D151C;--surface:#15212B;--sunk:#1B2934;--ink:#E2E9EF;--muted:#94A6B6;--line:#2A3A47;
+  --accent:#55B8D6;--accent-soft:#163543;--on-accent:#08141B;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.55}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px 64px}
+header{padding:40px 0 24px;border-bottom:1px solid var(--line);margin-bottom:24px;display:flex;gap:16px;justify-content:space-between;align-items:flex-start}
+.eyebrow{font-family:var(--f-mono);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(2rem,5vw,3rem);line-height:1.05;margin:.25em 0 .3em;letter-spacing:-.01em}
+.lead{color:var(--muted);margin:0;max-width:60ch}
+.btn{font:inherit;font-size:.9rem;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.search{flex:1 1 260px;font:inherit;padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+.chip{font-family:var(--f-mono);font-size:.78rem;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+h2{font-family:var(--f-display);font-size:1.25rem;margin:32px 0 12px;display:flex;gap:10px;align-items:baseline}
+h2 small{font-family:var(--f-mono);font-size:.75rem;color:var(--muted);font-weight:500}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.card:hover{border-color:var(--accent)}
+.thumb{aspect-ratio:16/9;background:var(--sunk);display:flex;align-items:center;justify-content:center;overflow:hidden;border:0;padding:0;width:100%;cursor:pointer;color:var(--accent)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb{position:relative}
+.thumb .badge{position:absolute;top:8px;left:8px;font-family:var(--f-mono);font-size:.7rem;padding:2px 8px;border-radius:6px;background:var(--accent);color:var(--on-accent)}
+a.thumb img{object-position:top}
+a.thumb.pdf{background:#fff}
+a.thumb.pdf img{object-fit:contain}
+.thumb .ext{font-family:var(--f-mono);font-size:1.6rem;font-weight:500;letter-spacing:.05em}
+.body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.body h3{font-size:1.02rem;margin:0;line-height:1.3;overflow-wrap:anywhere}
+.meta{font-family:var(--f-mono);font-size:.72rem;color:var(--muted)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-family:var(--f-mono);font-size:.7rem;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.actions{display:flex;gap:8px;margin-top:auto;padding-top:6px}
+.actions a{font-size:.9rem;font-weight:600;text-decoration:none;padding:6px 10px;border-radius:6px;border:1px solid var(--line)}
+.actions a:first-child{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.empty{color:var(--muted);padding:32px 0;text-align:center}
+footer{margin-top:48px;color:var(--muted);font-size:.85rem;border-top:1px solid var(--line);padding-top:16px}
+dialog{border:0;padding:0;background:transparent;max-width:96vw;max-height:94vh}
+dialog::backdrop{background:rgba(5,10,15,.85)}
+dialog img{max-width:96vw;max-height:86vh;display:block;border-radius:8px;background:#fff}
+dialog .bar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:8px;color:#E2E9EF;font-size:.9rem}
+dialog .bar a,dialog .bar button{color:#E2E9EF}
+@media (max-width:600px){header{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <div class="eyebrow">Repositorio de estudio</div>
+    <h1>Material de Redes</h1>
+    <p class="lead">Guías, presentaciones, diagramas de comandos y documentos en un solo lugar. Usa el buscador o los filtros por tema.</p>
+  </div>
+  <button class="btn" id="tema" type="button" aria-label="Cambiar tema claro/oscuro">◐ Tema</button>
+</header>
+
+<div class="tools">
+  <input class="search" id="q" type="search" placeholder="Buscar por nombre (ej. OSPF, BGP, HSRP)…" aria-label="Buscar material">
+</div>
+<div class="chips" id="chips" role="group" aria-label="Filtrar por tema"></div>
+<main id="lista"></main>
+
+<footer>12 archivos · Actualizado el 02-11-2026</footer>
+</div>
+
+<dialog id="visor" aria-label="Vista ampliada">
+  <img id="visor-img" alt="">
+  <div class="bar"><span id="visor-tit"></span><span><a id="visor-dl" download>Descargar</a> · <button class="btn" id="cerrar" type="button" style="background:transparent;border-color:#56687A">Cerrar ✕</button></span></div>
+</dialog>
+
+<script>
+const ITEMS = [{"titulo": "BGP - Comandos Resolución", "archivo": "Bgp-Comandos Resolución.jpeg", "url": "material/Bgp-Comandos%20Resoluci%C3%B3n.jpeg", "tipo": "Imagen", "formato": "", "mini": null, "ext": "jpeg", "temas": ["BGP", "Troubleshooting"], "kb": 494, "fecha": "2026-11-02"}, {"titulo": "EIGRP - Problemas especificos", "archivo": "EIGRP- Problemas especificos.png", "url": "material/EIGRP-%20Problemas%20especificos.png", "tipo": "Imagen", "formato": "", "mini": null, "ext": "png", "temas": ["EIGRP", "Troubleshooting"], "kb": 1684, "fecha": "2026-11-02"}, {"titulo": "EIGRP - comandos", "archivo": "eigrp-comandos.png", "url": "material/eigrp-comandos.png", "tipo": "Imagen", "formato": "", "mini": null, "ext": "png", "temas": ["EIGRP"], "kb": 1574, "fecha": "2026-11-02"}, {"titulo": "OSPF - Problemas especificos", "archivo": "OSPF- Problemas especificos.jpg", "url": "material/OSPF-%20Problemas%20especificos.jpg", "tipo": "Imagen", "formato": "", "mini": null, "ext": "jpg", "temas": ["OSPF", "Troubleshooting"], "kb": 227, "fecha": "2026-11-02"}, {"titulo": "OSPF - comandos", "archivo": "ospf-comandos.png", "url": "material/ospf-comandos.png", "tipo": "Imagen", "formato": "", "mini": null, "ext": "png", "temas": ["OSPF"], "kb": 1641, "fecha": "2026-11-02"}, {"titulo": "OSPFv3 - Problemas especificos IPv6", "archivo": "OSPFv3-Problemas especificos IPv6.png", "url": "material/OSPFv3-Problemas%20especificos%20IPv6.png", "tipo": "Imagen", "formato": "", "mini": null, "ext": "png", "temas": ["IPv6", "OSPF", "Troubleshooting"], "kb": 1343, "fecha": "2026-11-02"}, {"titulo": "Redundancia de Capa 3", "archivo": "Redundancia de Capa 3.html", "url": "material/Redundancia%20de%20Capa%203.html", "tipo": "Guía / presentación", "formato": "Presentación", "mini": "miniaturas/547a30c03f1531bf9eb14ec96bf18053.jpg", "ext": "html", "temas": ["FHRP / Redundancia"], "kb": 65, "fecha": "2026-11-01"}, {"titulo": "Repaso Troubleshooting ARY6112 (guía de estudio)", "archivo": "Repaso Troubleshooting ARY6112.html", "url": "material/Repaso%20Troubleshooting%20ARY6112.html", "tipo": "Guía / presentación", "formato": "Guía de estudio", "mini": "miniaturas/8270b0537cd4c83e41b8965f1789a8f9.jpg", "ext": "html", "temas": ["Troubleshooting", "Repaso"], "kb": 50, "fecha": "2026-11-01"}, {"titulo": "Repaso Troubleshooting ARY6112 (presentación) · Repaso_Ev2_ARY6112", "archivo": "Repaso_Ev2_ARY6112.html", "url": "material/Repaso_Ev2_ARY6112.html", "tipo": "Guía / presentación", "formato": "Presentación", "mini": "miniaturas/159a2cc95b7fb8ae56e6b55dd647bb89.jpg", "ext": "html", "temas": ["Repaso"], "kb": 92, "fecha": "2026-11-01"}, {"titulo": "Resolucion problemas", "archivo": "Resolucion_problemas.png", "url": "material/Resolucion_problemas.png", "tipo": "Imagen", "formato": "", "mini": null, "ext": "png", "temas": ["Troubleshooting"], "kb": 1527, "fecha": "2026-11-02"}, {"titulo": "Route - map - commandos", "archivo": "route-map-commandos.png", "url": "material/route-map-commandos.png", "tipo": "Imagen", "formato": "", "mini": null, "ext": "png", "temas": ["Route-map"], "kb": 1665, "fecha": "2026-11-02"}, {"titulo": "Repaso Troubleshooting ARY6112 (presentación) · Repaso Troubleshooting ARY6112 (1)", "archivo": "Repaso Troubleshooting ARY6112 (1).html", "url": "material/Repaso%20Troubleshooting%20ARY6112%20%281%29.html", "tipo": "Guía / presentación", "formato": "Presentación", "mini": "miniaturas/3c90e1623a28526a6a97dc9367eb1f0c.jpg", "ext": "html", "temas": ["Troubleshooting", "Repaso"], "kb": 52, "fecha": "2026-11-01"}];
+const ORDEN = ["Guía / presentación","Imagen","PDF"];
+const $ = s => document.querySelector(s);
+let filtro = "Todos";
+
+// Tema claro/oscuro (preferencia guardada solo en este navegador)
+const root = document.documentElement;
+try { const t = localStorage.getItem("tema"); if (t) root.dataset.theme = t; } catch (e) {}
+$("#tema").onclick = () => {
+  const oscuro = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = oscuro ? "light" : "dark";
+  try { localStorage.setItem("tema", root.dataset.theme); } catch (e) {}
+};
+
+// Chips de temas
+const temas = ["Todos", ...[...new Set(ITEMS.flatMap(i => i.temas))].sort()];
+$("#chips").innerHTML = temas.map(t => `<button class="chip" type="button" aria-pressed="${t===filtro}">${t}</button>`).join("");
+$("#chips").onclick = e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  filtro = b.textContent;
+  document.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c === b));
+  pintar();
+};
+$("#q").oninput = pintar;
+
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+function tarjeta(i, n) {
+  const img = i.tipo === "Imagen";
+  const thumb = img
+    ? `<button class="thumb" type="button" data-n="${n}" aria-label="Ampliar ${esc(i.titulo)}"><img src="${i.url}" alt="${esc(i.titulo)}" loading="lazy"></button>`
+    : `<a class="thumb ${esc(i.ext)}" href="${i.url}" target="_blank" rel="noopener" aria-label="Abrir ${esc(i.titulo)}">${i.mini
+        ? `<img src="${i.mini}" alt="Vista previa de ${esc(i.titulo)}" loading="lazy"><span class="badge">${esc(i.ext.toUpperCase())}</span>`
+        : `<span class="ext">.${esc(i.ext)}</span>`}</a>`;
+  const abrir = img ? `<a href="${i.url}" target="_blank" rel="noopener">Ver</a>` : `<a href="${i.url}" target="_blank" rel="noopener">Abrir</a>`;
+  return `<article class="card">${thumb}<div class="body">
+    <h3>${esc(i.titulo)}</h3>
+    <div class="tags">${i.temas.map(t => `<span class="tag">${esc(t)}</span>`).join("")}</div>
+    <div class="meta">${i.formato ? esc(i.formato)+" · " : ""}${esc(i.archivo)} · ${i.kb >= 1024 ? (i.kb/1024).toFixed(1)+" MB" : i.kb+" KB"}</div>
+    <div class="actions">${abrir}<a href="${i.url}" download>Descargar</a></div>
+  </div></article>`;
+}
+
+function pintar() {
+  const q = norm($("#q").value.trim());
+  const vis = ITEMS.map((i, n) => [i, n]).filter(([i]) =>
+    (filtro === "Todos" || i.temas.includes(filtro)) &&
+    (!q || norm(i.titulo + " " + i.archivo + " " + i.temas.join(" ")).includes(q)));
+  if (!vis.length) { $("#lista").innerHTML = `<p class="empty">No hay material que coincida.</p>`; return; }
+  const tipos = [...new Set(vis.map(([i]) => i.tipo))].sort((a, b) => (ORDEN.indexOf(a)+99)%99 - (ORDEN.indexOf(b)+99)%99 || a.localeCompare(b));
+  $("#lista").innerHTML = tipos.map(t => {
+    const g = vis.filter(([i]) => i.tipo === t);
+    const nombre = t === "Imagen" ? "Diagramas e imágenes" : t === "Guía / presentación" ? "Guías y presentaciones" : t === "PDF" ? "Documentos PDF" : t;
+    return `<section><h2>${nombre} <small>${g.length}</small></h2><div class="grid">${g.map(([i, n]) => tarjeta(i, n)).join("")}</div></section>`;
+  }).join("");
+}
+
+// Visor de imágenes
+$("#lista").onclick = e => {
+  const b = e.target.closest("button.thumb"); if (!b) return;
+  const i = ITEMS[b.dataset.n];
+  $("#visor-img").src = i.url; $("#visor-img").alt = i.titulo;
+  $("#visor-tit").textContent = i.titulo; $("#visor-dl").href = i.url;
+  $("#visor").showModal();
+};
+$("#cerrar").onclick = () => $("#visor").close();
+$("#visor").onclick = e => { if (e.target.id === "visor") $("#visor").close(); };
+
+pintar();
+</script>
+</body>
+</html>

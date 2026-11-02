@@ -1,0 +1,1184 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}</style>
+<title>Repaso Troubleshooting ARY6112</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: escenario fijo 1600×900 (16:9) escalado al viewport; cada diapositiva = cabecera de ticket + cuerpo en 1 o 2 columnas; barra de control abajo */
+:root{
+  --outer:#D9E1E8; --bg:#EEF2F5; --surface:#FFFFFF; --sunk:#E3E9EE; --ink:#13202B; --muted:#56687A; --line:#CBD5DE;
+  --accent:#0B6A87; --accent-soft:#D6ECF3; --on-accent:#FFFFFF; --amber:#B86E06; --amber-soft:#FBEBD3;
+  --ok:#1D7A46; --ok-soft:#DDF1E5; --bad:#B3261E; --bad-soft:#F8E0DE;
+  --code-bg:#1A2733; --code-ink:#DDE7EF; --code-dim:#8FA4B6; --code-key:#7FD0EA;
+  --f-display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --outer:#070C11; --bg:#0D151C; --surface:#15212B; --sunk:#1B2934; --ink:#E2E9EF; --muted:#94A6B6; --line:#2A3A47;
+  --accent:#55B8D6; --accent-soft:#163543; --on-accent:#08141B; --amber:#E7A443; --amber-soft:#3A2A12;
+  --ok:#5CC88A; --ok-soft:#173727; --bad:#F0837B; --bad-soft:#3E1C1A;
+  --code-bg:#0A1117; --code-ink:#DDE7EF; --code-dim:#7D93A6; --code-key:#7FD0EA; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --outer:#070C11; --bg:#0D151C; --surface:#15212B; --sunk:#1B2934; --ink:#E2E9EF; --muted:#94A6B6; --line:#2A3A47;
+  --accent:#55B8D6; --accent-soft:#163543; --on-accent:#08141B; --amber:#E7A443; --amber-soft:#3A2A12;
+  --ok:#5CC88A; --ok-soft:#173727; --bad:#F0837B; --bad-soft:#3E1C1A;
+  --code-bg:#0A1117; --code-ink:#DDE7EF; --code-dim:#7D93A6; --code-key:#7FD0EA; color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--outer);color:var(--ink);font-family:var(--f-body);overflow:hidden}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px}
+.viewport{position:fixed;inset:0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.stage{position:absolute;left:50%;top:50%;width:1600px;height:900px;transform:translate(-50%,-50%) scale(var(--s,.5));background:var(--bg);border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.18);overflow:hidden;font-size:24px;line-height:1.45}
+
+/* Slide */
+.slide{position:absolute;inset:0 0 72px 0;padding:52px 72px 28px;display:flex;flex-direction:column;gap:22px}
+.slide[hidden],.index[hidden],.expl[hidden]{display:none!important}
+.sh{display:flex;flex-direction:column;gap:6px}
+.kick{font-family:var(--f-mono);font-size:17px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600;display:flex;gap:14px;align-items:center}
+.kick .tk{color:var(--amber);background:var(--amber-soft);padding:3px 10px;border-radius:5px}
+h2{font-family:var(--f-display);font-weight:800;font-size:50px;line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);margin:0;font-size:23px;max-width:62ch}
+.body{flex:1;min-height:0;display:grid;gap:40px}
+.c2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.c2w{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)}
+.col{min-width:0;display:flex;flex-direction:column;gap:16px}
+h3{font-family:var(--f-display);font-weight:700;font-size:27px;margin:0}
+p{margin:0}
+ul.clean{margin:0;padding-left:1.1em;display:grid;gap:8px}
+code{font-family:var(--f-mono);font-size:.82em;background:var(--sunk);padding:1px 6px;border-radius:4px}
+
+/* Cover */
+.cover{inset:0 0 72px 0;padding:60px 72px 36px}
+.cover .body{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center}
+.cover h1{font-family:var(--f-display);font-weight:800;font-size:76px;line-height:1.02;margin:14px 0 22px;letter-spacing:-.015em;text-wrap:balance}
+.cover .lead{color:var(--muted);font-size:26px;max-width:30ch}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+.chip{font-family:var(--f-mono);font-size:16px;padding:6px 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted)}
+.topo{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin:0}
+.topo svg{width:100%;height:auto;display:block;max-height:640px}
+.topo figcaption{font-size:17px;color:var(--muted);padding:6px 8px 0;font-family:var(--f-mono)}
+.topo .lk{stroke:var(--muted);stroke-width:2;fill:none}
+.topo .lk.po{stroke:var(--amber);stroke-dasharray:5 4}
+.topo .nd rect{fill:var(--surface);stroke:var(--ink);stroke-width:1.4}
+.topo .nd.r rect{fill:var(--accent-soft);stroke:var(--accent)}
+.topo .nd.pc rect{fill:var(--sunk);stroke:var(--muted)}
+.topo text{font-family:var(--f-mono);fill:var(--ink)}
+.topo .nd text{font-size:12px;font-weight:600;text-anchor:middle;dominant-baseline:central}
+.topo .as{font-size:10.5px;fill:var(--accent);font-weight:600}
+.topo .lbl{font-size:10px;fill:var(--amber);font-weight:600}
+.topo .zone{fill:var(--accent-soft);opacity:.45;stroke:var(--accent);stroke-dasharray:4 4;stroke-width:1}
+
+/* CLI */
+.cli{position:relative;background:var(--code-bg);color:var(--code-ink);border-radius:10px;overflow:hidden;min-width:0}
+.cli pre{margin:0;padding:14px 20px 16px;overflow:auto;font-family:var(--f-mono);font-size:18.5px;line-height:1.5}
+.cli .c{color:var(--code-dim)} .cli .k{color:var(--code-key)}
+.cli .lbl{display:block;font-family:var(--f-mono);font-size:14px;letter-spacing:.07em;text-transform:uppercase;color:var(--code-dim);padding:12px 20px 0}
+.copy{position:absolute;top:10px;right:10px;font-family:var(--f-mono);font-size:14px;background:transparent;color:var(--code-dim);border:1px solid #3A4B5A;border-radius:6px;padding:4px 10px;cursor:pointer}
+.copy:hover{color:var(--code-ink);border-color:var(--code-dim)}
+
+/* Tables */
+.tbl{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;min-width:0}
+table{border-collapse:collapse;width:100%;font-size:20px;line-height:1.35}
+th,td{text-align:left;padding:11px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:14.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--sunk);font-weight:600}
+tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+
+/* Notes */
+.note{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 20px;font-size:21px}
+.note.warn{background:var(--amber-soft);border-color:transparent}
+.note b.t{font-family:var(--f-mono);font-size:14px;letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:4px;color:var(--amber)}
+.note.info b.t{color:var(--accent)}
+
+/* Steps */
+ol.steps{list-style:none;margin:0;padding:0;display:grid;gap:9px;counter-reset:s}
+ol.steps li{counter-increment:s;display:grid;grid-template-columns:52px minmax(0,1fr);gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:9px 14px}
+ol.steps li::before{content:"L" counter(s);font-family:var(--f-mono);font-weight:600;font-size:17px;color:var(--accent);background:var(--accent-soft);border-radius:6px;text-align:center;padding:6px 0}
+ol.steps li strong{font-family:var(--f-display);font-size:21px;margin-right:8px}
+ol.steps li span{color:var(--muted);font-size:18.5px}
+
+/* Symptom cards */
+.sym{display:grid;gap:14px}
+.sym div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 18px}
+.sym .s{font-family:var(--f-mono);font-size:17px;color:var(--bad);display:block;margin-bottom:4px}
+.sym p{font-size:20.5px}
+
+/* Best path */
+ol.bp{margin:0;padding:0;list-style:none;display:grid;gap:6px;counter-reset:b}
+ol.bp li{counter-increment:b;display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 14px;font-size:20px}
+ol.bp li::before{content:counter(b);font-family:var(--f-mono);font-size:16px;color:var(--muted)}
+ol.bp li em{font-style:normal;font-family:var(--f-mono);font-size:14.5px;color:var(--accent)}
+ol.bp li.hl{border-color:var(--amber);background:var(--amber-soft)}
+
+/* EtherChannel tool */
+.tool{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.tool .row{display:flex;gap:16px;align-items:end}
+.tool label{display:flex;flex-direction:column;gap:6px;font-family:var(--f-mono);font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);flex:1}
+.tool select{font-family:var(--f-mono);font-size:19px;padding:9px 12px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.verdict{margin-top:14px;padding:12px 16px;border-radius:9px;font-size:20px;min-height:84px}
+.verdict.ok{background:var(--ok-soft)} .verdict.bad{background:var(--bad-soft)}
+.verdict b{font-family:var(--f-mono);font-size:15px;letter-spacing:.05em;text-transform:uppercase;margin-right:10px}
+.verdict.ok b{color:var(--ok)} .verdict.bad b{color:var(--bad)}
+
+/* Quiz */
+.quiz .body{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-content:center;padding-bottom:40px}
+.qprompt{font-family:var(--f-display);font-weight:700;font-size:31px;line-height:1.25;text-wrap:pretty}
+.qout{background:var(--code-bg);color:var(--code-ink);font-family:var(--f-mono);font-size:17px;padding:14px 18px;border-radius:9px;overflow:auto;margin:0;white-space:pre}
+.opts{display:grid;gap:12px;align-content:start}
+.opt{text-align:left;font:inherit;font-size:21.5px;line-height:1.35;background:var(--surface);color:var(--ink);border:1.5px solid var(--line);border-radius:10px;padding:13px 16px;cursor:pointer;display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px}
+.opt:hover:not([disabled]){border-color:var(--accent)}
+.opt .L{font-family:var(--f-mono);font-size:18px;color:var(--muted);font-weight:600}
+.opt.correct{background:var(--ok-soft);border-color:var(--ok)}
+.opt.wrong{background:var(--bad-soft);border-color:var(--bad)}
+.opt[disabled]{cursor:default}
+.expl{font-size:21px;border-left:4px solid var(--accent);padding:6px 0 6px 16px;background:var(--surface);border-radius:0 8px 8px 0}
+.expl b{color:var(--accent)}
+
+/* Checklist */
+.check{display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;align-content:start}
+.check label{display:grid;grid-template-columns:26px minmax(0,1fr);gap:12px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:12px 16px;cursor:pointer;font-size:20.5px;line-height:1.35}
+.check input{margin-top:4px;accent-color:var(--accent);width:20px;height:20px}
+.check label:has(input:checked){color:var(--muted)}
+.check label:has(input:checked) span{text-decoration:line-through}
+
+/* Control bar */
+.bar{position:absolute;left:0;right:0;bottom:0;height:72px;display:flex;align-items:center;gap:20px;padding:0 28px 0 72px;border-top:1px solid var(--line);background:var(--surface)}
+.bar .course{font-family:var(--f-mono);font-size:15px;color:var(--muted);letter-spacing:.04em;white-space:nowrap}
+.bar .prog{flex:1;height:6px;background:var(--sunk);border-radius:99px;overflow:hidden}
+.bar .prog i{display:block;height:100%;background:var(--accent);transition:width .25s}
+.bar .pos{font-family:var(--f-mono);font-size:16px;color:var(--ink);min-width:84px;text-align:center;font-variant-numeric:tabular-nums}
+.bar .score{font-family:var(--f-mono);font-size:15px;color:var(--ok);white-space:nowrap}
+.btn{font-family:var(--f-mono);font-size:16px;font-weight:600;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:9px 16px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn[disabled]{opacity:.35;cursor:default}
+
+/* Index overlay */
+.index{position:absolute;inset:0 0 72px 0;background:var(--bg);padding:48px 72px;display:flex;flex-direction:column;gap:22px;z-index:5}
+.index .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;overflow:auto}
+.index button{text-align:left;font:inherit;font-size:18px;line-height:1.3;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:12px 14px;cursor:pointer;display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px}
+.index button:hover{border-color:var(--accent)}
+.index button.on{border-color:var(--accent);background:var(--accent-soft)}
+.index button .n{font-family:var(--f-mono);font-size:15px;color:var(--muted)}
+/* Demo overlay */
+.slide[hidden],.index[hidden],.expl[hidden],.demo[hidden],.seg[hidden]{display:none!important}
+.demo-btn{display:inline-block;margin-top:12px;font-family:var(--f-mono);font-size:17px;font-weight:600;background:var(--accent);color:var(--on-accent);border:0;border-radius:8px;padding:10px 18px;cursor:pointer}
+.demo{position:absolute;inset:0 0 72px 0;background:var(--bg);padding:40px 72px 24px;display:flex;flex-direction:column;gap:18px;z-index:6}
+.demo h2{font-size:42px}
+.demo .top{display:flex;justify-content:space-between;align-items:flex-end;gap:20px}
+.demo .body{grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr);gap:28px}
+.dcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px;min-width:0;display:flex;align-items:center}
+.dcard svg{width:100%;height:auto;display:block}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--surface);flex-shrink:0}
+.seg button{font-family:var(--f-mono);font-size:15px;font-weight:600;padding:9px 14px;border:0;border-left:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button.on{background:var(--accent);color:var(--on-accent)}
+.cap{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 18px;font-size:21px;line-height:1.4;min-height:170px}
+.cap .n{font-family:var(--f-mono);font-size:14px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:6px}
+.dots{display:flex;gap:8px}
+.dots i{flex:1;max-width:60px;height:6px;border-radius:9px;background:var(--line);transition:background .3s}
+.dots i.on{background:var(--accent)}
+.ctl{display:flex;gap:10px;flex-wrap:wrap}
+.term{background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:12px 16px;font-family:var(--f-mono);font-size:13.5px;line-height:1.5;white-space:pre;overflow:auto;min-height:140px}
+.term .p{color:var(--code-key)} .term .d{color:var(--code-dim)} .term .g{color:#6FDB9C} .term .r{color:#FF8E86} .term .a{color:#F2C46B}
+#dm-svg [data-k]{transition:opacity .45s}
+#dm-svg text{font-family:var(--f-mono);fill:var(--ink);font-size:15px}
+#dm-svg .sm{font-size:14px}
+#dm-svg .lg{font-size:20px}
+#dm-svg .b{font-weight:600}
+#dm-svg .mut{fill:var(--muted)}
+#dm-svg .acc{fill:var(--accent)}
+#dm-svg .tx.ok{fill:var(--ok)} #dm-svg .tx.bad{fill:var(--bad)} #dm-svg .tx.warn{fill:var(--amber)}
+#dm-svg .nd rect{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+#dm-svg .nd.r rect{fill:var(--accent-soft);stroke:var(--accent)}
+#dm-svg .nd text{font-size:19px;font-weight:600;text-anchor:middle;dominant-baseline:central}
+#dm-svg .ln{stroke:var(--muted);stroke-width:3;transition:stroke .4s,opacity .45s}
+#dm-svg .ln.dim{stroke:var(--line)}
+#dm-svg .ln.ok{stroke:var(--ok)} #dm-svg .ln.warn{stroke:var(--amber)} #dm-svg .ln.bad{stroke:var(--bad);stroke-dasharray:8 6}
+#dm-svg .ch{transition:transform .8s cubic-bezier(.4,.1,.2,1),opacity .45s}
+#dm-svg .ch rect{fill:var(--surface);stroke:var(--ink);stroke-width:1.5;transition:fill .3s,stroke .3s}
+#dm-svg .ch text{font-size:14.5px;text-anchor:middle;dominant-baseline:central}
+#dm-svg .ch.ok rect{fill:var(--ok-soft);stroke:var(--ok)} #dm-svg .ch.bad rect{fill:var(--bad-soft);stroke:var(--bad)} #dm-svg .ch.warn rect{fill:var(--amber-soft);stroke:var(--amber)}
+#dm-svg .box{fill:var(--bg);stroke:var(--line);stroke-width:1.5}
+#dm-svg .bx-h{font-size:12.5px;fill:var(--muted);font-weight:600;letter-spacing:.05em}
+#dm-svg .hl{fill:var(--sunk);stroke:var(--line);stroke-width:1.5;transition:opacity .45s,fill .3s,stroke .3s}
+#dm-svg .hl.ok{fill:var(--ok-soft);stroke:var(--ok)} #dm-svg .hl.bad{fill:var(--bad-soft);stroke:var(--bad)} #dm-svg .hl.warn{fill:var(--amber-soft);stroke:var(--amber)}
+#dm-svg .bd rect{fill:var(--surface);stroke:var(--line);stroke-width:2}
+#dm-svg .bd text{font-size:16px;font-weight:600;text-anchor:middle;dominant-baseline:central}
+#dm-svg .bd.ok rect{fill:var(--ok-soft);stroke:var(--ok)} #dm-svg .bd.ok text{fill:var(--ok)}
+#dm-svg .bd.bad rect{fill:var(--bad-soft);stroke:var(--bad)} #dm-svg .bd.bad text{fill:var(--bad)}
+#dm-svg .bd.warn rect{fill:var(--amber-soft);stroke:var(--amber)} #dm-svg .bd.warn text{fill:var(--amber)}
+#dm-svg .zone{fill:none;stroke-dasharray:6 5;stroke-width:1.5}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="viewport" id="vp">
+<div class="stage" id="stage">
+
+<!-- 1 PORTADA -->
+<section class="slide cover" id="portada" data-t="Portada">
+  <div class="body">
+    <div>
+      <div class="kick">ARY6112 · Troubleshooting · Experiencia 2</div>
+      <h1>Repaso para la evaluación: BGP, redistribución, capa 2 y FHRP</h1>
+      <p class="lead">Qué revisar, con qué comando y cómo se ve cuando está mal, en la red de la empresa C&amp;M.</p>
+      <div class="chips"><span class="chip">MP-BGP IPv4 / IPv6</span><span class="chip">OSPF ↔ BGP</span><span class="chip">EtherChannel</span><span class="chip">STP</span><span class="chip">Port-security</span><span class="chip">HSRPv2</span></div>
+    </div>
+    <figure class="topo">
+      <svg viewBox="0 0 640 530" role="img" aria-label="Topología: INTERNET AS 64000 conectado a ISP-1 AS 10000 e ISP-2 AS 20000; ambos conectados a R3 AS 65000; R3 conectado a R1 y R2 por OSPF; R1 a SW2, R2 a SW3; SW1, SW2 y SW3 unidos por port-channels; PCs en VLAN 10, 20 y 30.">
+        <rect class="zone" x="120" y="200" width="400" height="150" rx="10"/>
+        <text class="as" x="132" y="220">AS 65000 · OSPF 10 área 0</text>
+        <line class="lk" x1="320" y1="45" x2="170" y2="130"/><line class="lk" x1="320" y1="45" x2="470" y2="130"/>
+        <line class="lk" x1="170" y1="130" x2="470" y2="130"/>
+        <line class="lk" x1="170" y1="130" x2="320" y2="245"/><line class="lk" x1="470" y1="130" x2="320" y2="245"/>
+        <line class="lk" x1="320" y1="245" x2="200" y2="320"/><line class="lk" x1="320" y1="245" x2="440" y2="320"/>
+        <line class="lk" x1="200" y1="320" x2="200" y2="415"/><line class="lk" x1="440" y1="320" x2="440" y2="415"/>
+        <line class="lk po" x1="200" y1="410" x2="440" y2="410"/><line class="lk po" x1="200" y1="420" x2="440" y2="420"/>
+        <line class="lk po" x1="196" y1="420" x2="316" y2="495"/><line class="lk po" x1="206" y1="414" x2="326" y2="489"/>
+        <line class="lk po" x1="444" y1="420" x2="324" y2="495"/><line class="lk po" x1="434" y1="414" x2="314" y2="489"/>
+        <line class="lk" x1="200" y1="415" x2="70" y2="415"/><line class="lk" x1="440" y1="415" x2="570" y2="415"/><line class="lk" x1="320" y1="495" x2="490" y2="495"/>
+        <text class="lbl" x="320" y="402" text-anchor="middle">Po3 estático</text>
+        <text class="lbl" x="228" y="470" text-anchor="end">Po1 LACP</text>
+        <text class="lbl" x="412" y="470">Po2 PAgP</text>
+        <text class="lbl" x="320" y="372" text-anchor="middle">HSRP VIP .254</text>
+        <text class="as" x="320" y="16" text-anchor="middle">AS 64000 · Lo 8.8.8.8</text>
+        <text class="as" x="170" y="102" text-anchor="middle">AS 10000</text>
+        <text class="as" x="470" y="102" text-anchor="middle">AS 20000</text>
+        <g class="nd"><rect x="272" y="30" width="96" height="30" rx="6"/><text x="320" y="45">INTERNET</text></g>
+        <g class="nd"><rect x="128" y="115" width="84" height="30" rx="6"/><text x="170" y="130">ISP-1</text></g>
+        <g class="nd"><rect x="428" y="115" width="84" height="30" rx="6"/><text x="470" y="130">ISP-2</text></g>
+        <g class="nd r"><rect x="284" y="230" width="72" height="30" rx="6"/><text x="320" y="245">R3</text></g>
+        <g class="nd r"><rect x="164" y="305" width="72" height="30" rx="6"/><text x="200" y="320">R1</text></g>
+        <g class="nd r"><rect x="404" y="305" width="72" height="30" rx="6"/><text x="440" y="320">R2</text></g>
+        <g class="nd"><rect x="164" y="400" width="72" height="30" rx="6"/><text x="200" y="415">SW2</text></g>
+        <g class="nd"><rect x="404" y="400" width="72" height="30" rx="6"/><text x="440" y="415">SW3</text></g>
+        <g class="nd"><rect x="284" y="480" width="72" height="30" rx="6"/><text x="320" y="495">SW1</text></g>
+        <g class="nd pc"><rect x="22" y="400" width="96" height="30" rx="6"/><text x="70" y="415">PC VLAN20</text></g>
+        <g class="nd pc"><rect x="522" y="400" width="96" height="30" rx="6"/><text x="570" y="415">PC VLAN30</text></g>
+        <g class="nd pc"><rect x="450" y="480" width="96" height="30" rx="6"/><text x="498" y="495">PC VLAN10</text></g>
+      </svg>
+      <figcaption>IPv4 sale por ISP-1 · IPv6 sale por ISP-2 · DHCP en R3</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- 2 MÉTODO -->
+<section class="slide" data-t="Cómo atacar la prueba">
+  <div class="sh"><div class="kick">Método</div><h2>Cómo atacar la prueba</h2>
+  <p class="sub">Trabaja de abajo hacia arriba y no avances de capa hasta que la anterior esté sana.</p></div>
+  <div class="body c2w">
+    <ol class="steps">
+      <li><div><strong>Capa física</strong><span>Interfaces en shutdown, duplex · <code>show ip int brief</code></span></div></li>
+      <li><div><strong>Capa 2</strong><span>Trunks, EtherChannel, STP · <code>show etherchannel summary</code></span></div></li>
+      <li><div><strong>Gateway</strong><span>Subinterfaces, HSRP, DHCP · <code>show standby brief</code></span></div></li>
+      <li><div><strong>IGP interno</strong><span>Vecinos OSPFv2 y OSPFv3, loopbacks anunciadas</span></div></li>
+      <li><div><strong>Sesiones BGP</strong><span>Todas Established en IPv4 y en IPv6</span></div></li>
+      <li><div><strong>Política</strong><span>Rutas válidas, ISP preferido, redistribución</span></div></li>
+      <li><div><strong>Extremo a extremo</strong><span>Ping y traceroute desde los PC</span></div></li>
+    </ol>
+    <div class="col">
+      <div class="note info"><b class="t">Antes de empezar</b>Si un equipo tiene <code>no logging console</code>, no vas a ver las caídas de vecinos ni los cambios de HSRP. Actívalo con <code>logging console</code> mientras trabajas.</div>
+      <div class="note"><b class="t">Documenta al tiro</b>Cada ticket pide cuatro campos: <b>equipo</b>, <b>problema</b>, <b>comando con que lo encontraste</b> y <b>comando con que lo corregiste</b>. Anótalos apenas encuentres la falla, no al final.</div>
+      <div class="note"><b class="t">Ejemplo (no es de la prueba)</b>SW-X · El trunk no permite la VLAN 40 · <code>show interfaces trunk</code> · <code>switchport trunk allowed vlan add 40</code></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 BGP vecindades -->
+<section class="slide" data-t="MP-BGP: lo que debe calzar">
+  <div class="sh"><div class="kick"><span class="tk">Ticket 1</span>MP-BGP</div><h2>Vecindades: lo que tiene que calzar</h2>
+  <p class="sub">eBGP con la IP del vecino directo. iBGP entre loopbacks, que necesitan el IGP para alcanzarse.</p></div>
+  <div class="body c2">
+    <ul class="clean">
+      <li><b>IP del vecino:</b> la de <code>neighbor</code> debe ser exactamente la IP de origen del otro router.</li>
+      <li><b>remote-as:</b> tiene que ser el AS real del vecino, el de su <code>router bgp</code>.</li>
+      <li><b>update-source:</b> en iBGP con loopbacks, los <em>dos</em> extremos originan desde su loopback.</li>
+      <li><b>activate:</b> los vecinos IPv6 se activan en <code>address-family ipv6</code> en ambos lados.</li>
+      <li><b>next-hop-self:</b> sin él, las rutas eBGP llegan a los vecinos iBGP con el next-hop del ISP. Si ese next-hop no está en el IGP, la ruta queda inválida.</li>
+    </ul>
+    <div class="cli"><span class="lbl">Plantilla · router de borde</span><button class="copy" type="button">copiar</button><pre><span class="k">router bgp</span> 65000
+ neighbor 1.1.1.1 remote-as 65000
+ neighbor 1.1.1.1 update-source Loopback3
+ neighbor 2021:ACAD:ACAD:1111::1 remote-as 65000
+ neighbor 2021:ACAD:ACAD:1111::1 update-source Loopback3
+ <span class="k">address-family ipv4</span>
+  neighbor 1.1.1.1 activate
+  neighbor 1.1.1.1 next-hop-self
+  no neighbor 2021:ACAD:ACAD:1111::1 activate
+ <span class="k">address-family ipv6</span>
+  neighbor 2021:ACAD:ACAD:1111::1 activate
+  neighbor 2021:ACAD:ACAD:1111::1 next-hop-self</pre></div>
+  </div>
+</section>
+
+<!-- 4 BGP estados -->
+<section class="slide" data-t="Cómo leer el estado BGP">
+  <div class="sh"><div class="kick"><span class="tk">Ticket 1</span>MP-BGP</div><h2>Cómo leer la columna State/PfxRcd</h2></div>
+  <div class="body" style="align-content:start">
+    <div class="tbl"><table>
+      <thead><tr><th style="width:26%">Lo que ves</th><th style="width:32%">Qué significa</th><th>Qué revisar</th></tr></thead>
+      <tbody>
+        <tr><td><code>Idle</code></td><td>Ni siquiera intenta conectarse</td><td>Ruta hacia la IP del vecino, vecino en shutdown, AS errado tras un NOTIFICATION</td></tr>
+        <tr><td><code>Active</code></td><td>Intenta abrir TCP 179 y no lo logra</td><td>IP del vecino mal escrita, falta <code>update-source</code>, el otro lado no tiene el vecino</td></tr>
+        <tr><td>Alterna Idle/Active con <code>bad remote-as</code></td><td>TCP se abre pero el OPEN falla</td><td><code>remote-as</code> no coincide con el AS del vecino</td></tr>
+        <tr><td><code>(NoNeg)</code></td><td>La address-family no se negoció</td><td>Falta <code>activate</code> en uno de los dos lados</td></tr>
+        <tr><td>Un número, ej. <code>4</code></td><td>Established, con 4 prefijos recibidos</td><td>Si es 0 y deberían llegar rutas: route-maps de salida del vecino</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- 5 BGP síntomas -->
+<section class="slide" data-t="Síntomas BGP y comandos">
+  <div class="sh"><div class="kick"><span class="tk">Ticket 1</span>MP-BGP</div><h2>Síntomas típicos y comandos de diagnóstico</h2></div>
+  <div class="body c2">
+    <div class="sym">
+      <div><span class="s">"* i" sin el símbolo "&gt;"</span><p>La ruta llegó por iBGP pero no se usa. Casi siempre es un next-hop inalcanzable: <code>show ip bgp 8.8.8.8</code> dice <i>Inaccessible</i>.</p></div>
+      <div><span class="s">State: Active en iBGP</span><p>Un lado origina desde la interfaz física y el otro espera la loopback. Falta <code>update-source</code> o falta el vecino.</p></div>
+      <div><span class="s">PfxRcd 0 desde un ISP</span><p>La sesión está arriba pero no llega nada. Revisa los route-maps aplicados con <code>out</code> en el ISP.</p></div>
+    </div>
+    <div class="cli"><span class="lbl">Diagnóstico</span><button class="copy" type="button">copiar</button><pre>show ip bgp summary
+show bgp ipv6 unicast summary
+show ip bgp             <span class="c">! busca el "&gt;"</span>
+show ip bgp 8.8.8.8     <span class="c">! next-hop accesible?</span>
+show bgp ipv6 unicast 2021:ACAD:ACAD:8::8/128
+show ip bgp neighbors 210.0.0.1 advertised-routes
+show running-config | section router bgp</pre></div>
+  </div>
+</section>
+
+<!-- 6 Best path -->
+<section class="slide" data-t="Selección del mejor camino">
+  <div class="sh"><div class="kick"><span class="tk">Ticket 1</span>Selección de ISP</div><h2>IPv4 por ISP-1, IPv6 por ISP-2</h2></div>
+  <div class="body c2">
+    <div class="col">
+      <h3>Orden de selección en Cisco</h3>
+      <ol class="bp">
+        <li><span>Weight más alto</span><em>local</em></li>
+        <li class="hl"><span>Local preference más alta</span><em>default 100</em></li>
+        <li><span>Originada localmente</span><em></em></li>
+        <li class="hl"><span>AS-path más corto</span><em>prepend</em></li>
+        <li><span>Origin: i &lt; e &lt; ?</span><em></em></li>
+        <li><span>MED más bajo</span><em></em></li>
+        <li><span>eBGP antes que iBGP</span><em></em></li>
+        <li><span>Menor métrica IGP al next-hop</span><em></em></li>
+        <li><span>eBGP más antigua · menor router-id</span><em></em></li>
+      </ol>
+    </div>
+    <div class="col">
+      <h3>Dos herramientas</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Herramienta</th><th>Efecto</th></tr></thead>
+        <tbody>
+          <tr><td><b>AS-path prepend</b><br><code>out</code> en quien anuncia</td><td>Alarga el camino. Quien recibe la ruta prefiere el otro camino, más corto.</td></tr>
+          <tr><td><b>Local preference</b><br><code>in</code> en tu router de borde</td><td>Todo tu AS prefiere el ISP con el valor más alto. Es lo que usa el cliente en su propio equipo.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note"><b class="t">Piensa en los dos sentidos</b>El prepend hacia R3 cambia la <i>salida</i> de la empresa. El prepend hacia INTERNET cambia el <i>retorno</i>.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 Prepend + trampa -->
+<section class="slide" data-t="Route-maps en BGP">
+  <div class="sh"><div class="kick"><span class="tk">Ticket 1</span>Selección de ISP</div><h2>Route-maps en BGP: aplicar y verificar</h2></div>
+  <div class="body c2">
+    <div class="cli"><span class="lbl">Prepend en el ISP que se quiere evitar</span><button class="copy" type="button">copiar</button><pre><span class="k">route-map</span> PREPEND permit 10
+ set as-path prepend 20000 20000 20000
+!
+<span class="k">router bgp</span> 20000
+ address-family ipv4
+  neighbor 220.0.0.2 route-map PREPEND out
+!
+<span class="c">! para ver el efecto en R3:</span>
+clear ip bgp * soft
+show ip bgp 8.8.8.8</pre></div>
+    <div class="col">
+      <div class="note warn"><b class="t">Trampa clásica</b>Un route-map aplicado a un vecino que <b>no existe</b>, o que no tiene ninguna sentencia que calce, <b>deniega todo</b>. La sesión queda Established pero con 0 prefijos.</div>
+      <div class="note info"><b class="t">Cómo comprobarlo</b><code>show route-map</code> muestra si existe, qué hace (<code>set</code>) y si sus contadores suben. Un route-map con <code>permit</code> y sin <code>set</code> deja pasar todo sin cambiar nada.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 Redistribución CLI -->
+<section class="slide" data-t="Redistribución OSPF ↔ BGP">
+  <div class="sh"><div class="kick"><span class="tk">Ticket 2</span>Redistribución</div><h2>OSPF ↔ BGP en IPv4 e IPv6</h2>
+  <p class="sub">IPv4 filtrada con route-map y prefix-list. IPv6 directa, sin route-map.</p></div>
+  <div class="body c2">
+    <div class="cli"><span class="lbl">IPv4 con filtro</span><button class="copy" type="button">copiar</button><pre>ip prefix-list LAN seq 5 permit 172.16.10.0/24
+ip prefix-list LAN seq 10 permit 172.16.20.0/24
+!
+<span class="k">route-map</span> OSPF-A-BGP permit 10
+ match ip address prefix-list LAN
+<span class="c">! lo que no calza: deny implícito</span>
+!
+<span class="k">router bgp</span> 65000
+ address-family ipv4
+  redistribute ospf 10 route-map OSPF-A-BGP
+!
+<span class="k">router ospf</span> 10
+ redistribute bgp 65000 subnets route-map BGP-A-OSPF</pre></div>
+    <div class="col">
+      <div class="cli"><span class="lbl">IPv6 directa</span><button class="copy" type="button">copiar</button><pre><span class="k">router bgp</span> 65000
+ address-family ipv6
+  redistribute ospf 10 include-connected
+!
+<span class="k">ipv6 router ospf</span> 10
+ redistribute bgp 65000</pre></div>
+      <div class="cli"><span class="lbl">Verificación</span><button class="copy" type="button">copiar</button><pre>show route-map
+show ip prefix-list
+show ip route ospf | include E2
+show ipv6 route ospf</pre></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 Redistribución detalles -->
+<section class="slide" data-t="Detalles de redistribución">
+  <div class="sh"><div class="kick"><span class="tk">Ticket 2</span>Redistribución</div><h2>Detalles que se olvidan</h2></div>
+  <div class="body c2w">
+    <div class="tbl" style="align-self:start"><table>
+      <thead><tr><th style="width:44%">Detalle</th><th>Si lo olvidas</th></tr></thead>
+      <tbody>
+        <tr><td><code>subnets</code> en OSPFv2</td><td>Solo entran redes con máscara de clase. Un /32 como 8.8.8.8 no entra.</td></tr>
+        <tr><td><code>include-connected</code> en IPv6</td><td>Las redes conectadas del router de borde no se redistribuyen.</td></tr>
+        <tr><td>Route-map referenciado, no creado</td><td>No se redistribuye nada.</td></tr>
+        <tr><td>Prefix-list incompleta</td><td>Algunas redes no llegan. Revisa qué pide el enunciado: LAN y loopbacks.</td></tr>
+        <tr><td>Rutas aprendidas por iBGP</td><td>Por defecto no entran al IGP. Solo las eBGP.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="col">
+      <div class="note info"><b class="t">Distancia administrativa</b>eBGP <b>20</b> · OSPF <b>110</b> · iBGP <b>200</b></div>
+      <div class="note">Si R1 aprende 8.8.8.8 por OSPF E2 y también por iBGP, en la tabla de rutas queda la de OSPF. Por eso puedes tener conectividad con el iBGP roto.<br><br><b>Igual tienes que repararlo:</b> la prueba lo evalúa con <code>show ip bgp summary</code>.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 EtherChannel -->
+<section class="slide" data-t="EtherChannel: modos">
+  <div class="sh"><div class="kick"><span class="tk">Ticket 3</span>EtherChannel</div><h2>Un extremo negocia, el otro escucha</h2>
+  <p class="sub">Prueba combinaciones de modos y mira si el canal se forma y si cumple el requisito.</p></div>
+  <div class="body c2">
+    <div class="col">
+      <div class="tool">
+        <div class="row">
+          <label for="ec-a">Extremo A<select id="ec-a">
+            <option value="active" selected>active (LACP)</option><option value="passive">passive (LACP)</option>
+            <option value="desirable">desirable (PAgP)</option><option value="auto">auto (PAgP)</option><option value="on">on (estático)</option>
+          </select></label>
+          <label for="ec-b">Extremo B<select id="ec-b">
+            <option value="active">active (LACP)</option><option value="passive" selected>passive (LACP)</option>
+            <option value="desirable">desirable (PAgP)</option><option value="auto">auto (PAgP)</option><option value="on">on (estático)</option>
+          </select></label>
+        </div>
+        <div class="verdict" id="ec-out" aria-live="polite"></div>
+      </div>
+      <div class="tbl"><table>
+        <thead><tr><th>Protocolo</th><th>Negocia</th><th>Escucha</th></tr></thead>
+        <tbody>
+          <tr><td>LACP (802.3ad)</td><td><code>active</code></td><td><code>passive</code></td></tr>
+          <tr><td>PAgP (Cisco)</td><td><code>desirable</code></td><td><code>auto</code></td></tr>
+          <tr><td>Estático</td><td colspan="2"><code>on</code> en ambos extremos, sin negociación</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="col">
+      <h3>Flags de <code>show etherchannel summary</code></h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Flag</th><th>Lectura</th></tr></thead>
+        <tbody>
+          <tr><td><code>Po1(SU)</code></td><td>Capa 2, en uso. Bien.</td></tr>
+          <tr><td><code>Et1/0(P)</code></td><td>Puerto dentro del bundle. Bien.</td></tr>
+          <tr><td><code>(I)</code></td><td>Stand-alone: el otro extremo no negocia o el modo no es compatible.</td></tr>
+          <tr><td><code>(s)</code></td><td>Suspendido: los parámetros de los puertos no coinciden.</td></tr>
+          <tr><td><code>Po3(SD)</code></td><td>Caído: revisa <code>shutdown</code> en el Po y sus miembros.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 STP + port-security -->
+<section class="slide" data-t="STP y port-security">
+  <div class="sh"><div class="kick"><span class="tk">Ticket 3</span>STP y puertos de acceso</div><h2>Versión de STP y seguridad de puerto</h2></div>
+  <div class="body c2">
+    <div class="col">
+      <h3>Versión consistente</h3>
+      <p>PVST+ y Rapid PVST+ interoperan, pero en el borde el switch rápido vuelve a 802.1D y converge lento (30–50 s). El requisito pide el mismo modo en todos: revisa los tres switches antes de cambiar.</p>
+      <div class="cli"><button class="copy" type="button">copiar</button><pre>show spanning-tree summary | include mode
+show spanning-tree vlan 10
+!
+spanning-tree mode rapid-pvst   <span class="c">! o pvst</span></pre></div>
+    </div>
+    <div class="col">
+      <h3>Solo la primera MAC</h3>
+      <div class="cli"><span class="lbl">Puerto hacia el PC</span><button class="copy" type="button">copiar</button><pre><span class="k">interface</span> Ethernet0/3
+ switchport mode access
+ switchport port-security
+ switchport port-security maximum 1
+ switchport port-security mac-address sticky</pre></div>
+      <div class="note"><b class="t">Ten presente</b>Port-security exige modo access estático. La violación por defecto es <code>shutdown</code>: el puerto queda en err-disabled.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 PortFast BPDU -->
+<section class="slide" data-t="PortFast y BPDU">
+  <div class="sh"><div class="kick"><span class="tk">Ticket 3</span>STP y puertos de acceso</div><h2>Estabilización: pasar a FWD sin BPDU</h2></div>
+  <div class="body" style="grid-template-rows:auto auto;align-content:start;gap:24px">
+    <div class="tbl"><table>
+      <thead><tr><th style="width:34%">Comando</th><th>Qué hace</th><th style="width:28%">¿No envía ni recibe BPDU?</th></tr></thead>
+      <tbody>
+        <tr><td><code>spanning-tree portfast</code></td><td>El puerto pasa directo a Forwarding</td><td>No, sigue enviando BPDU</td></tr>
+        <tr><td><code>spanning-tree bpduguard enable</code></td><td>Si recibe una BPDU, apaga el puerto</td><td>No, es una protección</td></tr>
+        <tr><td><code>spanning-tree bpdufilter enable</code></td><td>No envía BPDU y descarta las que recibe</td><td><b>Sí</b></td></tr>
+      </tbody>
+    </table></div>
+    <div class="cli"><span class="lbl">Verificación</span><button class="copy" type="button">copiar</button><pre>show port-security interface e0/3
+show port-security address
+show spanning-tree interface e0/3 detail     <span class="c">! busca "portfast" y "bpdu filter"</span></pre></div>
+  </div>
+</section>
+
+<!-- 13 HSRP -->
+<section class="slide" data-t="HSRP y tracking">
+  <div class="sh"><div class="kick"><span class="tk">Ticket 3</span>HSRP</div><h2>IPv4 en R1, IPv6 en R2, y tracking de la WAN</h2></div>
+  <div class="body c2">
+    <div class="col">
+      <ul class="clean">
+        <li>Prioridad por defecto <b>100</b>. Gana la más alta; si empatan, la IP más alta.</li>
+        <li><b>preempt</b> viene desactivado. Sin él, el router con más prioridad no recupera el rol de activo.</li>
+        <li>HSRP para IPv6 requiere <code>standby version 2</code>. Cada familia tiene su propio grupo.</li>
+        <li>Cada grupo elige su activo por separado: revisa grupo por grupo.</li>
+      </ul>
+      <div class="note warn"><b class="t">Para que el tracking funcione</b>El <b>otro</b> router también necesita <code>preempt</code>, y la prioridad tras el decremento debe quedar bajo la del vecino.</div>
+    </div>
+    <div class="col">
+      <div class="cli"><span class="lbl">Router preferido para IPv4</span><button class="copy" type="button">copiar</button><pre><span class="k">track</span> 1 interface Ethernet0/1 line-protocol
+!
+<span class="k">interface</span> Ethernet0/0.10
+ standby version 2
+ standby 10 ip 172.16.10.254
+ standby 10 priority 110
+ standby 10 preempt
+ standby 10 track 1 decrement 20  <span class="c">! 110−20=90</span></pre></div>
+      <div class="cli"><span class="lbl">Verificación</span><button class="copy" type="button">copiar</button><pre>show standby brief
+show track</pre></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 Evidencias -->
+<section class="slide" data-t="Evidencias del ticket 4">
+  <div class="sh"><div class="kick"><span class="tk">Ticket 4</span>Evidencias</div><h2>Qué debe mostrar cada captura</h2></div>
+  <div class="body" style="align-content:start">
+    <div class="tbl"><table>
+      <thead><tr><th style="width:38%">Comando</th><th>Lo que debería mostrar</th></tr></thead>
+      <tbody>
+        <tr><td><code>R3# show ip bgp summary</code></td><td>Vecinos iBGP (loopbacks de R1 y R2) y los dos ISP, todos con un número en PfxRcd.</td></tr>
+        <tr><td><code>R3# show bgp ipv6 unicast summary</code></td><td>Los mismos cuatro vecinos en IPv6, sin <code>(NoNeg)</code>.</td></tr>
+        <tr><td><code>R3# show route-map</code></td><td>Route-maps de redistribución creados, con su prefix-list.</td></tr>
+        <tr><td><code>R1# show ipv6 route</code></td><td>Rutas externas (8::8, loopbacks ISP) como <code>OE2</code>.</td></tr>
+        <tr><td><code>SW1# show etherchannel summary</code></td><td>Po1 y Po2 en <code>(SU)</code>, todos los miembros en <code>(P)</code>.</td></tr>
+        <tr><td><code>SW3# show spanning-tree vlan 10</code></td><td>El mismo modo que en los otros switches; roles y estados correctos.</td></tr>
+        <tr><td><code>PC1# traceroute 8.8.8.8</code></td><td>Router activo HSRP de IPv4 → R3 → ISP-1.</td></tr>
+        <tr><td><code>PC1# traceroute 2021:ACAD:ACAD:8::8</code></td><td>Router activo HSRP de IPv6 → R3 → ISP-2.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- 15 Quiz intro (las preguntas se insertan después) -->
+<section class="slide" id="quiz-intro" data-t="Quiz de práctica">
+  <div class="sh"><div class="kick">Quiz</div><h2>Quiz de práctica</h2>
+  <p class="sub">13 situaciones parecidas a las de la prueba, una por diapositiva. Elige una respuesta y lee la explicación, también cuando aciertes. Después de responder, cada pregunta tiene una demo animada que muestra paso a paso qué pasa en la red. El puntaje aparece en la barra inferior.</p></div>
+  <div class="body" style="align-content:center">
+    <div class="note" style="font-size:24px"><b class="t">Temas</b>BGP · Selección de ISP · Redistribución · EtherChannel · STP · Puertos de acceso · HSRP</div>
+  </div>
+</section>
+
+<!-- Checklist -->
+<section class="slide" id="entrega" data-t="Antes de entregar">
+  <div class="sh"><div class="kick">Cierre</div><h2>Antes de entregar</h2>
+  <p class="sub">Marca cada punto. La lista se guarda solo en este navegador.</p></div>
+  <div class="body">
+    <div class="check" id="checklist">
+      <label><input type="checkbox" id="c1"><span>Hostname con formato <code>R1-Jperez</code> en todos</span></label>
+      <label><input type="checkbox" id="c7"><span>Port-channels: uno negocia y otro escucha</span></label>
+      <label><input type="checkbox" id="c2"><span>Sesiones BGP IPv4 e IPv6 en Established</span></label>
+      <label><input type="checkbox" id="c8"><span>Misma versión de STP en los tres switches</span></label>
+      <label><input type="checkbox" id="c3"><span>Rutas iBGP válidas (<code>&gt;</code>) en R1 y R2</span></label>
+      <label><input type="checkbox" id="c9"><span>Port-security, PortFast y BPDU filter hacia los PC</span></label>
+      <label><input type="checkbox" id="c4"><span>IPv4 por ISP-1 e IPv6 por ISP-2 (traceroute)</span></label>
+      <label><input type="checkbox" id="c10"><span>HSRP: IPv4 en R1, IPv6 en R2, tracking probado</span></label>
+      <label><input type="checkbox" id="c5"><span>Route-maps de redistribución creados y operativos</span></label>
+      <label><input type="checkbox" id="c11"><span>Tablas de los tickets con sus cuatro campos</span></label>
+      <label><input type="checkbox" id="c6"><span>Ping y traceroute entre todos los PC, IPv4 e IPv6</span></label>
+      <label><input type="checkbox" id="c12"><span>Capturas, .gz y .txt de configuraciones en AVA</span></label>
+    </div>
+  </div>
+</section>
+
+<!-- Demo -->
+<div class="demo" id="demo" hidden>
+  <div class="top">
+    <div class="sh"><div class="kick"><span class="tk" id="dm-k"></span><span id="dm-k2"></span></div><h2 id="dm-h"></h2></div>
+    <div class="seg" id="dm-seg" role="group" aria-label="Escenario"></div>
+  </div>
+  <div class="body">
+    <div class="dcard"><svg viewBox="0 0 900 500" id="dm-svg" role="img" aria-label="Animación de la demo"></svg></div>
+    <div class="col">
+      <div class="dots" id="dm-dots"></div>
+      <div class="cap"><span class="n" id="dm-n"></span><span id="dm-cap"></span></div>
+      <div class="term" id="dm-term"></div>
+      <div class="ctl">
+        <button class="btn" type="button" id="dm-prev">← Paso</button>
+        <button class="btn" type="button" id="dm-next">Paso →</button>
+        <button class="btn" type="button" id="dm-play">▶ Reproducir</button>
+        <button class="btn pri" type="button" id="dm-close">Volver a la pregunta</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Índice -->
+<div class="index" id="index" hidden>
+  <div class="sh"><div class="kick">Índice</div><h2>Ir a una diapositiva</h2></div>
+  <div class="grid" id="index-grid"></div>
+</div>
+
+<!-- Barra -->
+<div class="bar">
+  <span class="course">ARY6112 · Repaso Ev. 2</span>
+  <div class="prog" aria-hidden="true"><i id="prog"></i></div>
+  <span class="score" id="score"></span>
+  <button class="btn" type="button" id="btn-index">Índice</button>
+  <button class="btn" type="button" id="btn-prev" aria-label="Diapositiva anterior">← Anterior</button>
+  <span class="pos" id="pos"></span>
+  <button class="btn pri" type="button" id="btn-next" aria-label="Diapositiva siguiente">Siguiente →</button>
+</div>
+
+</div>
+</div>
+
+<script>
+(function(){
+  var stage=document.getElementById('stage'), vp=document.getElementById('vp');
+  function fit(){
+    var cs=getComputedStyle(vp);
+    var w=vp.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);
+    var h=vp.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom)-24;
+    var s=Math.min(w/1600,h/900); stage.style.setProperty('--s',Math.max(s,.1));
+  }
+  window.addEventListener('resize',fit); fit();
+
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  // Quiz
+  var Q=[
+    {t:'BGP',p:'En R3 ves esto. R1 sí tiene a 3.3.3.3 con update-source Loopback1. ¿Qué es lo más probable?',o:'Neighbor    V    AS MsgRcvd MsgSent  Up/Down  State/PfxRcd\n1.1.1.1     4 65000       0       0  never    Active',
+     a:['A R3 le falta update-source hacia 1.1.1.1, o le falta el vecino','El AS 65000 está mal en R1','OSPF no anuncia 172.16.100.0/24','Falta next-hop-self en R1'],c:0,
+     e:'Active significa que TCP no se establece. En iBGP entre loopbacks, los dos lados deben originar desde la loopback.'},
+    {t:'BGP',p:'En R1, show ip bgp muestra la ruta 8.8.8.8/32 con next-hop 210.0.0.1, pero sin el símbolo ">". ¿Cuál es la corrección?',
+     a:['Agregar network 8.8.8.8 en R1','Configurar next-hop-self en R3 hacia R1','Subir la local-preference en R1','Activar el vecino en la AF IPv6'],c:1,
+     e:'El next-hop del ISP no está en OSPF. Con next-hop-self, R3 anuncia 3.3.3.3 como next-hop, que sí es alcanzable.'},
+    {t:'BGP',p:'Un ISP tiene "neighbor 220.0.0.2 route-map ATRIB out", pero show route-map no muestra ATRIB. ¿Qué recibe R3?',
+     a:['Todas las rutas, sin cambios','Solo la ruta por defecto','Ninguna ruta: el route-map inexistente deniega todo','La sesión no levanta'],c:2,
+     e:'La sesión queda Established con PfxRcd en 0. Siempre comprueba con show route-map que exista.'},
+    {t:'BGP',p:'En show bgp ipv6 unicast summary, un ISP aparece con "(NoNeg)". ¿Qué falta?',
+     a:['El remote-as correcto','neighbor ... activate en la AF IPv6 de algún lado','update-source Loopback','ipv6 unicast-routing'],c:1,
+     e:'La sesión existe pero la familia IPv6 no se negoció. Hay que activar el vecino en address-family ipv6 en ambos extremos.'},
+    {t:'Selección de ISP',p:'ISP-2 anuncia a R3 sus rutas IPv4 con "set as-path prepend 20000 20000 20000". ¿Qué cambia en R3?',
+     a:['Prefiere ISP-2 porque tiene más AS','Prefiere ISP-1 porque el AS-path es más corto','Nada: el prepend solo afecta a IPv6','Descarta las rutas de ISP-2'],c:1,
+     e:'Con la misma local-preference, gana el AS-path más corto. El prepend alarga el camino por ISP-2.'},
+    {t:'Redistribución',p:'R3 tiene "redistribute bgp 65000 route-map BGP" en OSPFv2, sin subnets. ¿Llega 8.8.8.8/32 a R1?',
+     a:['Sí, igual','No: sin subnets solo entran redes con máscara de clase','Solo si la prefix-list tiene le 32','Sí, pero como ruta interna O'],c:1,
+     e:'En IOS 15, OSPFv2 sin subnets solo redistribuye redes con máscara de clase. Un /32 queda fuera.'},
+    {t:'Redistribución',p:'R1 aprende 8.8.8.8 por OSPF E2 y por iBGP desde R3. ¿Cuál instala en la tabla de rutas?',
+     a:['iBGP, porque es el protocolo externo','OSPF E2: distancia 110 contra 200','Las dos, balanceando','La de menor métrica'],c:1,
+     e:'Gana la menor distancia administrativa. Por eso hay conectividad aunque el iBGP esté roto, pero igual tienes que repararlo.'},
+    {t:'EtherChannel',p:'SW1 tiene mode active y SW2 mode active en el mismo canal. ¿Cumple que "un extremo negocie y el otro escuche"?',
+     a:['Sí, el canal se forma','No: el canal se forma pero los dos negocian','No: el canal no se forma','Solo con PAgP'],c:1,
+     e:'Que el canal funcione no significa que cumpla el requisito. Lo correcto es active/passive o desirable/auto.'},
+    {t:'EtherChannel',p:'En show etherchannel summary, los miembros de Po2 aparecen como Et1/2(I) y Et1/3(I). ¿Qué indica?',
+     a:['Están en el bundle','Stand-alone: el otro extremo no negocia o el modo es incompatible','Están en err-disabled por port-security','El port-channel es capa 3'],c:1,
+     e:'(I) es stand-alone. Revisa el channel-group y el modo en el switch vecino.'},
+    {t:'STP',p:'SW1 y SW2 están en rapid-pvst y SW3 en pvst. Hay conectividad. ¿Qué pasa con el requisito?',
+     a:['Se cumple porque hay conectividad','No se cumple: debe ser consistente y en el borde se cae a 802.1D','STP queda deshabilitado en SW3','Se forman loops'],c:1,
+     e:'Interoperan, pero los enlaces hacia SW3 convergen con los tiempos de 802.1D. Se pide el mismo modo en todos.'},
+    {t:'Puertos de acceso',p:'Se pide que el puerto del PC no envíe ni reciba BPDU. ¿Qué comando corresponde?',
+     a:['spanning-tree bpduguard enable','spanning-tree portfast','spanning-tree bpdufilter enable','spanning-tree guard root'],c:2,
+     e:'bpdufilter no envía BPDU y descarta las que recibe. bpduguard apaga el puerto, pero no deja de enviar.'},
+    {t:'HSRP',p:'R1: priority 110, preempt, track decrement 20. R2: priority 100, sin preempt. Se cae la WAN de R1. ¿Quién queda activo?',
+     a:['R2, porque ahora tiene más prioridad','R1, porque R2 no tiene preempt','Ninguno, la VIP queda caída','Ambos'],c:1,
+     e:'R1 baja a 90, pero R2 solo toma el rol si tiene preempt. El tracking requiere preempt en los dos.'},
+    {t:'HSRP',p:'R1 es Active en el grupo 10 (IPv4) y también en el 110 (IPv6). Se pedía IPv6 en R2. ¿Qué revisas primero?',
+     a:['La versión de HSRP','Prioridad y preempt del grupo 110 en R1 y R2','El DHCP de R3','El trunk hacia SW2'],c:1,
+     e:'Cada grupo elige su activo por separado. R2 necesita más prioridad en ese grupo y preempt.'}
+  ];
+  var res={}; var entrega=document.getElementById('entrega');
+  Q.forEach(function(q,i){
+    var s=document.createElement('section'); s.className='slide quiz'; s.dataset.t='Quiz P'+(i+1)+' · '+q.t;
+    var left='<div class="col"><p class="qprompt">'+esc(q.p)+'</p>'+(q.o?'<pre class="qout">'+esc(q.o)+'</pre>':'')+'<div class="expl" hidden></div></div>';
+    var right='<div class="opts">'+q.a.map(function(t,j){return '<button type="button" class="opt" data-j="'+j+'"><span class="L">'+'ABCD'[j]+'</span><span>'+esc(t)+'</span></button>';}).join('')+'</div>';
+    s.innerHTML='<div class="sh"><div class="kick"><span class="tk">Pregunta '+(i+1)+' de '+Q.length+'</span>'+q.t+'</div></div><div class="body">'+left+right+'</div>';
+    stage.insertBefore(s,entrega);
+    var ex=s.querySelector('.expl');
+    s.querySelectorAll('.opt').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var j=+btn.dataset.j;
+        s.querySelectorAll('.opt').forEach(function(o){o.disabled=true; if(+o.dataset.j===q.c) o.classList.add('correct');});
+        if(j!==q.c) btn.classList.add('wrong');
+        res[i]=(j===q.c);
+        ex.innerHTML='<b>'+(j===q.c?'Correcto. ':'Respuesta correcta: '+'ABCD'[q.c]+'. ')+'</b>'+esc(q.e); ex.hidden=false;
+        if(DEMOS[i]){ var db=document.createElement('button'); db.type='button'; db.className='demo-btn'; db.textContent='▶ Ver demo animada'; db.onclick=function(){ openDemo(i); }; ex.appendChild(document.createElement('br')); ex.appendChild(db); }
+        upd();
+      });
+    });
+  });
+
+  // ===== Demos animadas =====
+  function A(o){return o==null?'':' opacity="'+o+'"';}
+  function N(k,x,y,l,kind,w){w=w||110;return '<g class="nd '+(kind||'')+'"'+(k?' data-k="'+k+'"':'')+'><rect x="'+(x-w/2)+'" y="'+(y-23)+'" width="'+w+'" height="46" rx="8"/><text x="'+x+'" y="'+y+'"'+(k?' data-k="'+k+'-t"':'')+'>'+l+'</text></g>';}
+  function L(k,x1,y1,x2,y2,c){return '<line class="ln '+(c||'')+'"'+(k?' data-k="'+k+'"':'')+' x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'"/>';}
+  function T(k,x,y,s,c,a,o){return '<text class="tx '+(c||'')+'"'+(k?' data-k="'+k+'"':'')+' x="'+x+'" y="'+y+'" text-anchor="'+(a||'middle')+'"'+A(o)+'>'+s+'</text>';}
+  function C(k,x,y,s,w,o,c){w=w||220;return '<g class="ch '+(c||'')+'" data-k="'+k+'" style="transform:translate('+x+'px,'+y+'px)"'+A(o==null?0:o)+'><rect x="'+(-w/2)+'" y="-19" width="'+w+'" height="38" rx="8"/><text x="0" y="1" data-k="'+k+'-t">'+s+'</text></g>';}
+  function B(k,x,y,w){w=w||240;return '<g class="bd" data-k="'+k+'" opacity="0"><rect x="'+(x-w/2)+'" y="'+(y-21)+'" width="'+w+'" height="42" rx="9"/><text x="'+x+'" y="'+(y+1)+'" data-k="'+k+'-t"></text></g>';}
+  function X(x,y,w,h,t){return '<rect class="box" x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="10"/>'+(t?'<text class="tx bx-h" x="'+(x+16)+'" y="'+(y+24)+'" text-anchor="start">'+t+'</text>':'');}
+  function H(k,x,y,w,h,c,o){return '<rect class="hl '+(c||'')+'" data-k="'+k+'" x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="6"'+A(o==null?0:o)+'/>';}
+  function P(s){return '<span class="p">'+s+'</span>';}
+  function G(s){return '<span class="g">'+s+'</span>';}
+  function R(s){return '<span class="r">'+s+'</span>';}
+  function Y(s){return '<span class="a">'+s+'</span>';}
+  function Dd(s){return '<span class="d">'+s+'</span>';}
+  function ok(k,t){var o={};o[k]={o:1,c:'ok'};o[k+'-t']={t:t};return o;}
+  function bad(k,t){var o={};o[k]={o:1,c:'bad'};o[k+'-t']={t:t};return o;}
+  function warn(k,t){var o={};o[k]={o:1,c:'warn'};o[k+'-t']={t:t};return o;}
+  function mix(){var o={};for(var i=0;i<arguments.length;i++){var a=arguments[i];for(var k in a)o[k]=a[k];}return o;}
+
+  var DEMOS=[];
+
+  // P1 · update-source / vecino
+  (function(){
+    var svg=N('r3',220,200,'R3','r')+N('r1',680,200,'R1','r')+L(0,275,200,625,200)+T(0,450,228,'OSPF · 172.16.100.0/24','sm mut')
+      +T('a3',220,252,'Lo3 3.3.3.3','sm acc')+T('i3',220,274,'e0/1 172.16.100.3','sm mut')+T('a1',680,252,'Lo1 1.1.1.1','sm acc')+T('i1',680,274,'e0/1 172.16.100.1','sm mut')
+      +X(40,320,380,140,'R3 · ROUTER BGP 65000')+T('c3a',60,382,'','sm','start')+T('c3b',60,414,'','sm','start')
+      +X(480,320,380,140,'R1 · ROUTER BGP 65000')+T(0,500,382,'neighbor 3.3.3.3 remote-as 65000','sm','start')+T(0,500,414,'neighbor 3.3.3.3 update-source Lo1','sm','start')
+      +C('pk',680,130,'',330)+B('res',450,60,260);
+    var sum=P('R1#')+' show ip bgp summary\nNeighbor   V    AS MsgRcvd MsgSent  Up/Down  State/PfxRcd\n';
+    DEMOS[0]={topic:'BGP',title:'¿Por qué R1 queda en Active?',modes:['R3 sin el vecino','R3 con vecino y update-source'],svg:svg,steps:[[
+      {cap:'R1 intenta abrir la sesión: envía un TCP SYN desde su loopback 1.1.1.1 hacia 3.3.3.3, puerto 179.',s:{c3a:{t:'neighbor 2.2.2.2 remote-as 65000'},c3b:{t:'! no hay neighbor 1.1.1.1',c:'bad'},pk:{o:1,p:[220,130]},'pk-t':{t:'SYN 1.1.1.1 → 3.3.3.3:179'}},
+       term:P('R3#')+' show run | section router bgp\nrouter bgp 65000\n neighbor 2.2.2.2 remote-as 65000\n neighbor 2.2.2.2 update-source Loopback3\n '+R('! falta neighbor 1.1.1.1')},
+      {cap:'R3 no tiene a 1.1.1.1 como vecino, así que rechaza la conexión con un TCP RST.',s:{pk:{p:[680,130],c:'bad'},'pk-t':{t:'RST 3.3.3.3 → 1.1.1.1'}}},
+      {cap:'R1 reintenta cada cierto tiempo y, mientras no lo logra, queda en estado Active.',s:mix({pk:{o:0}},bad('res','✗ Active')),term:sum+'3.3.3.3    4 65000       0       0  never    '+R('Active')},
+      {cap:'Ojo: si R3 tuviera el vecino pero sin update-source, sus propios intentos saldrían desde 172.16.100.3 y R1 los rechazaría, porque espera a 3.3.3.3. Por eso va update-source en los dos lados.',s:{i3:{c:'bad'}}}
+    ],[
+      {cap:'R1 envía el TCP SYN desde 1.1.1.1 hacia 3.3.3.3, puerto 179.',s:{c3a:{t:'neighbor 1.1.1.1 remote-as 65000'},c3b:{t:'neighbor 1.1.1.1 update-source Lo3',c:'ok'},pk:{o:1,p:[220,130]},'pk-t':{t:'SYN 1.1.1.1 → 3.3.3.3:179'}},
+       term:P('R3#')+' show run | section router bgp\nrouter bgp 65000\n '+G('neighbor 1.1.1.1 remote-as 65000')+'\n '+G('neighbor 1.1.1.1 update-source Loopback3')},
+      {cap:'R3 reconoce a 1.1.1.1 como vecino y responde desde su loopback 3.3.3.3.',s:{pk:{p:[680,130],c:'ok'},'pk-t':{t:'SYN-ACK 3.3.3.3 → 1.1.1.1'}}},
+      {cap:'Con TCP arriba, intercambian OPEN y KEEPALIVE: AS, router-id y capacidades.',s:{pk:{p:[450,130],c:''},'pk-t':{t:'OPEN ⇄ KEEPALIVE'}}},
+      {cap:'La sesión queda Established y empiezan los UPDATE con prefijos.',s:mix({pk:{o:0}},ok('res','✓ Established')),term:sum+'3.3.3.3    4 65000      12      10  00:05:12        '+G('6')}
+    ]]};
+  })();
+
+  // P2 · next-hop-self
+  (function(){
+    var svg='<rect class="zone" x="40" y="80" width="460" height="74" rx="10" style="stroke:var(--bad)"/>'+T(0,60,180,'210.0.0.0/30 · no está en OSPF','sm bad','start')
+      +'<rect class="zone" x="380" y="70" width="500" height="96" rx="12" style="stroke:var(--accent);fill:var(--accent-soft);fill-opacity:.3"/>'+T(0,866,158,'OSPF área 0 · conoce 3.3.3.3','sm acc','end')
+      +L(0,110,121,450,121)+L(0,450,121,790,121)+T(0,280,104,'eBGP','sm mut')+T(0,620,104,'iBGP','sm mut')
+      +N(0,110,121,'ISP-1','')+N(0,450,121,'R3','r')+N(0,790,121,'R1','r')
+      +X(520,236,360,250,'TABLA DE RUTAS DE R1')+H('hit',530,314,340,30,'ok')
+      +T(0,540,296,'C  172.16.100.0/24  e0/1','sm','start')+T(0,540,334,'O  3.3.3.3/32   via 172.16.100.3','sm','start')
+      +T(0,540,370,'O  2.2.2.2/32   via 172.16.100.3','sm','start')+T(0,540,406,'O  172.16.200.0/24 via .100.3','sm','start')
+      +H('lk',530,428,340,44,'')+T('lkt',545,455,'','sm b','start')
+      +T(0,60,270,'UPDATE de BGP = prefijo + next-hop','sm mut','start')+T('rule',60,306,'','b','start')
+      +C('up',160,38,'8.8.8.8/32 · NH 210.0.0.1',290)+B('res',770,40,230);
+    var bgp=P('R1#')+' show ip bgp\n     Network          Next Hop      LocPrf Path\n';
+    var s0={cap:'ISP-1 anuncia 8.8.8.8/32 a R3 por eBGP. El next-hop es la IP de ISP-1 en el enlace: 210.0.0.1.',s:{up:{o:1,p:[280,38]}},
+      term:P('R3#')+' show ip bgp 8.8.8.8\n  10000 64000\n    210.0.0.1 from 210.0.0.1 (11.11.11.11)\n      Origin IGP, valid, external, '+G('best')};
+    DEMOS[1]={topic:'BGP',title:'¿Por qué la ruta no tiene ">"?',modes:['Sin next-hop-self','Con next-hop-self'],svg:svg,steps:[[s0,
+      {cap:'R3 pasa la ruta a R1 por iBGP. iBGP no cambia el next-hop: sigue siendo 210.0.0.1.',s:{up:{p:[620,38]},rule:{t:'iBGP no cambia el next-hop.'}}},
+      {cap:'R1 busca 210.0.0.1 en su tabla de rutas. La red 210.0.0.0/30 no está en OSPF: no hay ruta.',s:{up:{p:[700,205]},lk:{o:1,c:'bad'},lkt:{t:'¿210.0.0.1?  →  sin ruta ✗'}}},
+      {cap:'La ruta queda inaccesible: no lleva ">" y no se instala en la tabla de rutas.',s:bad('res','✗ inaccesible'),
+       term:bgp+' '+R('* i')+' 8.8.8.8/32       210.0.0.1        100 10000 64000 i\n\n'+P('R1#')+' show ip bgp 8.8.8.8\n  10000 64000\n    '+R('210.0.0.1 (inaccessible)')+' from 3.3.3.3'}
+    ],[s0,
+      {cap:'Con next-hop-self, R3 reemplaza el next-hop por su loopback 3.3.3.3 antes de enviarla a R1.',s:{up:{p:[620,38],c:'warn'},'up-t':{t:'8.8.8.8/32 · NH 3.3.3.3'},rule:{t:'next-hop-self: NH = 3.3.3.3'}},
+       term:P('R3(config-router-af)#')+' neighbor 1.1.1.1 next-hop-self'},
+      {cap:'R1 busca 3.3.3.3 en su tabla de rutas. La aprende por OSPF: sí hay ruta.',s:{up:{p:[700,205]},hit:{o:1},lk:{o:1,c:'ok'},lkt:{t:'¿3.3.3.3?  →  O 3.3.3.3/32 ✓'}}},
+      {cap:'La ruta es válida y es la mejor: aparece con ">" y se instala.',s:ok('res','✓ *> mejor ruta'),
+       term:bgp+' '+G('*&gt;i')+' 8.8.8.8/32       3.3.3.3          100 10000 64000 i\n\n'+P('R1#')+' show ip bgp 8.8.8.8\n  10000 64000\n    3.3.3.3 (metric 11) from 3.3.3.3\n      Origin IGP, localpref 100, valid, internal, '+G('best')}
+    ]]};
+  })();
+
+  // P3 · route-map inexistente
+  (function(){
+    var svg=N(0,150,120,'ISP-2','')+N(0,750,120,'R3','r')+L(0,205,120,695,120)+T(0,450,104,'eBGP · 220.0.0.0/30','sm mut')
+      +H('gate',436,180,28,220,'',1)+T(0,450,168,'route-map ATRIB out','sm b')
+      +T(0,150,180,'Rutas a anunciar','sm mut')+T(0,750,180,'Recibidas por R3','sm mut')
+      +C('a',150,230,'22.22.22.22/32',190,1)+C('b',150,290,'8.8.8.8/32',190,1)+C('c',150,350,'11.11.11.11/32',190,1)
+      +T('rm',450,450,'','sm b')+B('res',750,50,200);
+    var sum=P('R3#')+' show ip bgp summary\nNeighbor   V    AS MsgRcvd MsgSent  Up/Down  State/PfxRcd\n';
+    var mv=function(x,c,o){var r={};['a','b','c'].forEach(function(k,i){r[k]={p:[x,230+60*i]};if(c!=null)r[k].c=c;if(o!=null)r[k].o=o;});return r;};
+    DEMOS[2]={topic:'BGP',title:'Un route-map que no existe',modes:['ATRIB no existe','ATRIB existe'],svg:svg,steps:[[
+      {cap:'ISP-2 tiene tres rutas para anunciar a R3. Antes de salir, cada una pasa por el route-map ATRIB, aplicado con out.',s:{rm:{t:'ATRIB: no está en la configuración',c:'bad'}},
+       term:P('ISP2#')+' show run | section router bgp\n address-family ipv4\n  neighbor 220.0.0.2 route-map ATRIB out\n\n'+P('ISP2#')+' show route-map ATRIB\n'+Dd('(sin resultados)')},
+      {cap:'IOS busca ATRIB en la configuración. Como no existe, ninguna ruta encuentra un permit: se tratan como deny.',s:mix(mv(330),{gate:{c:'bad'}})},
+      {cap:'Las tres rutas se descartan. La sesión sigue Established, pero R3 recibe 0 prefijos.',s:mix(mv(330,'bad',.3),bad('res','PfxRcd 0')),term:sum+'220.0.0.1  4 20000      15      14  00:07:31        '+R('0')}
+    ],[
+      {cap:'ISP-2 tiene tres rutas para anunciar a R3. Antes de salir, cada una pasa por el route-map ATRIB, aplicado con out.',s:{rm:{t:'route-map ATRIB permit 10 · set as-path prepend',c:'ok'}},
+       term:P('ISP2#')+' show route-map ATRIB\nroute-map ATRIB, '+G('permit')+', sequence 10\n  Match clauses:\n  Set clauses:\n    as-path prepend 20000 20000 20000 20000'},
+      {cap:'ATRIB existe. Su permit 10 no tiene match, así que coincide con todas las rutas y les aplica el set.',s:mix(mv(450),{gate:{c:'ok'}})},
+      {cap:'Las rutas llegan a R3 con el AS-path alargado por el prepend.',s:mix(mv(750,'ok'),ok('res','PfxRcd 3')),term:sum+'220.0.0.1  4 20000      15      14  00:07:31        '+G('3')}
+    ]]};
+  })();
+
+  // P4 · NoNeg
+  (function(){
+    var svg=N(0,180,150,'R3','r')+N(0,720,150,'Vecino','',120)+L('ses',235,150,660,150)+T(0,450,138,'sesión BGP','sm mut')
+      +X(60,200,240,90)+T(0,180,236,'AF IPv4: activate','sm')+T(0,180,266,'AF IPv6: activate','sm')
+      +X(600,200,240,90)+T(0,720,236,'AF IPv4: activate','sm')+T('v6',720,266,'','sm')
+      +H('l4',260,320,380,46,'')+T('l4t',450,349,'IPv4 unicast','b',null,0)
+      +H('l6',260,385,380,46,'')+T('l6t',450,414,'IPv6 unicast','b',null,0)
+      +C('o1',180,95,'OPEN · IPv4 + IPv6',230)+C('o2',720,50,'OPEN · IPv4 + IPv6',230)+B('res',450,470,320);
+    var sum=P('R3#')+' show bgp ipv6 unicast summary\nNeighbor              V    AS  Up/Down  State/PfxRcd\n';
+    DEMOS[3]={topic:'BGP',title:'Cuándo aparece (NoNeg)',modes:['activate en un solo lado','activate en ambos'],svg:svg,steps:[[
+      {cap:'R3 y su vecino abren la sesión. Cada uno tiene sus address-family (AF) configuradas para el otro. Al vecino le falta activar IPv6.',s:{ses:{c:'ok'},v6:{t:'AF IPv6: (sin activate)',c:'bad'}},
+       term:P('Vecino#')+' show run | section router bgp\n address-family ipv6\n  '+R('! falta: neighbor 2021:ACAD:ACAD:220::2 activate')},
+      {cap:'En el mensaje OPEN, cada router anuncia las AF que tiene activadas para ese vecino.',s:{o1:{o:1,p:[720,95]},o2:{o:1,p:[180,50]},'o2-t':{t:'OPEN · solo IPv4'}}},
+      {cap:'Solo se negocian las AF que anuncian los dos. IPv4 queda operativa; IPv6 no se negocia.',s:{o1:{o:0},o2:{o:0},l4:{o:1,c:'ok'},l4t:{o:1},l6:{o:1,c:'bad'},l6t:{o:1,t:'IPv6 unicast · no negociada'}}},
+      {cap:'En el resumen de IPv6 ese vecino aparece como (NoNeg). Se corrige con neighbor … activate en la address-family ipv6 del lado que falta.',s:bad('res','(NoNeg) en IPv6'),term:sum+'2021:ACAD:ACAD:220::1 4 20000  00:03:10  '+R('(NoNeg)')}
+    ],[
+      {cap:'R3 y su vecino abren la sesión. Los dos tienen activadas IPv4 e IPv6 para el otro.',s:{ses:{c:'ok'},v6:{t:'AF IPv6: activate',c:'ok'}},
+       term:P('Vecino#')+' show run | section router bgp\n address-family ipv6\n  '+G('neighbor 2021:ACAD:ACAD:220::2 activate')},
+      {cap:'En el mensaje OPEN, cada router anuncia las AF que tiene activadas para ese vecino.',s:{o1:{o:1,p:[720,95]},o2:{o:1,p:[180,50]}}},
+      {cap:'Los dos anuncian IPv4 e IPv6: se negocian ambas familias.',s:{o1:{o:0},o2:{o:0},l4:{o:1,c:'ok'},l4t:{o:1},l6:{o:1,c:'ok'},l6t:{o:1}}},
+      {cap:'En el resumen de IPv6 aparece la cantidad de prefijos recibidos.',s:ok('res','✓ IPv4 e IPv6 negociadas'),term:sum+'2021:ACAD:ACAD:220::1 4 20000  00:03:10  '+G('3')}
+    ]]};
+  })();
+
+  // P5 · AS-path prepend
+  (function(){
+    var svg=L(0,450,55,170,185)+L(0,450,55,730,185)+L(0,170,185,450,300)+L(0,730,185,450,300)
+      +N(0,450,55,'INTERNET','',130)+N(0,170,185,'ISP-1','')+N(0,730,185,'ISP-2','')+N(0,450,300,'R3','r')
+      +T(0,450,96,'AS 64000','sm acc')+T(0,170,228,'AS 10000','sm acc')+T(0,730,228,'AS 20000','sm acc')
+      +X(110,350,680,136,'TABLA BGP DE R3 · 8.8.8.8/32')+H('w1',120,385,660,36,'')+H('w2',120,433,660,36,'')
+      +T('p1',136,409,'','sm','start')+T('p2',136,457,'','sm','start')
+      +C('c1',450,55,'8.8.8.8 · 64000',210)+C('c2',450,55,'8.8.8.8 · 64000',330);
+    var bgp=P('R3#')+' show ip bgp\n    Network    Next Hop  Path\n';
+    var a={cap:'INTERNET (AS 64000) anuncia 8.8.8.8/32 a ISP-1 y a ISP-2.',s:{c1:{o:1,p:[300,118]},c2:{o:1,p:[610,118]}}};
+    DEMOS[4]={topic:'Selección de ISP',title:'¿Por qué R3 elige ISP-1?',modes:['Sin prepend','Con prepend en ISP-2'],svg:svg,steps:[[a,
+      {cap:'Cada ISP la reenvía a R3 agregando su propio AS al inicio del AS-path.',s:{c1:{p:[290,252]},'c1-t':{t:'10000 64000'},c2:{p:[620,252]},'c2-t':{t:'20000 64000'}}},
+      {cap:'R3 compara. Local preference: 100 en ambas. Largo del AS-path: 2 en ambas. Empatan.',s:{p1:{t:'vía 210.0.0.1   AS-path 10000 64000   (2)'},p2:{t:'vía 220.0.0.1   AS-path 20000 64000   (2)'},w1:{o:1,c:'warn'},w2:{o:1,c:'warn'}}},
+      {cap:'El desempate cae en criterios menores, como la ruta eBGP más antigua. No controlas por qué ISP sale el tráfico.',
+       term:bgp+' *  8.8.8.8/32 210.0.0.1 10000 64000 i\n '+Y('*&gt;')+' 8.8.8.8/32 220.0.0.1 20000 64000 i'}
+    ],[a,
+      {cap:'ISP-1 agrega su AS una vez. ISP-2 aplica prepend: agrega su AS cuatro veces en total.',s:{c1:{p:[290,252]},'c1-t':{t:'10000 64000'},c2:{p:[620,252],c:'warn'},'c2-t':{t:'20000 20000 20000 20000 64000'}},
+       term:P('ISP2#')+' show route-map PREPEND\nroute-map PREPEND, permit, sequence 10\n  Set clauses:\n    as-path prepend 20000 20000 20000'},
+      {cap:'R3 compara. Local preference: 100 en ambas. AS-path: 2 vía ISP-1 contra 5 vía ISP-2. Gana el más corto.',s:{p1:{t:'vía 210.0.0.1   AS-path 10000 64000   (2)'},p2:{t:'vía 220.0.0.1   AS-path 20000 20000 20000 20000 64000   (5)'},w1:{o:1,c:'ok'},w2:{o:1,c:'bad'}}},
+      {cap:'R3 sale hacia 8.8.8.8 por ISP-1, como pide el ticket.',
+       term:bgp+' '+G('*&gt;')+' 8.8.8.8/32 210.0.0.1 10000 64000 i\n *  8.8.8.8/32 220.0.0.1 20000 20000 20000 20000 64000 i'}
+    ]]};
+  })();
+
+  // P6 · subnets
+  (function(){
+    var svg=X(20,70,240,320,'TABLA BGP DE R3')+X(650,70,230,320,'TABLA DE R1 (OSPF)')
+      +H('g1',340,90,16,290,'',1)+H('g2',560,90,16,290,'',1)
+      +T(0,348,62,'route-map BGP','sm b')+T(0,568,62,'OSPF: ¿subnets?','sm b')
+      +C('a',140,150,'8.8.8.8/32',160,1)+C('b',140,220,'11.11.11.11/32',160,1)+C('c',140,290,'22.22.22.22/32',160,1)
+      +T('note',450,440,'','b')+B('res',765,440,210);
+    var mv=function(x,c,o){var r={};['a','b','c'].forEach(function(k,i){r[k]={p:[x,150+70*i]};if(c!=null)r[k].c=c;if(o!=null)r[k].o=o;});return r;};
+    var cfg=function(sub){return P('R3#')+' show run | section router ospf\nrouter ospf 10\n redistribute bgp 65000 '+(sub?G('subnets')+' ':'')+'route-map BGP';};
+    var s0=function(sub){return {cap:'R3 tiene en su tabla BGP las loopbacks de INTERNET y de los ISP. Todas son /32.',term:cfg(sub)};};
+    var s1={cap:'El route-map BGP las deja pasar: las tres están en la prefix-list RUTAS-BGP.',s:mix(mv(450),{g1:{c:'ok'}})};
+    var rt=P('R1#')+' show ip route ospf | include E2\n';
+    DEMOS[5]={topic:'Redistribución',title:'¿Por qué no llega 8.8.8.8 a R1?',modes:['Sin subnets','Con subnets'],svg:svg,steps:[[s0(false),s1,
+      {cap:'Sin subnets, OSPFv2 solo redistribuye redes con su máscara de clase, como 8.0.0.0/8. Un /32 no califica y se descarta.',s:mix(mv(470,'bad',.3),{g2:{c:'bad'},note:{t:'8.8.8.8/32 no es la red con clase 8.0.0.0/8',c:'bad'}})},
+      {cap:'R1 no recibe ninguna de estas rutas por OSPF, así que no puede llegar a 8.8.8.8.',s:bad('res','✗ R1 no las recibe'),term:rt+Dd('(sin resultados)')}
+    ],[s0(true),s1,
+      {cap:'Con subnets, OSPF acepta cualquier máscara: las tres pasan como rutas externas tipo 2.',s:mix(mv(470,'ok'),{g2:{c:'ok'},note:{t:'subnets: se aceptan máscaras sin clase',c:'ok'}})},
+      {cap:'R1 las recibe como O E2, con next-hop hacia R3.',s:mix(mv(765,'ok'),{'a-t':{t:'O E2 8.8.8.8/32'},'b-t':{t:'O E2 11.11.11.11'},'c-t':{t:'O E2 22.22.22.22'}},ok('res','✓ 3 rutas O E2')),
+       term:rt+'O E2     8.8.8.8 [110/1] via 172.16.100.3, Et0/1\nO E2     11.11.11.11 [110/1] via 172.16.100.3, Et0/1\nO E2     22.22.22.22 [110/1] via 172.16.100.3, Et0/1'}
+    ]]};
+  })();
+
+  // P7 · distancia administrativa
+  (function(){
+    var svg=T(0,450,40,'Distancia administrativa:  eBGP 20 · OSPF 110 · iBGP 200','acc b')
+      +L(0,190,160,420,235,'dim')+L(0,710,160,480,235,'dim')+N(0,450,250,'R1','r')
+      +X(220,340,460,130,'TABLA DE RUTAS DE R1')
+      +C('o',190,140,'OSPF E2 · 8.8.8.8/32 · AD 110',320)+C('b',710,140,'iBGP · 8.8.8.8/32 · AD 200',320);
+    DEMOS[6]={topic:'Redistribución',title:'¿Qué ruta instala R1?',modes:['OSPF e iBGP'],svg:svg,steps:[[
+      {cap:'OSPF le ofrece a R1 la ruta 8.8.8.8/32, que R3 redistribuyó desde BGP. Distancia administrativa: 110.',s:{o:{o:1}}},
+      {cap:'iBGP le ofrece el mismo prefijo, aprendido de 3.3.3.3. Distancia administrativa: 200.',s:{b:{o:1}}},
+      {cap:'Para el mismo prefijo, la tabla de rutas se queda con la menor distancia administrativa: entra la ruta de OSPF.',s:{o:{p:[450,415],c:'ok'},b:{c:'bad'}},
+       term:P('R1#')+' show ip route 8.8.8.8\nRouting entry for 8.8.8.8/32\n  Known via "'+G('ospf 10')+'", distance '+G('110')+', metric 1\n  Routing Descriptor Blocks:\n  * 172.16.100.3, from 3.3.3.3, via Ethernet0/1'},
+      {cap:'BGP marca su ruta como RIB-failure (r): es válida, pero no se instaló. Por eso hay conectividad aunque el iBGP esté roto.',s:{b:{c:'warn'},'b-t':{t:'BGP: r>i · RIB-failure'}},
+       term:P('R1#')+' show ip bgp\n     Network          Next Hop      LocPrf Path\n '+Y('r&gt;i')+' 8.8.8.8/32       3.3.3.3          100 10000 64000 i'}
+    ]]};
+  })();
+
+  // P8 · LACP active/passive
+  (function(){
+    var svg=L(0,255,208,645,208)+L(0,255,232,645,232)+N(0,200,220,'SW1','')+N(0,700,220,'SW2','')+T(0,450,262,'Po1 · Et1/0 – Et1/1','sm mut')
+      +T('m1',200,290,'mode active','b')+T('m2',700,290,'','b')+T('r1',200,316,'','sm mut')+T('r2',700,316,'','sm mut')
+      +C('p1',200,150,'LACPDU · inicia',220)+C('p2',700,380,'',220)+B('res',450,450,320);
+    var su=P('SW1#')+' show etherchannel summary\nGroup  Port-channel  Protocol    Ports\n------+-------------+-----------+------------------\n1      Po1('+G('SU')+')       LACP      Et1/0('+G('P')+') Et1/1('+G('P')+')';
+    var s1={cap:'SW1 en active inicia la negociación: envía LACPDU sin esperar al otro.',s:{p1:{o:1,p:[700,150]},r1:{t:'inicia'}}};
+    DEMOS[7]={topic:'EtherChannel',title:'¿Cumple "uno negocia y otro escucha"?',modes:['active – active','active – passive'],svg:svg,steps:[[
+      {cap:'Los dos switches tienen sus puertos en channel-group 1 mode active.',s:{m2:{t:'mode active'}},term:P('SW2#')+' show run interface e1/0\n channel-protocol lacp\n channel-group 1 mode '+Y('active')},
+      s1,
+      {cap:'SW2 también está en active, así que también inicia por su cuenta. Los dos negocian.',s:{p2:{o:1,p:[200,380]},'p2-t':{t:'LACPDU · inicia'},r2:{t:'inicia'}}},
+      {cap:'El canal se forma, pero no cumple el requisito: uno debe negociar y el otro solo escuchar.',s:warn('res','Se forma · no cumple'),term:su}
+    ],[
+      {cap:'SW1 está en mode active y SW2 en mode passive.',s:{m2:{t:'mode passive',c:'ok'}},term:P('SW2#')+' show run interface e1/0\n channel-protocol lacp\n channel-group 1 mode '+G('passive')},
+      s1,
+      {cap:'SW2 en passive no inicia nada: solo responde a los LACPDU que recibe.',s:{p2:{o:1,p:[200,380]},'p2-t':{t:'LACPDU · responde'},r2:{t:'escucha'}}},
+      {cap:'El canal se forma y cumple el requisito.',s:ok('res','✓ Se forma · cumple'),term:su}
+    ]]};
+  })();
+
+  // P9 · PAgP stand-alone
+  (function(){
+    var svg=L('la',255,208,645,208)+L('lb',255,232,645,232)+N(0,200,220,'SW1','')+N(0,700,220,'SW3','')+T(0,450,262,'Po2 · Et1/2 – Et1/3','sm mut')
+      +T(0,200,290,'mode desirable','b')+T('m3',700,290,'','b')+T('blk',450,190,'STP bloquea uno de los enlaces','sm bad',null,0)
+      +C('p1',200,150,'PAgP · inicia',200)+C('p2',700,380,'PAgP · responde',200)+B('res',450,450,380);
+    var hd=P('SW1#')+' show etherchannel summary\nGroup  Port-channel  Protocol    Ports\n------+-------------+-----------+------------------\n';
+    var s1={cap:'SW1 envía paquetes PAgP para armar el canal.',s:{p1:{o:1,p:[700,150]}}};
+    DEMOS[8]={topic:'EtherChannel',title:'¿Qué significa (I)?',modes:['SW3 sin channel-group','SW3 en mode auto'],svg:svg,steps:[[
+      {cap:'SW1 tiene Et1/2 y Et1/3 en channel-group 2 mode desirable. En SW3 esos puertos no tienen channel-group.',s:{m3:{t:'sin channel-group',c:'bad'}}},
+      s1,
+      {cap:'SW3 no usa PAgP en esos puertos: nadie responde.',s:{p1:{c:'bad',o:.3}}},
+      {cap:'SW1 deja los puertos como stand-alone (I). Funcionan como dos enlaces sueltos y STP bloquea uno de ellos.',s:mix({blk:{o:1},lb:{c:'bad'}},bad('res','Po2(SD) · Et1/2(I) Et1/3(I)')),
+       term:hd+'2      Po2('+R('SD')+')       PAgP      Et1/2('+R('I')+') Et1/3('+R('I')+')'}
+    ],[
+      {cap:'SW1 tiene Et1/2 y Et1/3 en mode desirable. SW3 tiene los suyos en mode auto.',s:{m3:{t:'mode auto',c:'ok'}}},
+      s1,
+      {cap:'SW3 en mode auto responde los PAgP de SW1.',s:{p2:{o:1,p:[200,380]}}},
+      {cap:'Los dos puertos entran al canal: Po2 queda en uso.',s:mix({la:{c:'ok'},lb:{c:'ok'}},ok('res','Po2(SU) · Et1/2(P) Et1/3(P)')),
+       term:hd+'2      Po2('+G('SU')+')       PAgP      Et1/2('+G('P')+') Et1/3('+G('P')+')'}
+    ]]};
+  })();
+
+  // P10 · STP mixto
+  (function(){
+    var svg=L('l23',180,150,720,150)+L('l12',180,150,450,380)+L('l13',720,150,450,380)
+      +N(0,180,150,'SW2','')+N(0,720,150,'SW3','')+N(0,450,380,'SW1','')
+      +T('m2',180,100,'','b')+T('m3',720,100,'','b')+T('m1',450,436,'','b')
+      +T('t23',450,138,'','sm')+T('t12',290,275,'','sm','end')+T('t13',610,275,'','sm','start')+B('res',450,48,300);
+    var hd=P('SW1#')+' show spanning-tree vlan 10\nInterface   Role Sts Cost  Prio.Nbr Type\n----------- ---- --- ----- -------- ---------------\nPo1         Root FWD 56    128.65   P2p\n';
+    DEMOS[9]={topic:'STP',title:'¿Basta con que haya conectividad?',modes:['Modo mixto','Todos rapid-pvst'],svg:svg,steps:[[
+      {cap:'SW1 y SW2 están en rapid-pvst. SW3 sigue en pvst, que usa 802.1D.',s:{m1:{t:'rapid-pvst'},m2:{t:'rapid-pvst'},m3:{t:'pvst',c:'bad'}}},
+      {cap:'Cada switch envía BPDU de su versión: RSTP desde SW1 y SW2, 802.1D desde SW3.',s:{t12:{t:'RSTP ⇄ RSTP'},t13:{t:'RSTP ⇄ 802.1D'},t23:{t:'RSTP ⇄ 802.1D'}}},
+      {cap:'En los puertos hacia SW3, SW1 y SW2 reciben BPDU 802.1D y vuelven al modo antiguo en ese puerto.',s:{l12:{c:'ok'},l13:{c:'bad'},l23:{c:'bad'},t12:{t:'RSTP · 1–2 s',c:'ok'},t13:{t:'802.1D · 30–50 s',c:'bad'},t23:{t:'802.1D · 30–50 s',c:'bad'}}},
+      {cap:'Hay conectividad, pero esos enlaces convergen lento y la versión no es consistente. No cumple el requisito.',s:bad('res','✗ No cumple'),term:hd+'Po2         Desg FWD 56    128.66   P2p '+R('Peer(STP)')}
+    ],[
+      {cap:'Los tres switches están en rapid-pvst.',s:{m1:{t:'rapid-pvst'},m2:{t:'rapid-pvst'},m3:{t:'rapid-pvst',c:'ok'}}},
+      {cap:'Todos envían BPDU de RSTP.',s:{t12:{t:'RSTP ⇄ RSTP'},t13:{t:'RSTP ⇄ RSTP'},t23:{t:'RSTP ⇄ RSTP'}}},
+      {cap:'Todos los enlaces usan RSTP y convergen en uno o dos segundos.',s:{l12:{c:'ok'},l13:{c:'ok'},l23:{c:'ok'},t12:{t:'RSTP · 1–2 s',c:'ok'},t13:{t:'RSTP · 1–2 s',c:'ok'},t23:{t:'RSTP · 1–2 s',c:'ok'}}},
+      {cap:'La versión es consistente en todos los switches. Cumple el requisito.',s:ok('res','✓ Cumple'),term:hd+'Po2         Desg FWD 56    128.66   P2p'}
+    ]]};
+  })();
+
+  // P11 · portfast / bpduguard / bpdufilter
+  (function(){
+    var svg=L('ln',255,220,660,220)+N(0,200,220,'SW1','')+N('pc',720,220,'PC','',120)+T(0,268,206,'e0/3','sm mut','start')
+      +T('st',200,290,'','b')+T('cfg',200,318,'','sm mut')
+      +C('out',200,150,'BPDU',140)+C('in',720,370,'BPDU',140)+B('res',450,440,420);
+    var cfg=function(x){return P('SW1(config)#')+' interface e0/3\n'+P('SW1(config-if)#')+' spanning-tree portfast'+(x?'\n'+P('SW1(config-if)#')+' spanning-tree '+x:'');};
+    var st0=function(l,x){return {cap:'El PC se conecta a e0/3. Con PortFast el puerto pasa a Forwarding de inmediato, sin Listening ni Learning.',s:{st:{t:'Forwarding',c:'ok'},cfg:{t:l}},term:cfg(x)};};
+    var send={cap:'El switch envía BPDU por ese puerto cada 2 segundos.',s:{out:{o:1,p:[600,150]}}};
+    var arr={cap:'Alguien cambia el PC por un switch, y por el puerto llega una BPDU.',s:{'pc-t':{t:'Switch'},in:{o:1,p:[430,370]}}};
+    DEMOS[10]={topic:'Puertos de acceso',title:'¿Qué comando cumple?',modes:['portfast','bpduguard','bpdufilter'],svg:svg,steps:[[
+      st0('portfast'),send,arr,
+      {cap:'El puerto deja de ser PortFast y participa en STP como cualquier otro. Envía y recibe BPDU: no cumple.',s:mix({st:{t:'STP normal',c:'warn'}},warn('res','Envía y recibe BPDU · no cumple')),
+       term:P('SW1#')+' show spanning-tree interface e0/3 detail\n BPDU: sent '+Y('152')+', received '+Y('1')}
+    ],[
+      st0('portfast + bpduguard','bpduguard enable'),send,arr,
+      {cap:'BPDU Guard apaga el puerto: queda en err-disabled. Es una protección, pero el puerto sí envía BPDU: no cumple.',s:mix({st:{t:'err-disabled',c:'bad'},ln:{c:'bad'}},bad('res','Envía BPDU · se apaga · no cumple')),
+       term:R('%SPANTREE-2-BLOCK_BPDUGUARD')+': Received BPDU on port Et0/3\n with BPDU Guard enabled. Disabling port.\n'+R('%PM-4-ERR_DISABLE')+': bpduguard error detected on Et0/3'}
+    ],[
+      st0('portfast + bpdufilter','bpdufilter enable'),
+      {cap:'Con BPDU filter, el switch no envía BPDU por ese puerto.',s:{out:{o:.35,p:[300,150],c:'bad'},'out-t':{t:'BPDU ✗'}}},
+      arr,
+      {cap:'La BPDU que llega se descarta y el puerto sigue en Forwarding. No envía ni recibe BPDU: cumple.',s:mix({in:{c:'bad',o:.3}},ok('res','✓ No envía ni recibe · cumple')),
+       term:P('SW1#')+' show spanning-tree interface e0/3 detail\n The port is in the portfast mode\n '+G('Bpdu filter is enabled')+'\n BPDU: sent '+G('0')+', received '+G('0')}
+    ]]};
+  })();
+
+  // P12 · HSRP preempt + track
+  (function(){
+    var svg=L('w1',220,230,450,75)+L('w2',680,230,450,75)+L('a1',450,400,220,253,'dim')+L('a2',450,400,680,253,'dim')
+      +N(0,450,75,'R3','r')+N(0,220,230,'R1','r')+N(0,680,230,'R2','r')+N(0,450,400,'VIP .254','',150)
+      +T(0,318,140,'WAN e0/1','sm mut','end')+T('x1',335,160,'✗','lg bad',null,0)
+      +T('p1',158,290,'prio 110 · Active','sm b','end')+T('trk',158,316,'track 1: Up','sm mut','end')
+      +T('p2',735,290,'prio 100 · Standby','sm b','start')+T('pre',735,316,'','sm','start')+B('res',450,468,380);
+    var hd=function(r){return P(r+'#')+' show standby brief\n                     P indicates configured to preempt.\nInterface   Grp  Pri P State    Virtual IP\n';};
+    var a=function(p){return {cap:'Estado normal: R1 tiene prioridad 110 y es Active; R2 tiene 100 y está en Standby. El tráfico de la VLAN sale por R1.',s:{a1:{c:'ok'},p1:{c:'ok'},pre:{t:p?'preempt':'sin preempt',c:p?'ok':'bad'}},
+      term:hd('R1')+'Et0/0.10    10   110 P '+G('Active')+'   172.16.10.254'};};
+    var b={cap:'Se cae el enlace WAN de R1 (e0/1). El objeto track 1 pasa a Down.',s:{w1:{c:'bad'},x1:{o:1},trk:{t:'track 1: Down',c:'bad'}}};
+    var c={cap:'R1 resta 20 a su prioridad y queda en 90, menos que los 100 de R2.',s:{p1:{t:'prio 90 · Active',c:'warn'}}};
+    DEMOS[11]={topic:'HSRP',title:'¿Quién queda Active?',modes:['R2 sin preempt','R2 con preempt'],svg:svg,steps:[[a(false),b,c,
+      {cap:'R2 tiene más prioridad, pero sin preempt no toma el rol. R1 sigue Active y el tráfico va hacia un enlace caído.',s:mix({a1:{c:'bad'}},bad('res','Active: R1 · tráfico perdido')),
+       term:hd('R1')+'Et0/0.10    10   '+R('90')+' P '+R('Active')+'   172.16.10.254'}
+    ],[a(true),b,c,
+      {cap:'R2 tiene preempt: al ver que su prioridad es mayor, toma el rol de Active. El tráfico pasa por R2.',s:mix({a1:{c:''},a2:{c:'ok'},p1:{t:'prio 90 · Standby',c:'warn'},p2:{t:'prio 100 · Active',c:'ok'}},ok('res','✓ Active: R2')),
+       term:hd('R2')+'Et0/0.10    10   100 P '+G('Active')+'   172.16.10.254'}
+    ]]};
+  })();
+
+  // P13 · un Active por grupo
+  (function(){
+    var svg=T(0,450,52,'Se pide: IPv4 en R1 · IPv6 en R2','acc b')
+      +L(0,205,240,280,165,'dim')+L(0,205,260,280,355,'dim')+L(0,695,240,620,165,'dim')+L(0,695,260,620,355,'dim')
+      +N(0,150,250,'R1','r')+N(0,750,250,'R2','r')
+      +X(280,90,340,150,'GRUPO 10 · IPv4')+H('h10',280,90,340,150,'')+T('g10a',450,165,'','lg b')+T('g10r',450,208,'','b')
+      +X(280,280,340,150,'GRUPO 110 · IPv6')+H('h110',280,280,340,150,'')+T('g110a',450,355,'','lg b')+T('g110r',450,398,'','b');
+    var hd=function(r){return P(r+'#')+' show standby brief\nInterface  Grp  Pri P State    Virtual IP\n';};
+    var s0={cap:'R1 y R2 participan en dos grupos HSRP en la subinterfaz de la VLAN 10: el 10 para IPv4 y el 110 para IPv6. Cada grupo elige su Active por separado.'};
+    var s1={cap:'Grupo 10: R1 tiene 110 y R2 el default 100. Gana R1, como se pide.',s:{h10:{o:1,c:'ok'},g10a:{t:'R1 110  >  R2 100'},g10r:{t:'Active: R1 ✓',c:'ok'}}};
+    DEMOS[12]={topic:'HSRP',title:'Cada grupo elige su propio Active',modes:['Configuración actual','Corregida'],svg:svg,steps:[[
+      mix(s0,{term:P('R2#')+' show run interface e0/0.10\n standby 10 ip 172.16.10.254\n standby 110 ipv6 2021:ACAD:ACAD:10::254/64\n '+R('standby 110 priority 90')+'\n standby 110 preempt'}),s1,
+      {cap:'Grupo 110: R1 tiene el default 100 y R2 tiene 90. Gana R1, pero IPv6 debía ir por R2.',s:{h110:{o:1,c:'bad'},g110a:{t:'R1 100  >  R2 90'},g110r:{t:'Active: R1 ✗',c:'bad'}}},
+      {cap:'Para corregirlo, en R2 el grupo 110 necesita prioridad sobre 100 y preempt. Por ejemplo: standby 110 priority 110.',
+       term:hd('R1')+'Et0/0.10   10   110 P '+G('Active')+'   172.16.10.254\nEt0/0.10   110  100   '+R('Active')+'   2021:ACAD:ACAD:10::254'}
+    ],[
+      mix(s0,{term:P('R2#')+' show run interface e0/0.10\n standby 10 ip 172.16.10.254\n standby 110 ipv6 2021:ACAD:ACAD:10::254/64\n '+G('standby 110 priority 110')+'\n standby 110 preempt'}),s1,
+      {cap:'Grupo 110: R2 tiene 110 con preempt y R1 el default 100. Gana R2, como se pide.',s:{h110:{o:1,c:'ok'},g110a:{t:'R1 100  <  R2 110'},g110r:{t:'Active: R2 ✓',c:'ok'}}},
+      {cap:'Los dos grupos quedan como pide el ticket: IPv4 por R1 e IPv6 por R2.',
+       term:hd('R2')+'Et0/0.10   10   100 P Standby  172.16.10.254\nEt0/0.10   110  110 P '+G('Active')+'   2021:ACAD:ACAD:10::254'}
+    ]]};
+  })();
+
+  // Motor de las demos
+  var dm=document.getElementById('demo'), dsvg=document.getElementById('dm-svg'), dseg=document.getElementById('dm-seg');
+  var D=null, dMode=0, dStep=0, dTimer=null, base={};
+  function dq(k){return dsvg.querySelector('[data-k="'+k+'"]');}
+  function snap(){base={};dsvg.querySelectorAll('[data-k]').forEach(function(el){base[el.getAttribute('data-k')]={o:el.getAttribute('opacity'),c:el.getAttribute('class'),t:el.tagName.toLowerCase()==='text'?el.textContent:null,tr:el.style.transform};});}
+  function rst(){Object.keys(base).forEach(function(k){var el=dq(k),b=base[k];if(!el)return;if(b.o==null)el.removeAttribute('opacity');else el.setAttribute('opacity',b.o);if(b.c!=null)el.setAttribute('class',b.c);if(b.t!=null)el.textContent=b.t;el.style.transform=b.tr;});}
+  function app(s){Object.keys(s||{}).forEach(function(k){var el=dq(k),p=s[k],b=base[k]||{};if(!el)return;if(p.o!=null)el.setAttribute('opacity',p.o);if(p.t!=null)el.textContent=p.t;if(p.p)el.style.transform='translate('+p.p[0]+'px,'+p.p[1]+'px)';if(p.c!=null)el.setAttribute('class',((b.c||'')+' '+p.c).trim());});}
+  function dRender(anim){
+    var st=D.steps[dMode],i; rst(); for(i=0;i<dStep;i++)app(st[i].s);
+    if(anim) dsvg.getBoundingClientRect();
+    app(st[dStep].s);
+    var term=''; for(i=0;i<=dStep;i++) if(st[i].term!=null) term=st[i].term;
+    document.getElementById('dm-term').innerHTML=term||Dd('Avanza para ver la salida de consola.');
+    document.getElementById('dm-cap').textContent=st[dStep].cap;
+    document.getElementById('dm-n').textContent='Paso '+(dStep+1)+' de '+st.length;
+    document.getElementById('dm-dots').innerHTML=st.map(function(_,k){return '<i'+(k<=dStep?' class="on"':'')+'></i>';}).join('');
+    document.getElementById('dm-prev').disabled=dStep===0;
+    document.getElementById('dm-next').disabled=dStep===st.length-1;
+    [].forEach.call(dseg.children,function(b,k){b.classList.toggle('on',k===dMode);});
+  }
+  function dStop(){if(dTimer){clearInterval(dTimer);dTimer=null;}document.getElementById('dm-play').textContent='▶ Reproducir';}
+  function dPlay(){dStop();dStep=0;dRender(true);document.getElementById('dm-play').textContent='■ Detener';
+    dTimer=setInterval(function(){if(dStep>=D.steps[dMode].length-1){dStop();return;}dStep++;dRender(true);},3400);}
+  function openDemo(i){
+    D=DEMOS[i]; if(!D) return; dm.hidden=false;
+    document.getElementById('dm-k').textContent='Demo · Pregunta '+(i+1);
+    document.getElementById('dm-k2').textContent=D.topic;
+    document.getElementById('dm-h').textContent=D.title;
+    dsvg.innerHTML=D.svg; snap();
+    dseg.innerHTML=''; dseg.hidden=D.modes.length<2;
+    D.modes.forEach(function(m,k){var b=document.createElement('button');b.type='button';b.textContent=m;b.onclick=function(){dMode=k;dPlay();};dseg.appendChild(b);});
+    dMode=0; dPlay();
+  }
+  function closeDemo(){dStop();dm.hidden=true;}
+  document.getElementById('dm-prev').onclick=function(){dStop();if(dStep>0){dStep--;dRender(false);}};
+  document.getElementById('dm-next').onclick=function(){dStop();if(dStep<D.steps[dMode].length-1){dStep++;dRender(true);}};
+  document.getElementById('dm-play').onclick=function(){if(dTimer)dStop();else dPlay();};
+  document.getElementById('dm-close').onclick=closeDemo;
+  function demoKey(ev){if(dm.hidden)return false;
+    if(ev.key==='ArrowRight'){ev.preventDefault();document.getElementById('dm-next').click();}
+    else if(ev.key==='ArrowLeft'){ev.preventDefault();document.getElementById('dm-prev').click();}
+    else if(ev.key==='Escape'){closeDemo();}
+    return true;}
+
+  // Slides
+  var slides=[].slice.call(stage.querySelectorAll('section.slide'));
+  var cur=0, idx=document.getElementById('index'), grid=document.getElementById('index-grid');
+  slides.forEach(function(s,i){
+    var b=document.createElement('button'); b.type='button';
+    b.innerHTML='<span class="n">'+(i+1)+'</span><span>'+esc(s.dataset.t||'')+'</span>';
+    b.addEventListener('click',function(){ idx.hidden=true; go(i); });
+    grid.appendChild(b);
+  });
+  function upd(){
+    var keys=Object.keys(res), ok=keys.filter(function(k){return res[k];}).length;
+    document.getElementById('score').textContent = keys.length ? ('Quiz '+ok+'/'+keys.length) : '';
+  }
+  function show(i){
+    if(!dm.hidden) closeDemo(); cur=Math.max(0,Math.min(slides.length-1,i));
+    slides.forEach(function(s,k){ s.hidden = k!==cur; });
+    document.getElementById('pos').textContent=(cur+1)+' / '+slides.length;
+    document.getElementById('prog').style.width=((cur+1)/slides.length*100)+'%';
+    document.getElementById('btn-prev').disabled = cur===0;
+    document.getElementById('btn-next').disabled = cur===slides.length-1;
+    [].slice.call(grid.children).forEach(function(b,k){ b.classList.toggle('on',k===cur); });
+    upd();
+  }
+  function go(i){ var h='d'+(i+1); if(location.hash!=='#'+h) location.hash=h; else show(i); }
+  function fromHash(){ var m=/^#d(\d+)$/.exec(location.hash); return m? (+m[1]-1) : 0; }
+  window.addEventListener('hashchange',function(){ show(fromHash()); });
+  document.getElementById('btn-prev').onclick=function(){ go(cur-1); };
+  document.getElementById('btn-next').onclick=function(){ go(cur+1); };
+  document.getElementById('btn-index').onclick=function(){ idx.hidden=!idx.hidden; };
+  document.addEventListener('keydown',function(ev){
+    var t=ev.target.tagName; if(t==='SELECT'||t==='INPUT'||t==='TEXTAREA') return; if(demoKey(ev)) return;
+    if(ev.key==='ArrowRight'||ev.key==='PageDown'){ ev.preventDefault(); if(cur<slides.length-1) go(cur+1); }
+    else if(ev.key==='ArrowLeft'||ev.key==='PageUp'){ ev.preventDefault(); if(cur>0) go(cur-1); }
+    else if(ev.key==='Escape'){ idx.hidden=true; }
+    else if(ev.key==='Home'){ go(0); } else if(ev.key==='End'){ go(slides.length-1); }
+  });
+  var sx=null; stage.addEventListener('touchstart',function(e){ sx=e.touches[0].clientX; },{passive:true});
+  stage.addEventListener('touchend',function(e){ if(sx===null) return; var dx=e.changedTouches[0].clientX-sx; sx=null; if(Math.abs(dx)>60){ if(dx<0&&cur<slides.length-1) go(cur+1); if(dx>0&&cur>0) go(cur-1); } });
+  show(fromHash());
+
+  // Copy
+  stage.querySelectorAll('.cli .copy').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var pre=btn.parentElement.querySelector('pre');
+      try{ navigator.clipboard.writeText(pre.innerText).then(function(){ btn.textContent='copiado'; setTimeout(function(){btn.textContent='copiar';},1400); }, function(){ sel(pre); }); }catch(e){ sel(pre); }
+    });
+  });
+  function sel(el){ try{ var r=document.createRange(); r.selectNodeContents(el); var s=window.getSelection(); s.removeAllRanges(); s.addRange(r);}catch(e){} }
+
+  // EtherChannel
+  var proto={active:'lacp',passive:'lacp',desirable:'pagp',auto:'pagp',on:'on'};
+  var a=document.getElementById('ec-a'), b=document.getElementById('ec-b'), out=document.getElementById('ec-out');
+  function check(){
+    var x=a.value,y=b.value,ok=false,msg='';
+    if(proto[x]!==proto[y]){ msg=(x==='on'||y==='on')?'Un extremo en "on" no negocia y el otro espera LACP o PAgP. El canal no se forma.':'LACP y PAgP no son compatibles entre sí.'; }
+    else if(x==='on'){ ok=true; msg='Canal estático: se forma, pero sin negociación. Es lo que corresponde al Po3 del diagrama.'; }
+    else if((x==='passive'&&y==='passive')||(x==='auto'&&y==='auto')){ msg='Los dos extremos solo escuchan y ninguno inicia. El canal no se forma.'; }
+    else if(x===y){ ok=true; msg='Se forma porque los dos negocian, pero no cumple: uno debe negociar y el otro escuchar.'; }
+    else { ok=true; msg='Se forma y cumple el requisito: un extremo negocia y el otro escucha.'; }
+    var meets=ok&&x!==y&&proto[x]!=='on';
+    out.className='verdict '+(meets?'ok':'bad');
+    out.innerHTML='<b>'+(ok?(meets?'Cumple':'Se forma, no cumple'):'No se forma')+'</b>'+msg;
+  }
+  a.addEventListener('change',check); b.addEventListener('change',check); check();
+
+  // Checklist
+  var KEY='ary6112-repaso-check', saved={};
+  try{ saved=JSON.parse(localStorage.getItem(KEY)||'{}')||{}; }catch(e){}
+  document.querySelectorAll('#checklist input').forEach(function(cb){
+    if(saved[cb.id]) cb.checked=true;
+    cb.addEventListener('change',function(){ saved[cb.id]=cb.checked; try{ localStorage.setItem(KEY,JSON.stringify(saved)); }catch(e){} });
+  });
+})();
+</script>
+
+</body>
+</html>
