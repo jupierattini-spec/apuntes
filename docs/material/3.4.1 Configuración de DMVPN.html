@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Configuración de DMVPN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Lienzo fijo 1600x900 (16:9) escalado a la ventana. Misma paleta y tipografía que las presentaciones de la unidad 2. */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#15212c; --muted:#5a6876; --line:#d3dae1; --frame:#d8dee5;
+  --accent:#1c63a8; --accent-ink:#ffffff; --accent-soft:#e1ecf7;
+  --amber:#a8650a; --amber-soft:#fbefdc; --ok:#1f7a4a; --ok-soft:#e0f2e8; --bad:#b0322b; --bad-soft:#f9e3e1;
+  --term-bg:#0f1b26; --term-fg:#d2dee9; --term-dim:#7f93a6; --term-hl:#ffd27a; --term-prompt:#7cc0ff;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d151d; --panel:#16212c; --ink:#e3eaf1; --muted:#97a6b4; --line:#2a3846; --frame:#070c11;
+  --accent:#5aa6ea; --accent-ink:#06121c; --accent-soft:#1a3043;
+  --amber:#f0b25a; --amber-soft:#3a2a12; --ok:#5fcf91; --ok-soft:#14301f; --bad:#f08a80; --bad-soft:#3b1a17;
+  --term-bg:#0a121a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d151d; --panel:#16212c; --ink:#e3eaf1; --muted:#97a6b4; --line:#2a3846; --frame:#070c11;
+  --accent:#5aa6ea; --accent-ink:#06121c; --accent-soft:#1a3043;
+  --amber:#f0b25a; --amber-soft:#3a2a12; --ok:#5fcf91; --ok-soft:#14301f; --bad:#f08a80; --bad-soft:#3b1a17;
+  --term-bg:#0a121a; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--frame);color:var(--ink);font-family:var(--f-body);overflow:hidden}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* ---------- marco y escala ---------- */
+.deck{position:fixed;inset:0;display:flex;flex-direction:column}
+.viewport{flex:1;min-height:0;position:relative;overflow:hidden}
+.canvas{position:absolute;left:50%;top:50%;width:1600px;height:900px;transform:translate(-50%,-50%) scale(var(--s,1));transform-origin:center;background:var(--bg);box-shadow:0 6px 30px rgba(0,0,0,.18);overflow:hidden;font-size:23px;line-height:1.45}
+.slide{position:absolute;inset:0;padding:50px 72px 44px;overflow:hidden}
+.slide[hidden]{display:none!important}
+.inner{height:100%;display:flex;flex-direction:column;gap:20px}
+.slide.enter .inner{animation:enter .35s ease-out}
+@keyframes enter{from{opacity:.25;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- tipografía dentro del lienzo ---------- */
+.canvas h1{font-size:66px;font-weight:800;line-height:1.04}
+.canvas h2{font-size:40px;font-weight:800;line-height:1.1}
+.canvas h3{font-size:23px;font-weight:700}
+.eyebrow{font-family:var(--f-display);font-size:15px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.head{display:flex;flex-direction:column;gap:6px}
+.lead{font-size:24px;color:var(--muted);max-width:76ch}
+.canvas ul{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:7px}
+.canvas ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:7px}
+.canvas a{color:var(--accent)}
+code{font-family:var(--f-mono);font-size:.84em;background:var(--accent-soft);padding:1px 6px;border-radius:4px}
+.small{font-size:20px}
+.muted{color:var(--muted)}
+b,strong{font-weight:700}
+
+/* ---------- bloques ---------- */
+.fill{flex:1;min-height:0}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+.cols.st{align-items:stretch}
+.cols.w37{grid-template-columns:minmax(0,3fr) minmax(0,7fr)}
+.cols.w46{grid-template-columns:minmax(0,4fr) minmax(0,6fr)}
+.cols.w64{grid-template-columns:minmax(0,6fr) minmax(0,4fr)}
+.cols.w73{grid-template-columns:minmax(0,7fr) minmax(0,3fr)}
+.cols.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cols.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel.tight{padding:14px 16px;gap:8px}
+.note{border-left:5px solid var(--amber);background:var(--amber-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.fix{border-left:5px solid var(--ok);background:var(--ok-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.warn{border-left:5px solid var(--bad);background:var(--bad-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.fe{font-weight:700;color:var(--ok)}
+.term{background:var(--term-bg);color:var(--term-fg);font-family:var(--f-mono);font-size:17px;line-height:1.5;border-radius:8px;padding:14px 16px;white-space:pre;overflow:hidden;min-width:0;border:1px solid var(--line)}
+.term.sm{font-size:15px;padding:12px 14px}
+.term.xs{font-size:13.5px;padding:10px 12px;line-height:1.42}
+.term .p{color:var(--term-prompt)} .term .h{color:var(--term-hl)} .term .d{color:var(--term-dim)} .term .g{color:#8be0ae} .term .r{color:#ff9d94}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--panel)}
+.seg button{background:transparent;border:0;padding:8px 16px;color:var(--ink);font-size:18px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.ctl{display:flex;flex-direction:column;gap:4px;font-size:17px;color:var(--muted)}
+.ctl select,.ctl input[type=number],.ctl input[type=text]{font:inherit;font-size:18px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+.ctl input[type=range]{width:100%}
+.tog{display:inline-flex;gap:8px;align-items:center;font-size:18px;cursor:pointer}
+.tog input{width:18px;height:18px}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:7px;padding:9px 18px;font-weight:700;font-size:18px}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.btn.danger{background:var(--bad);color:var(--panel)}
+.btn:disabled{opacity:.45;cursor:default}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.badge.ok{background:var(--ok-soft);color:var(--ok)} .badge.bad{background:var(--bad-soft);color:var(--bad)} .badge.blue{background:var(--accent-soft);color:var(--accent)} .badge.amb{background:var(--amber-soft);color:var(--amber)}
+table{border-collapse:collapse;width:100%;font-size:20px}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-display);font-size:14.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td code{white-space:nowrap}
+tr.hit td{background:var(--amber-soft)}
+tr.ok td{background:var(--ok-soft)}
+tr.no td{background:var(--bad-soft)}
+.result{font-family:var(--f-display);font-size:28px;font-weight:800}
+.big{font-family:var(--f-display);font-size:34px;font-weight:800}
+
+/* ---------- SVG ---------- */
+svg{width:100%;height:auto;display:block}
+.dia text{font-family:var(--f-display);font-weight:700;font-size:15px;fill:var(--ink)}
+.dia .lbl{font-family:var(--f-mono);font-weight:400;font-size:12px;fill:var(--muted)}
+.dia .lbl.k{fill:var(--accent);font-weight:600}
+.dia .box{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.dia .box.act{fill:var(--ok-soft);stroke:var(--ok);stroke-width:2.6}
+.dia .box.amb{fill:var(--amber-soft);stroke:var(--amber);stroke-width:2.2}
+.dia .box.bk{fill:var(--panel);stroke:var(--muted)}
+.dia .box.off{fill:var(--bad-soft);stroke:var(--bad);stroke-dasharray:5 3}
+.dia .zone{fill:var(--accent-soft);stroke:var(--line);opacity:.55}
+.dia .zone2{fill:var(--amber-soft);stroke:var(--line);opacity:.6}
+.dia .host{fill:var(--panel);stroke:var(--line);stroke-width:1.4}
+.dia .wire{stroke:var(--muted);stroke-width:2.2;fill:none}
+.dia .wire.down{stroke:var(--bad);stroke-dasharray:6 4}
+.dia .wire.ok{stroke:var(--ok)}
+.dia .wire.acc{stroke:var(--accent);stroke-width:3}
+.dia .wire.dash{stroke-dasharray:6 5}
+.dia .flow{stroke:var(--ok);stroke-width:3.5;fill:none;stroke-dasharray:9 7;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.dia .pkt{fill:var(--amber)}
+.dia .tagr{fill:var(--amber);stroke:none}
+.dia .tagt{font-family:var(--f-mono);font-size:12px;font-weight:600;fill:#1b1206}
+.dia .clk{cursor:pointer}
+.dia .clk:hover{filter:brightness(1.06)}
+.dia .sel{stroke-width:3.4!important;stroke:var(--amber)!important}
+
+/* ---------- componentes ---------- */
+.log{font-family:var(--f-mono);font-size:14px;color:var(--muted);white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;overflow:hidden}
+.agenda{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.agenda button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;color:var(--ink);display:flex;flex-direction:column;gap:6px;font-size:24px}
+.agenda button:hover{border-color:var(--accent)}
+.agenda small{color:var(--muted);font-size:17px}
+.cover{justify-content:center;gap:24px}
+.cover .meta{display:flex;gap:10px;flex-wrap:wrap}
+.cards{display:grid;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.card .ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-family:var(--f-display);font-weight:800;font-size:19px}
+.card h3{font-size:21px}
+.card p{font-size:19px;color:var(--muted)}
+.steps{display:grid;gap:12px}
+.steps>div{border-top:5px solid var(--accent);background:var(--panel);border-radius:0 0 10px 10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;font-size:20px;cursor:pointer}
+.steps>div b{font-family:var(--f-display);font-size:22px}
+.steps>div.on{border-top-color:var(--amber);background:var(--amber-soft)}
+.annot .ln{display:block;padding:0 6px;margin:0 -6px;border-radius:3px}
+.annot .ln.k{color:var(--term-hl);cursor:pointer}
+.annot .ln.k:hover,.annot .ln.sel{background:rgba(255,210,122,.17)}
+.pick{display:flex;flex-direction:column;gap:8px}
+.pick button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:11px 15px;color:var(--ink);font-size:20px}
+.pick button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.quiz .opts{display:flex;flex-direction:column;gap:10px}
+.quiz .opts button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 18px;color:var(--ink);font-size:22px}
+.quiz .opts button.right{border-color:var(--ok);background:var(--ok-soft)}
+.quiz .opts button.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.quiz .q{font-size:28px;font-weight:600}
+.pktrow{display:flex;gap:0;font-family:var(--f-mono);font-size:15px;font-weight:600}
+.pktrow span{padding:12px 10px;border:1px solid var(--line);text-align:center;margin-left:-1px}
+.pktrow .h1{background:var(--accent-soft);color:var(--accent)} .pktrow .h2{background:var(--amber-soft);color:var(--amber)} .pktrow .h3{background:var(--ok-soft);color:var(--ok)} .pktrow .h4{background:var(--bad-soft);color:var(--bad)} .pktrow .h0{background:var(--panel);color:var(--ink)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:16px;color:var(--muted)}
+.legend i{display:inline-block;width:13px;height:13px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* ---------- barra de navegación ---------- */
+nav.bar{flex:none;display:flex;align-items:center;gap:10px;padding:8px max(16px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));border-top:1px solid var(--line);background:var(--panel);font-size:15px}
+nav.bar .prog{flex:1;height:5px;background:var(--line);border-radius:3px;overflow:hidden;min-width:40px}
+nav.bar .prog i{display:block;height:100%;background:var(--accent);transition:width .25s}
+nav.bar button{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px 12px}
+nav.bar button:disabled{opacity:.4}
+nav.bar .count{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px}
+:fullscreen nav.bar{opacity:0;transition:opacity .2s}
+:fullscreen nav.bar:hover{opacity:1}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- impresión: una diapositiva 16:9 por página ---------- */
+@media print{
+  @page{size:1600px 900px;margin:0}
+  html,body{height:auto;overflow:visible;background:#fff}
+  .deck{position:static;display:block}
+  nav.bar{display:none}
+  .viewport{overflow:visible}
+  .canvas{position:static;transform:none;width:auto;height:auto;box-shadow:none;background:transparent}
+  .slide,.slide[hidden]{display:block!important;position:relative;width:1600px;height:900px;break-after:page;background:var(--bg)}
+  .slide.enter .inner{animation:none}
+}
+</style></head><body>
+<div class="deck">
+<div class="viewport"><div class="canvas" id="stage">
+<!-- 1 Portada -->
+<section class="slide" data-title="Portada"><div class="inner cover">
+  <span class="eyebrow">ARY6112 · Troubleshooting · Unidad 3.4.1</span>
+  <h1>Configuración de DMVPN</h1>
+  <p class="lead">Túneles GRE, resolución de direcciones con NHRP, GRE multipunto y las tres fases de DMVPN. Al final, cómo IPsec protege el túnel y cómo se verifica.</p>
+  <div class="meta"><span class="badge blue">Routing y Switching Corporativo</span><span class="badge blue">Usa ← → · F pantalla completa</span></div>
+</div></section>
+
+<!-- 2 Agenda -->
+<section class="slide" data-title="Agenda"><div class="inner">
+  <div class="head"><span class="eyebrow">Agenda</span><h2>Lo que veremos</h2></div>
+  <div class="agenda" id="agenda"></div>
+</div></section>
+
+<!-- 3 GRE -->
+<section class="slide" data-title="GRE" data-agenda="Túneles GRE" data-sub="Encapsulación, configuración y verificación"><div class="inner">
+  <div class="head"><span class="eyebrow">GRE</span><h2>GRE encapsula casi cualquier cosa, incluido el multicast</h2>
+  <p class="lead">Generic Routing Encapsulation mete un paquete de capa 3 dentro de otro paquete IP unicast. No cifra nada por sí mismo, pero permite que OSPF o EIGRP (que usan multicast) pasen por un túnel IPsec, que solo protege unicast.</p></div>
+  <div class="fix"><span class="fe">Fe de erratas.</span> El original dice “Protocolo de Enrutamiento Genérico”. GRE significa <b>Generic Routing Encapsulation</b>: es una encapsulación, no un protocolo de enrutamiento.</div>
+  <div class="cols w64 fill">
+    <div class="panel">
+      <svg viewBox="0 0 860 260" class="dia" role="img" aria-label="R2 y R3 con OSPF dentro de GRE dentro de IPsec a través del proveedor">
+        <path class="zone" d="M210 60 Q430 -10 650 60 Q760 130 650 200 Q430 270 210 200 Q100 130 210 60z"/>
+        <text class="lbl" x="430" y="240" text-anchor="middle">nube del proveedor / Internet</text>
+        <rect x="160" y="88" width="540" height="84" rx="42" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+        <rect x="190" y="110" width="480" height="40" rx="20" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="2"/>
+        <text x="430" y="135" text-anchor="middle" font-size="14">GRE: OSPF multicast + datos</text>
+        <text class="lbl k" x="430" y="104" text-anchor="middle">IPsec: protege el paquete GRE (unicast)</text>
+        <rect class="box" x="30" y="105" width="120" height="50" rx="8"/><text x="90" y="136" text-anchor="middle">R2</text>
+        <rect class="box" x="710" y="105" width="120" height="50" rx="8"/><text x="770" y="136" text-anchor="middle">R3</text>
+      </svg>
+    </div>
+    <div class="stack">
+      <div class="panel tight"><h3>Por qué GRE + IPsec</h3><ul class="small">
+        <li>IPsec solo protege IP unicast.</li><li>OSPF y EIGRP usan multicast para sus Hello.</li>
+        <li>GRE convierte todo en un paquete IP unicast entre los extremos del túnel.</li><li>Ese paquete sí lo puede proteger IPsec.</li></ul></div>
+      <div class="panel tight"><h3>Lo que suma</h3><p class="small">GRE agrega 24 bytes (20 de IP + 4 de GRE). Por eso la MTU del túnel queda en 1476 sobre un enlace de 1500.</p></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 4 Configurar GRE -->
+<section class="slide" data-title="Crear un túnel GRE"><div class="inner">
+  <div class="head"><span class="eyebrow">Pasos para crear el túnel</span><h2>Cuatro líneas en cada extremo</h2>
+  <p class="lead">Interfaz túnel, IP del túnel, origen y destino; luego lo mismo al revés en el otro router. Provoca un error y mira qué le pasa al túnel.</p></div>
+  <div class="panel tight">
+    <svg viewBox="0 0 1440 170" class="dia" id="grSvg" role="img" aria-label="R1 y R4 unidos por un túnel GRE sobre R2 y R3"></svg>
+  </div>
+  <div class="cols w37 fill">
+    <div id="grList"></div>
+    <div class="cols" style="gap:14px">
+      <div class="term sm" id="grCfg"></div>
+      <div class="stack"><div class="term sm" id="grOut"></div><p class="note" id="grTxt"></p></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 5 Verificar GRE -->
+<section class="slide" data-title="Verificar un túnel GRE"><div class="inner">
+  <div class="head"><span class="eyebrow">Verificación del túnel GRE</span><h2>Cómo leer <code>show interface tunnel</code></h2>
+  <p class="lead">Toca una línea resaltada para ver qué significa y qué falla podría revelar.</p></div>
+  <div class="cols w64 fill">
+    <div class="term sm annot" id="gvT"></div>
+    <div class="panel"><span class="eyebrow">Interpretación</span><p id="gvX">Selecciona una línea resaltada.</p></div>
+  </div>
+</div></section>
+
+<!-- 6 NHRP -->
+<section class="slide" data-title="NHRP" data-agenda="NHRP y mGRE" data-sub="Resolución de direcciones y túnel multipunto"><div class="inner">
+  <div class="head"><span class="eyebrow">Next Hop Resolution Protocol</span><h2>NHRP traduce IP del túnel a IP de transporte</h2>
+  <p class="lead">En un túnel multipunto no hay un destino fijo. NHRP es el “ARP” de DMVPN: el hub (NHS) guarda qué IP pública (NBMA) tiene cada IP de túnel, y los spokes (NHC) le preguntan.</p></div>
+  <div class="cols w46 fill">
+    <div class="panel">
+      <svg viewBox="0 0 560 330" class="dia" role="img" aria-label="Hub como NHS con la base de datos NHRP y dos spokes que se registran">
+        <rect class="box amb" x="160" y="16" width="240" height="60" rx="8"/><text x="280" y="42" text-anchor="middle">R11 · hub (NHS)</text><text class="lbl" x="280" y="62" text-anchor="middle">192.168.100.11 · 172.16.11.1</text>
+        <rect class="box" x="30" y="250" width="170" height="56" rx="8"/><text x="115" y="274" text-anchor="middle">R31 · spoke (NHC)</text><text class="lbl" x="115" y="292" text-anchor="middle">.100.31 · 172.16.31.1</text>
+        <rect class="box" x="360" y="250" width="170" height="56" rx="8"/><text x="445" y="274" text-anchor="middle">R41 · spoke (NHC)</text><text class="lbl" x="445" y="292" text-anchor="middle">.100.41 · 172.16.41.1</text>
+        <line class="wire" x1="115" y1="250" x2="250" y2="76"/><line class="wire" x1="445" y1="250" x2="310" y2="76"/>
+        <text class="lbl k" x="20" y="215">Registration</text><text class="lbl k" x="540" y="215" text-anchor="end">Registration</text>
+        <rect x="160" y="100" width="240" height="94" rx="6" fill="var(--panel)" stroke="var(--line)"/>
+        <text class="lbl" x="174" y="122">Base NHRP del hub</text>
+        <text class="lbl" x="174" y="146">192.168.100.31 → 172.16.31.1</text><text class="lbl" x="174" y="168">192.168.100.41 → 172.16.41.1</text>
+        <path d="M200 285 L360 285" stroke="var(--ok)" stroke-width="3" stroke-dasharray="7 5"/><text class="lbl" x="280" y="320" text-anchor="middle" style="fill:var(--ok)">túnel spoke a spoke (fase 2 y 3)</text>
+      </svg>
+    </div>
+    <div class="stack">
+      <div class="panel tight"><h3>Mensajes NHRP</h3><div id="nhList"></div></div>
+      <div class="panel tight"><p id="nhX"></p></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 7 mGRE -->
+<section class="slide" data-title="GRE multipunto"><div class="inner">
+  <div class="head"><span class="eyebrow">GRE multipunto (mGRE)</span><h2>Una sola interfaz túnel para muchos vecinos</h2>
+  <p class="lead">Con GRE punto a punto, el hub necesitaría un túnel por sucursal. Con mGRE tiene una sola interfaz y NHRP le dice a dónde enviar cada paquete. Agrega sucursales y compara.</p></div>
+  <div class="ctrls"><div class="seg" id="mgSeg"><button data-v="p2p" aria-pressed="false">GRE punto a punto</button><button data-v="mg" aria-pressed="true">mGRE</button></div><label class="ctl" style="min-width:280px">Sucursales: <b id="mgN"></b><input type="range" id="mgR" min="2" max="8" value="3"></label></div>
+  <div class="cols w64 fill">
+    <div class="panel"><svg viewBox="0 0 760 360" class="dia" id="mgSvg" role="img" aria-label="Hub con sucursales"></svg></div>
+    <div class="stack"><div class="term sm" id="mgCfg"></div><p class="note" id="mgTxt"></p></div>
+  </div>
+</div></section>
+
+<!-- 8 DMVPN -->
+<section class="slide" data-title="DMVPN y sus beneficios" data-agenda="DMVPN" data-sub="Fases, configuración y verificación"><div class="inner">
+  <div class="head"><span class="eyebrow">Dynamic Multipoint VPN</span><h2>Malla completa sin configurar la malla</h2>
+  <p class="lead">En hub-and-spoke, el tráfico entre sucursales pasa por la casa matriz. Una malla completa de túneles IPsec lo evita, pero es cara de configurar y mantener. DMVPN crea túneles directos entre sucursales cuando hacen falta y los borra cuando no se usan.</p></div>
+  <div class="cards fill" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+    <div class="card"><div class="ic">1</div><h3>Sin tocar el hub</h3><p>Agregar un spoke no requiere cambios en el hub.</p></div>
+    <div class="card"><div class="ic">2</div><h3>Escalable</h3><p>Emparejamiento mínimo; permite redes muy grandes.</p></div>
+    <div class="card"><div class="ic">3</div><h3>Spoke a spoke</h3><p>Malla completa configurando solo el túnel spoke-hub.</p></div>
+    <div class="card"><div class="ic">4</div><h3>Topología flexible</h3><p>No impone una forma fija a la red superpuesta.</p></div>
+    <div class="card"><div class="ic">5</div><h3>Multiprotocolo</h3><p>IPv4, IPv6 y MPLS como transporte o como carga.</p></div>
+    <div class="card"><div class="ic">6</div><h3>Multicast</h3><p>El tráfico multicast pasa por el túnel.</p></div>
+    <div class="card"><div class="ic">7</div><h3>Detrás de NAT</h3><p>Los routers pueden estar detrás de traducción de direcciones.</p></div>
+    <div class="card"><div class="ic">8</div><h3>Piezas estándar</h3><p>Se arma con NHRP, mGRE e IPsec.</p></div>
+  </div>
+</div></section>
+
+<!-- 9 Fases -->
+<section class="slide" data-title="Simulador: fases de DMVPN"><div class="inner">
+  <div class="head"><span class="eyebrow">Fases de DMVPN</span><h2>Por dónde va el tráfico de R31 a R41 en cada fase</h2>
+  <p class="lead">Elige la fase y envía un paquete de la LAN de R31 (10.3.3.0/24) a la de R41 (10.4.4.0/24). Envíalo dos veces para ver qué cambia.</p></div>
+  <div class="ctrls"><div class="seg" id="phSeg"><button data-v="1" aria-pressed="true">Fase 1</button><button data-v="2" aria-pressed="false">Fase 2</button><button data-v="3" aria-pressed="false">Fase 3</button></div><button class="btn" id="phGo">Enviar 10.3.3.1 → 10.4.4.1</button><button class="btn ghost" id="phRst">Reiniciar</button></div>
+  <div class="cols w46 fill">
+    <div class="panel"><svg viewBox="0 0 560 360" class="dia" id="phSvg" role="img" aria-label="Hub R11 y spokes R31 y R41"></svg></div>
+    <div class="stack"><div class="panel tight"><h3 id="phH"></h3><p id="phX" class="small"></p></div><div class="term sm" id="phO"></div></div>
+  </div>
+</div></section>
+
+<!-- 10 Topología -->
+<section class="slide" data-title="Topología de configuración"><div class="inner">
+  <div class="head"><span class="eyebrow">Configuración de DMVPN</span><h2>Un hub, dos spokes y la red 192.168.100.0/24 en el túnel</h2>
+  <p class="lead">R11 es el hub (NHS). R31 y R41 son spokes (NHC): conocen de forma estática la IP del hub, pero su propia IP de transporte puede ser estática o por DHCP. Los tres salen por una ruta por defecto al proveedor (172.16.0.0/16). EIGRP corre dentro del túnel y anuncia las LAN.</p></div>
+  <div class="panel fill">
+    <svg viewBox="0 0 1440 380" class="dia" role="img" aria-label="R11 con 10.1.1.0/24, R31 con 10.3.3.0/24 y R41 con 10.4.4.0/24">
+      <path class="zone" d="M420 60 Q720 -10 1020 60 Q1150 190 1020 320 Q720 390 420 320 Q290 190 420 60z"/>
+      <text class="lbl" x="720" y="40" text-anchor="middle">Proveedor · transporte (NBMA) 172.16.0.0/16</text>
+      <path d="M380 190 C560 190 560 100 1060 100" fill="none" stroke="var(--accent)" stroke-width="16" opacity=".25"/><path d="M380 190 C560 190 560 280 1060 280" fill="none" stroke="var(--accent)" stroke-width="16" opacity=".25"/>
+      <text x="720" y="196" text-anchor="middle">Túnel DMVPN 192.168.100.0/24 · Tunnel100</text>
+      <rect class="box amb" x="170" y="160" width="210" height="60" rx="8"/><text x="275" y="186" text-anchor="middle">R11 · hub</text><text class="lbl" x="275" y="206" text-anchor="middle">Tu .11 · NBMA 172.16.11.1</text>
+      <rect class="box" x="1060" y="70" width="210" height="60" rx="8"/><text x="1165" y="96" text-anchor="middle">R31 · spoke</text><text class="lbl" x="1165" y="116" text-anchor="middle">Tu .31 · NBMA 172.16.31.1</text>
+      <rect class="box" x="1060" y="250" width="210" height="60" rx="8"/><text x="1165" y="276" text-anchor="middle">R41 · spoke</text><text class="lbl" x="1165" y="296" text-anchor="middle">Tu .41 · NBMA 172.16.41.1</text>
+      <line class="wire" x1="170" y1="190" x2="30" y2="190"/><text class="lbl k" x="30" y="178">LAN 10.1.1.0/24</text>
+      <line class="wire" x1="1270" y1="100" x2="1420" y2="100"/><text class="lbl k" x="1420" y="88" text-anchor="end">LAN 10.3.3.0/24</text>
+      <line class="wire" x1="1270" y1="280" x2="1420" y2="280"/><text class="lbl k" x="1420" y="268" text-anchor="end">LAN 10.4.4.0/24</text>
+    </svg>
+  </div>
+</div></section>
+
+<!-- 11 Config fase 1 y 3 -->
+<section class="slide" data-title="Configuración fase 1 y fase 3"><div class="inner">
+  <div class="head"><span class="eyebrow">Configuración de DMVPN</span><h2>De fase 1 a fase 3 cambian pocas líneas</h2>
+  <p class="lead">Elige fase y equipo. Toca una línea resaltada para ver qué hace.</p></div>
+  <div class="ctrls"><div class="seg" id="cfPh"><button data-v="1" aria-pressed="true">Fase 1</button><button data-v="3" aria-pressed="false">Fase 3</button></div><div class="seg" id="cfDev"><button data-v="hub" aria-pressed="true">Hub R11</button><button data-v="spk" aria-pressed="false">Spoke</button></div></div>
+  <div class="cols w46 fill">
+    <div class="term annot" id="cfT"></div>
+    <div class="stack"><div class="panel"><span class="eyebrow">Qué hace</span><p id="cfX">Selecciona una línea resaltada.</p></div><div class="note" id="cfN"></div></div>
+  </div>
+</div></section>
+
+<!-- 12 Verificación -->
+<section class="slide" data-title="Verificar DMVPN"><div class="inner">
+  <div class="head"><span class="eyebrow">Verificación de DMVPN</span><h2>Tres comandos para ver el estado del túnel</h2>
+  <p class="lead">Cambia de comando y toca una línea resaltada.</p></div>
+  <div class="ctrls"><div class="seg" id="dvSeg"><button data-v="a" aria-pressed="true">show dmvpn</button><button data-v="b" aria-pressed="false">show dmvpn detail</button><button data-v="c" aria-pressed="false">show ip nhrp</button></div></div>
+  <div class="cols w64 fill">
+    <div class="term sm annot" id="dvT"></div>
+    <div class="panel"><span class="eyebrow">Interpretación</span><p id="dvX">Selecciona una línea resaltada.</p></div>
+  </div>
+</div></section>
+
+<!-- 13 Síntomas -->
+<section class="slide" data-title="DMVPN: del síntoma a la causa"><div class="inner">
+  <div class="head"><span class="eyebrow">Troubleshooting DMVPN</span><h2>Del síntoma a la causa</h2><p class="lead">Toca un síntoma para ver dónde mirar primero.</p></div>
+  <div class="cols w37 fill">
+    <div id="dsList"></div>
+    <div class="panel"><span class="eyebrow" id="dsT"></span><div id="dsX"></div><div class="term sm" id="dsO"></div></div>
+  </div>
+</div></section>
+
+<!-- 14 Transporte seguro -->
+<section class="slide" data-title="Transporte seguro" data-agenda="Seguridad con IPsec" data-sub="Servicios, modos, IKE y verificación"><div class="inner">
+  <div class="head"><span class="eyebrow">Elementos de transporte seguro</span><h2>Internet como WAN: ya no se puede confiar en el camino</h2>
+  <p class="lead">Compara los dos escenarios. Con circuitos privados se asume que la red del proveedor es confiable; con Internet, el camino entre sucursal y matriz queda expuesto.</p></div>
+  <div class="ctrls"><div class="seg" id="tsSeg"><button data-v="p" aria-pressed="true">MPLS VPN o circuito privado</button><button data-v="i" aria-pressed="false">Internet como transporte</button></div></div>
+  <div class="panel"><svg viewBox="0 0 1440 260" class="dia" id="tsSvg" role="img" aria-label="Sucursal, transporte y centro de datos"></svg></div>
+  <div class="note" id="tsTxt"></div>
+</div></section>
+
+<!-- 15 Servicios IPsec -->
+<section class="slide" data-title="Servicios de IPsec"><div class="inner">
+  <div class="head"><span class="eyebrow">Seguridad en DMVPN</span><h2>IPsec entrega cuatro servicios</h2>
+  <p class="lead">DMVPN por sí solo no cifra nada. La seguridad la pone IPsec.</p></div>
+  <div class="cards" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+    <div class="card"><div class="ic">C</div><h3>Confidencialidad</h3><p>Cifra los datos. Quien los intercepte no puede leerlos.</p></div>
+    <div class="card"><div class="ic">I</div><h3>Integridad</h3><p>Un hash en cada extremo comprueba que nadie modificó los datos en el camino.</p></div>
+    <div class="card"><div class="ic">A</div><h3>Autenticación</h3><p>Cada extremo verifica que el otro es quien dice ser (clave compartida o certificados).</p></div>
+    <div class="card"><div class="ic">R</div><h3>Antireplay</h3><p>Números de secuencia para descartar paquetes duplicados, como un inicio de sesión capturado y reenviado.</p></div>
+  </div>
+  <div class="fix"><span class="fe">Fe de erratas.</span> El resumen original dice que IPsec garantiza “confidencialidad, integridad y disponibilidad”. IPsec no garantiza disponibilidad; sus servicios son los cuatro de arriba.</div>
+</div></section>
+
+<!-- 16 Modos IPsec -->
+<section class="slide" data-title="Modos de IPsec"><div class="inner">
+  <div class="head"><span class="eyebrow">Modos de protección IPsec</span><h2>Transporte o túnel: cuántas cabeceras IP lleva el paquete</h2>
+  <p class="lead">Elige el caso y compara la estructura y el tamaño.</p></div>
+  <div class="panel tight"><div id="ipmList" class="ctrls" style="flex-direction:row"></div></div>
+  <div class="panel stack"><div class="pktrow" id="ipmRow" style="font-size:16px"></div><div class="legend"><span><i style="background:var(--amber-soft);outline:1px solid var(--amber)"></i>cifrado por ESP</span><span><i style="background:var(--accent-soft);outline:1px solid var(--accent)"></i>autenticado por ESP (incluye lo cifrado)</span><span><i style="background:var(--panel);outline:1px solid var(--line)"></i>visible</span></div></div>
+  <div class="cols"><div class="panel tight"><h3 id="ipmH"></h3><p id="ipmX" class="small"></p></div><div class="fix" id="ipmN"><span class="fe">Precisión.</span> El original dice que el modo transporte es frecuente en VPN site-to-site. En IPsec clásico entre sitios lo habitual es el modo túnel (es el valor por defecto). El modo transporte es el recomendado <b>para DMVPN</b>, porque GRE ya aporta la cabecera externa y así se ahorran 20 bytes.</div></div>
+</div></section>
+
+<!-- 17 IKE -->
+<section class="slide" data-title="IKE: cómo se arma el túnel cifrado"><div class="inner">
+  <div class="head"><span class="eyebrow">Resultados de IKE</span><h2>Cinco pasos desde el primer paquete hasta el cierre</h2>
+  <p class="lead">Avanza paso a paso entre R1 y R2.</p></div>
+  <div class="ctrls"><button class="btn ghost" id="ikPrev">← Paso</button><button class="btn" id="ikNext">Paso →</button><span class="badge blue" id="ikN"></span></div>
+  <div class="panel"><svg viewBox="0 0 1440 190" class="dia" id="ikSvg" role="img" aria-label="PC1, R1, R2 y PC2 con los túneles IKE"></svg></div>
+  <div class="cols w64"><div class="panel tight"><h3 id="ikH"></h3><p id="ikX"></p></div><div class="term sm" id="ikO"></div></div>
+</div></section>
+
+<!-- 18 IPsec en DMVPN y verificación -->
+<section class="slide" data-title="Proteger y verificar"><div class="inner">
+  <div class="head"><span class="eyebrow">Revisión del túnel protegido</span><h2>Proteger el túnel y leer <code>show crypto ipsec sa</code></h2>
+  <p class="lead">En DMVPN no hay crypto map: se aplica un perfil IPsec a la interfaz túnel. Toca una línea resaltada de la salida.</p></div>
+  <div class="cols fill">
+    <div class="stack">
+      <div class="term sm">crypto isakmp policy 10
+ encryption aes 256
+ hash sha256
+ authentication pre-share
+ group 14
+crypto isakmp key CISCO123 address 0.0.0.0 0.0.0.0
+!
+crypto ipsec transform-set TSET esp-aes 256 esp-sha256-hmac
+ <span class="h">mode transport</span>
+crypto ipsec profile DMVPN-PROF
+ set transform-set TSET
+!
+interface Tunnel100
+ <span class="h">tunnel protection ipsec profile DMVPN-PROF</span></div>
+      <div class="panel tight"><span class="eyebrow">Interpretación</span><p id="saX" class="small">Selecciona una línea resaltada.</p></div>
+    </div>
+    <div class="term xs annot" id="saT"></div>
+  </div>
+</div></section>
+
+<!-- 19 Resumen -->
+<section class="slide" data-title="Resumen"><div class="inner">
+  <div class="head"><span class="eyebrow">Resumen</span><h2>Lo que hay que llevarse</h2></div>
+  <div class="cols c4 st">
+    <div class="panel"><h3>GRE</h3><ul>
+      <li>Encapsula multicast en unicast.</li><li>No cifra.</li><li>Origen alcanzable, ruta al destino y sin enrutamiento recursivo.</li><li>MTU 1476.</li></ul></div>
+    <div class="panel"><h3>NHRP y mGRE</h3><ul>
+      <li>NHRP: IP de túnel → IP NBMA.</li><li>Hub = NHS, spoke = NHC.</li><li>mGRE: una interfaz, muchos túneles.</li><li>Misma <code>tunnel key</code> en todos.</li></ul></div>
+    <div class="panel"><h3>Fases</h3><ul>
+      <li>Fase 1: todo por el hub.</li><li>Fase 2: spoke a spoke, sin resumir.</li><li>Fase 3: redirect + shortcut, permite resumir.</li></ul></div>
+    <div class="panel"><h3>IPsec</h3><ul>
+      <li>Confidencialidad, integridad, autenticación, antireplay.</li><li>Modo transporte en DMVPN.</li><li>IKE fase 1 y fase 2.</li><li><code>show crypto ipsec sa</code>.</li></ul></div>
+  </div>
+</div></section>
+
+<!-- 20 Quiz -->
+<section class="slide" data-title="Preguntas" data-agenda="Preguntas" data-sub="Comprueba lo aprendido"><div class="inner">
+  <div class="head"><span class="eyebrow">Preguntas</span><h2>Comprueba lo aprendido</h2></div>
+  <div class="panel quiz fill" id="quiz"></div>
+</div></section>
+
+<!-- 21 Referencias -->
+<section class="slide" data-title="Referencias"><div class="inner">
+  <div class="head"><span class="eyebrow">Referencias</span><h2>Bibliografía</h2></div>
+  <div class="panel"><ul>
+    <li>Raymond Lacoste, Brad Edgeworth. <i>CCNP Enterprise Advanced Routing ENARSI 300-410 Official Cert Guide</i>. Cisco Press. Capítulo 19, DMVPN Tunnels.</li>
+    <li>Misma obra. Capítulo 20, Securing DMVPN Tunnels.</li>
+    <li>IETF <a href="https://www.rfc-editor.org/rfc/rfc2784" target="_blank" rel="noopener">RFC 2784</a> (GRE), <a href="https://www.rfc-editor.org/rfc/rfc2332" target="_blank" rel="noopener">RFC 2332</a> (NHRP) y <a href="https://www.rfc-editor.org/rfc/rfc4301" target="_blank" rel="noopener">RFC 4301</a> (arquitectura IPsec).</li>
+    <li>Cisco. <i>Dynamic Multipoint VPN Configuration Guide</i>, Cisco IOS XE.</li>
+  </ul></div>
+</div></section>
+
+</div></div>
+<nav class="bar" aria-label="Navegación de diapositivas">
+  <button id="prev" aria-label="Diapositiva anterior">←</button>
+  <span class="count" id="count"></span>
+  <div class="prog"><i id="prog"></i></div>
+  <select id="jump" aria-label="Ir a diapositiva"></select>
+  <button id="fs" aria-label="Pantalla completa" title="Pantalla completa (F)">⛶</button>
+  <button id="next" aria-label="Diapositiva siguiente">→</button>
+</nav>
+</div>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pad=(s,n)=>{s=String(s);return s.length>=n?s+" ":s+" ".repeat(n-s.length)};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+/* Botones segmentados: <div class="seg" id="x"><button data-v="a" aria-pressed="true">…</div> */
+function seg(id,cb){const el=$(id);el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;el.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.v)});}
+/* Mueve un elemento SVG (circle o g) por una lista de puntos */
+function animate(el,pts,ms){return new Promise(res=>{
+  const put=(x,y)=>{if(el.tagName==="circle"){el.setAttribute("cx",x);el.setAttribute("cy",y)}else el.setAttribute("transform",`translate(${x},${y})`)};
+  if(reduce||pts.length<2){put(...pts[pts.length-1]);return res()}
+  const n=pts.length-1,t0=performance.now();
+  (function f(t){const k=Math.max(0,Math.min(1,(t-t0)/ms)),s=Math.min(n-1,Math.floor(k*n)),u=k*n-s,a=pts[s],b=pts[s+1];
+    put(a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u);if(k<1)requestAnimationFrame(f);else res()})(t0);});}
+/* Salida anotada: lines=[[texto, explicación|null], …] */
+function annot(termId,outId,lines){
+  const t=$(termId);
+  t.innerHTML=lines.map((a,i)=>`<span class="ln${a[1]?" k":""}" data-i="${i}"${a[1]?' tabindex="0"':""}>${esc(a[0])||" "}</span>`).join("");
+  t.addEventListener("click",e=>{const l=e.target.closest(".ln");if(!l||!lines[l.dataset.i][1])return;t.querySelectorAll(".ln").forEach(x=>x.classList.toggle("sel",x===l));$(outId).innerHTML=lines[l.dataset.i][1]});
+  t.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.classList.contains("ln"))e.target.click()});
+}
+/* Lista de opciones que muestra un detalle: items=[[etiqueta, html], …] */
+function picker(listId,outId,items,first=0){
+  const l=$(listId);l.classList.add("pick");
+  l.innerHTML=items.map((it,i)=>`<button type="button" data-i="${i}" aria-pressed="false">${it[0]}</button>`).join("");
+  const show=i=>{l.querySelectorAll("button").forEach((b,k)=>b.setAttribute("aria-pressed",k===i));$(outId).innerHTML=items[i][1]};
+  l.addEventListener("click",e=>{const b=e.target.closest("button");if(b)show(+b.dataset.i)});
+  show(first);
+}
+/* Pasos con tarjetas: <div class="steps" id="x"><div data-x="…">…</div></div> */
+function stepsCards(id,outId){const el=$(id);const all=[...el.children];
+  const on=d=>{all.forEach(x=>x.classList.toggle("on",x===d));$(outId).innerHTML=d.dataset.x};
+  all.forEach(d=>{d.tabIndex=0;d.addEventListener("click",()=>on(d));d.addEventListener("mouseenter",()=>on(d));d.addEventListener("keydown",e=>{if(e.key==="Enter")on(d)})});}
+/* Cuestionario de una pregunta a la vez */
+function quiz(id,Q){
+  const el=$(id);let i=0;const ans=Q.map(()=>null);
+  function render(){
+    const q=Q[i],a=ans[i];
+    el.innerHTML=`<div class="ctrls" style="justify-content:space-between"><span class="eyebrow">Pregunta ${i+1} de ${Q.length}</span><span class="badge blue">Puntaje: ${ans.filter((x,k)=>x===Q[k].ok).length} / ${Q.length}</span></div>
+    <p class="q">${q.q}</p>
+    <div class="opts">${q.o.map((o,k)=>`<button type="button" data-k="${k}" class="${a===null?"":(k===q.ok?"right":(k===a?"wrong":""))}" ${a!==null?"disabled":""}>${String.fromCharCode(65+k)}. ${o}</button>`).join("")}</div>
+    <div class="${a===null?"":(a===q.ok?"fix":"warn")}" style="min-height:62px">${a===null?'<span class="muted">Elige una respuesta.</span>':(a===q.ok?"<b>Correcto.</b> ":"<b>No.</b> ")+(a===null?"":q.e)}</div>
+    <div class="ctrls"><button class="btn ghost" data-nav="-1" ${i===0?"disabled":""}>← Anterior</button><button class="btn" data-nav="1" ${i===Q.length-1?"disabled":""}>Siguiente →</button><button class="btn ghost" data-nav="0">Reiniciar</button></div>`;
+  }
+  el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;
+    if(b.dataset.k!==undefined&&ans[i]===null){ans[i]=+b.dataset.k;render()}
+    else if(b.dataset.nav!==undefined){const d=+b.dataset.nav;if(d===0){ans.fill(null);i=0}else i=Math.max(0,Math.min(Q.length-1,i+d));render()}});
+  render();
+}
+/* ---------- navegación y escala ---------- */
+const slides=$$(".slide");let cur=0;
+function fit(){const v=$(".viewport").getBoundingClientRect();const s=Math.min(v.width/1600,v.height/900);$(".canvas").style.setProperty("--s",s);}
+window.addEventListener("resize",fit);
+$("#jump").innerHTML=slides.map((s,i)=>`<option value="${i}">${i+1}. ${esc(s.dataset.title)}</option>`).join("");
+function go(i){
+  i=Math.max(0,Math.min(slides.length-1,i));
+  slides.forEach((s,k)=>{s.hidden=k!==i;s.classList.toggle("enter",k===i)});
+  cur=i;$("#count").textContent=`${i+1} / ${slides.length}`;
+  $("#prog").style.width=((i+1)/slides.length*100)+"%";$("#jump").value=i;
+  $("#prev").disabled=i===0;$("#next").disabled=i===slides.length-1;
+  try{history.replaceState(null,"","#s"+(i+1))}catch(e){}
+  slides[i].dispatchEvent(new CustomEvent("show"));
+}
+$("#prev").onclick=()=>go(cur-1);$("#next").onclick=()=>go(cur+1);
+$("#jump").onchange=e=>go(+e.target.value);
+$("#fs").onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(e){}};
+document.addEventListener("keydown",e=>{
+  if(e.target.closest("input,select,textarea"))return;
+  if(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" "){go(cur+1);e.preventDefault()}
+  else if(e.key==="ArrowLeft"||e.key==="PageUp"){go(cur-1);e.preventDefault()}
+  else if(e.key==="Home")go(0);else if(e.key==="End")go(slides.length-1);
+  else if(e.key==="f"||e.key==="F")$("#fs").click();
+});
+/* toque: deslizar para cambiar */
+let tx=null;$(".viewport").addEventListener("touchstart",e=>{tx=e.touches[0].clientX},{passive:true});
+$(".viewport").addEventListener("touchend",e=>{if(tx===null)return;const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>60&&!e.target.closest("input,button,select,.term"))go(cur+(d<0?1:-1));tx=null});
+/* Agenda automática a partir de data-agenda */
+(function(){const ag=$("#agenda");if(!ag)return;
+  ag.innerHTML=slides.map((s,i)=>s.dataset.agenda?`<button data-go="${i}"><small>Diapositiva ${i+1}</small><b>${esc(s.dataset.agenda)}</b><small>${esc(s.dataset.sub||"")}</small></button>`:"").join("");
+  ag.onclick=e=>{const b=e.target.closest("[data-go]");if(b)go(+b.dataset.go)};})();
+function boot(){fit();const m=location.hash.match(/^#s(\d+)/);go(m?+m[1]-1:0);
+  /* ?check: informa qué diapositivas desbordan el lienzo (uso interno al construir) */
+  if(location.search.includes("check")){const out=[];$(".canvas").style.setProperty("--s",1);
+    slides.forEach((s,k)=>{s.hidden=false;const R=s.getBoundingClientRect();
+      s.querySelectorAll(".inner *").forEach(el=>{const r=el.getBoundingClientRect();if(!r.width)return;
+        const sc=getComputedStyle(el);
+        if(r.bottom>R.bottom-36+1||r.right>R.right-60+1)out.push(`s${k+1} sale del lienzo: <${el.tagName.toLowerCase()} class="${el.className}"> b=${Math.round(r.bottom-R.top)} r=${Math.round(r.right-R.left)}`);
+        if((sc.overflow==="hidden"||sc.overflowY==="hidden")&&el.scrollHeight>el.clientHeight+2)out.push(`s${k+1} recorta: <${el.tagName.toLowerCase()} class="${el.className}" id="${el.id}"> ${el.scrollHeight}>${el.clientHeight}`);
+        if(el.matches(".panel,.card,.stack,.note,.fix,.warn,td,th")&&el.scrollWidth>el.clientWidth+2)out.push(`s${k+1} desborda ancho: <${el.tagName.toLowerCase()} class="${el.className}"> ${el.scrollWidth}>${el.clientWidth}`);
+        if(sc.overflow==="hidden"&&el.scrollWidth>el.clientWidth+2)out.push(`s${k+1} recorta ancho: <${el.tagName.toLowerCase()} class="${el.className}" id="${el.id}"> ${el.scrollWidth}>${el.clientWidth}`);});
+      s.hidden=k!==cur;});
+    const pre=document.createElement("pre");pre.id="__report";pre.textContent=out.length?[...new Set(out)].join("\n"):"OK";document.body.appendChild(pre);}
+}
+
+const RB=(x,y,name,cls="box",w=120,h=50,sub="")=>`<rect class="${cls}" x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="8"/><text x="${x}" y="${y+(sub?-2:6)}" text-anchor="middle">${name}</text>${sub?`<text class="lbl" x="${x}" y="${y+16}" text-anchor="middle">${sub}</text>`:""}`;
+
+/* ---------- 4: túnel GRE con fallas ---------- */
+const GR=[
+ ["Configuración correcta",{d1:"4.4.4.4",d4:"1.1.1.1"},"up","Tunnel1 is up, line protocol is up","Origen arriba, ruta al destino y destino correcto en ambos lados. <code>ping 192.168.0.2</code> responde."],
+ ["Destino mal escrito",{d1:"4.4.4.5",d4:"1.1.1.1"},"up","Tunnel1 is up, line protocol is up","R1 tiene ruta por defecto, así que el túnel queda <b>up/up</b> aunque 4.4.4.5 no existe: sin keepalive, GRE no sabe si alguien responde. El ping por el túnel falla. Con <code>keepalive 10 3</code> el túnel bajaría y la falla sería visible."],
+ ["Sin ruta al destino",{d1:"4.4.4.4",d4:"1.1.1.1",noroute:1},"down","Tunnel1 is up, line protocol is down","R1 no tiene ruta hacia 4.4.4.4 (ni por defecto). Un túnel GRE punto a punto baja su protocolo de línea si no hay ruta al destino."],
+ ["Enrutamiento recursivo",{d1:"4.4.4.4",d4:"1.1.1.1",rec:1},"flap","%TUN-5-RECURSIVE: Tunnel1 temporarily disabled due to recursive routing","El IGP dentro del túnel anuncia 4.4.4.4 y la mejor ruta al destino del túnel pasa a ser… el propio túnel. IOS lo desactiva y vuelve a subir en bucle. No anuncies las direcciones de transporte por el túnel."],
+ ["Loopback de origen caída",{d1:"4.4.4.4",d4:"1.1.1.1",srcdown:1},"down","Tunnel1 is up, line protocol is down","Si la interfaz de <code>tunnel source</code> está caída, el túnel baja. Revisa <code>show ip interface brief</code>."],
+ ["El otro extremo espera otra IP",{d1:"4.4.4.4",d4:"1.1.1.2"},"up","Tunnel1 is up, line protocol is up","Los dos túneles pueden verse up/up, pero R4 espera paquetes desde 1.1.1.2 y R1 los envía desde 1.1.1.1: R4 los descarta. El destino de un lado debe ser el origen del otro."]];
+function grDraw(i){const g=GR[i],c=g[1];const st=g[2];
+  const X=[200,560,880,1240];
+  $("#grSvg").innerHTML=`<line class="wire" x1="200" y1="120" x2="1240" y2="120"/>
+  ${RB(X[0],120,"R1",c.srcdown?"box off":"box",130,50,"Lo0 1.1.1.1")}${RB(X[1],120,"R2","box bk",110,44)}${RB(X[2],120,"R3","box bk",110,44)}${RB(X[3],120,"R4","box",130,50,"Lo0 4.4.4.4")}
+  <rect x="200" y="20" width="1040" height="44" rx="22" fill="${st==="up"&&i===0?"var(--ok-soft)":(st==="up"?"var(--amber-soft)":"var(--bad-soft)")}" stroke="${st==="up"&&i===0?"var(--ok)":(st==="up"?"var(--amber)":"var(--bad)")}" stroke-width="2" ${st!=="up"?'stroke-dasharray="7 5"':""}/>
+  <text x="720" y="48" text-anchor="middle">Tunnel1 · 192.168.0.1/30 ↔ 192.168.0.2/30</text>
+  <text class="lbl" x="380" y="150" text-anchor="middle">192.0.2.0/30</text><text class="lbl" x="720" y="150" text-anchor="middle">203.0.113.0/30</text><text class="lbl" x="1060" y="150" text-anchor="middle">198.51.100.0/30</text>
+  <text class="lbl k" x="60" y="125">10.1.1.0/24</text><text class="lbl k" x="1380" y="125" text-anchor="end">10.2.2.0/24</text>`;
+  $("#grCfg").innerHTML=`<span class="d">! R1</span>
+interface Tunnel1
+ ip address 192.168.0.1 255.255.255.252
+ tunnel source Loopback0
+ tunnel destination <span class="${c.d1!=="4.4.4.4"?"r":"h"}">${c.d1}</span>
+<span class="d">! R4</span>
+interface Tunnel1
+ ip address 192.168.0.2 255.255.255.252
+ tunnel source Loopback0
+ tunnel destination <span class="${c.d4!=="1.1.1.1"?"r":"h"}">${c.d4}</span>${c.rec?`\n<span class="d">! R1</span>\nrouter ospf 1\n network 192.168.0.0 0.0.0.3 area 0\n <span class="r">network 1.1.1.1 0.0.0.0 area 0</span>`:""}`;
+  $("#grOut").innerHTML=`<span class="p">R1#</span> show interfaces tunnel 1\n<span class="${st==="up"?"g":"r"}">${esc(g[3])}</span>\n  Tunnel source 1.1.1.1 (Loopback0),
+  destination ${c.d1}\n  Tunnel protocol/transport GRE/IP`;
+  $("#grTxt").innerHTML=g[4];$("#grTxt").className=i===0?"fix":"note";}
+picker("#grList","#grTxt",GR.map(g=>[g[0],""]));
+$("#grList").addEventListener("click",e=>{const b=e.target.closest("button");if(b)grDraw(+b.dataset.i)});grDraw(0);
+
+/* ---------- 5: show interface tunnel ---------- */
+annot("#gvT","#gvX",[
+ ["R11# show interface tunnel 100",null],
+ ["Tunnel100 is up, line protocol is up","El túnel está operativo. up/down indica falta de ruta al destino, origen caído o keepalive sin respuesta."],
+ ["  Hardware is Tunnel",null],
+ ["  Internet address is 192.168.100.1/24","La IP dentro del túnel. Debe estar en la misma subred que el otro extremo."],
+ ["  MTU 17916 bytes, BW 400 Kbit/sec, DLY 50000 usec,","BW 400 kbit/s por defecto: los IGP calculan la métrica con esto. Ajústalo con bandwidth si quieres que el túnel compita bien con otras rutas."],
+ ["     reliability 255/255, txload 1/255, rxload 1/255",null],
+ ["  Encapsulation TUNNEL, loopback not set",null],
+ ["  Keepalive set (5 sec), retries 3","Con keepalive, el túnel baja si el otro extremo deja de responder. Sin keepalive, puede quedar up/up con el otro lado muerto."],
+ ["  Tunnel source 172.16.11.1 (GigabitEthernet0/1), destination 172.16.31.1","Origen y destino de transporte. El destino de este lado debe ser el origen del otro, y viceversa."],
+ ["   Tunnel Subblocks:",null],["      src-track:",null],
+ ["         Tunnel100 source tracking subblock associated with GigabitEthernet0/1",null],
+ ["  Tunnel protocol/transport GRE/IP","GRE sobre IPv4, punto a punto. En un túnel mGRE se vería multi-GRE/IP."],
+ ["    Key disabled, sequencing disabled","Sin tunnel key. Si un lado tiene key y el otro no (o distinta), los paquetes se descartan."],
+ ["    Checksumming of packets disabled",null],
+ ["  Tunnel TTL 255, Fast tunneling enabled",null],
+ ["  Tunnel transport MTU 1476 bytes","1500 − 20 (IP) − 4 (GRE) = 1476. Con IPsec hay que restar más; por eso en DMVPN se usa ip mtu 1400."],
+ ["  Tunnel transmit bandwidth 8000 (kbps)",null],
+ ["  Last input 00:00:02, output 00:00:02, output hang never","Si Last input no avanza, no llega nada desde el otro extremo."]]);
+
+/* ---------- 6: mensajes NHRP ---------- */
+picker("#nhList","#nhX",[
+ ["Registration","El spoke (NHC) le envía al hub (NHS) su IP de túnel y su IP NBMA, y cuánto tiempo debe guardarlas. Así el hub conoce a cada spoke."],
+ ["Resolution","Un spoke pregunta cuál es la IP NBMA que corresponde a una IP de túnel (o a una red). La respuesta trae la IP de túnel y la NBMA del spoke remoto."],
+ ["Redirect","Clave en la fase 3. Un router intermedio (el hub) avisa al spoke de origen que hay un camino mejor: un túnel spoke a spoke. Puede enviar redirect suppress si no conviene."],
+ ["Purge","Borra una entrada NHRP que ya no es válida, por ejemplo si la red dejó de ser alcanzable. Normalmente lo envía el NHS al NHC al que había respondido."],
+ ["Error","Avisa al emisor de un paquete NHRP que ocurrió un error."]]);
+
+/* ---------- 7: mGRE ---------- */
+let mgM="mg";
+function mgRender(){const n=+$("#mgR").value;$("#mgN").textContent=n;const hx=120,hy=180;
+  let s=`${RB(hx,hy,"Hub","box amb",120,56)}`;
+  for(let k=0;k<n;k++){const a=(-70+140*k/(n-1))*Math.PI/180,x=hx+520*Math.cos(a)+60,y=hy+150*Math.sin(a)*1.05;
+    s+=mgM==="p2p"?`<line class="wire acc" x1="${hx+60}" y1="${hy}" x2="${x-50}" y2="${y}"/><text class="lbl" x="${(hx+60+x-50)/2}" y="${(hy+y)/2-6}" text-anchor="middle">Tunnel${k+1}</text>`:`<line class="wire dash" x1="${hx+60}" y1="${hy}" x2="${x-50}" y2="${y}"/>`;
+    s+=RB(x,y,"Sucursal "+(k+1),"box",110,40);}
+  if(mgM==="mg")s+=`<circle cx="${hx+60}" cy="${hy}" r="9" fill="var(--accent)"/><text class="lbl k" x="${hx}" y="${hy+50}" text-anchor="middle">Tunnel100 (mGRE)</text>`;
+  $("#mgSvg").innerHTML=s;
+  if(mgM==="p2p"){$("#mgCfg").innerHTML=Array.from({length:Math.min(n,2)},(_,k)=>`interface Tunnel${k+1}\n ip address 192.168.${k+1}.1 255.255.255.252\n tunnel source Gi0/1\n tunnel destination 172.16.${k+3}1.1`).join("\n")+(n>2?`\n<span class="d">! … ${n-2} interfaces más, una por sucursal</span>`:"");
+    $("#mgTxt").innerHTML=`<b>${n} interfaces túnel</b>, ${n} subredes y ${n} vecindades de IGP en el hub. Cada sucursal nueva obliga a tocar el hub.`;}
+  else{$("#mgCfg").innerHTML=`interface Tunnel100\n ip address 192.168.100.11 255.255.255.0\n <span class="h">tunnel mode gre multipoint</span>\n tunnel source Gi0/1\n <span class="d">! sin tunnel destination:</span>\n <span class="d">! NHRP resuelve cada destino</span>`;
+    $("#mgTxt").innerHTML=`<b>1 interfaz túnel</b> y una sola subred para ${n} sucursales. Agregar otra no cambia la configuración del hub.`;}}
+seg("#mgSeg",v=>{mgM=v;mgRender()});$("#mgR").oninput=mgRender;mgRender();
+
+/* ---------- 9: simulador de fases ---------- */
+const PH={H:[280,70],A:[100,300],B:[460,300]};let ph="1",phSent=0;
+function phRt(){const via=ph==="1"||(ph==="3"&&phSent===0)?"192.168.100.11":"192.168.100.41";
+  if(ph==="1")return `R31# show ip route 10.4.4.0\nD    10.4.4.0/24 [90/…] via 192.168.100.11, Tunnel100\n\nR31# show dmvpn\n  1 172.16.11.1  192.168.100.11  UP  00:10:12  S`;
+  if(ph==="2")return `R31# show ip route 10.4.4.0\nD    10.4.4.0/24 [90/…] via <span class="h">192.168.100.41</span>, Tunnel100\n<span class="d">! el hub conserva el next hop del spoke remoto</span>\n\nR31# show dmvpn\n  1 172.16.11.1  192.168.100.11  UP  00:10:12  S${phSent>0?`\n  <span class="g">1 172.16.41.1  192.168.100.41  UP  00:00:04  D</span>`:""}`;
+  return `R31# show ip route | include 10.\nD    10.0.0.0/8 [90/…] via 192.168.100.11, Tunnel100${phSent>0?`\n<span class="g">H    10.4.4.0/24 [250/1] via 192.168.100.41, Tunnel100</span>`:""}\n<span class="d">! el hub puede anunciar un resumen</span>\n\nR31# show dmvpn\n  1 172.16.11.1  192.168.100.11  UP  00:10:12  S${phSent>0?`\n  <span class="g">1 172.16.41.1  192.168.100.41  UP  00:00:04  D</span>`:""}`;}
+function phDraw(direct){const H=PH.H,A=PH.A,B=PH.B;
+  $("#phSvg").innerHTML=`<path class="zone" d="M60 150 Q280 80 500 150 Q560 250 500 330 Q280 380 60 330 Q0 250 60 150z" opacity=".35"/>
+  <line class="wire acc" x1="${H[0]}" y1="${H[1]}" x2="${A[0]}" y2="${A[1]}"/><line class="wire acc" x1="${H[0]}" y1="${H[1]}" x2="${B[0]}" y2="${B[1]}"/>
+  ${direct?`<line class="wire ok" x1="${A[0]}" y1="${A[1]}" x2="${B[0]}" y2="${B[1]}" stroke-width="4" stroke-dasharray="8 6"/><text class="lbl" x="280" y="290" text-anchor="middle" style="fill:var(--ok)">túnel dinámico spoke a spoke</text>`:""}
+  ${RB(H[0],H[1],"R11 · hub","box amb",150,50,"192.168.100.11")}${RB(A[0],A[1],"R31","box",130,50,"10.3.3.0/24")}${RB(B[0],B[1],"R41","box",130,50,"10.4.4.0/24")}
+  <circle class="pkt" id="phP" r="9" cx="-30" cy="0"/><text class="lbl k" id="phM" x="280" y="200" text-anchor="middle"></text>`;
+  $("#phO").innerHTML=phRt();}
+const phInfo={"1":["Fase 1: spoke a hub","Solo hay túneles entre spokes y hub. Los spokes pueden usar GRE punto a punto hacia el hub. Todo el tráfico entre sucursales pasa por la casa matriz, siempre."],
+ "2":["Fase 2: spoke a spoke","Los spokes usan mGRE. El hub anuncia las rutas sin cambiar el next hop, así R31 ve 10.4.4.0/24 vía 192.168.100.41 y le pide al hub su NBMA (resolution). Mientras resuelve, el primer paquete va por el hub. No admite resumir rutas en el hub."],
+ "3":["Fase 3: spoke a spoke con resumen","El primer paquete va por el hub, que responde con un NHRP <b>redirect</b>. R31 resuelve la dirección de R41 y NHRP instala una ruta <b>H</b> (shortcut) más específica. El hub puede anunciar solo un resumen."]};
+async function phSend(){const H=PH.H,A=PH.A,B=PH.B;const p=$("#phP"),m=$("#phM");
+  const direct=ph!=="1"&&phSent>0;
+  if(direct){phDraw(true);await animate($("#phP"),[A,B],900);$("#phX").innerHTML=ph==="2"?"El segundo paquete va directo: R31 ya conoce la NBMA de R41 (172.16.41.1).":"El segundo paquete usa la ruta H instalada por NHRP y va directo a R41.";return}
+  phDraw(false);await animate($("#phP"),[A,H],700);
+  if(ph==="3"){$("#phM").textContent="hub → R31: NHRP redirect";await sleep(500)}
+  if(ph==="2"){$("#phM").textContent="R31 → hub: NHRP resolution";await sleep(500)}
+  await animate($("#phP"),[H,B],700);
+  if(ph!=="1"){phSent++;phDraw(true);$("#phM").textContent="";$("#phX").innerHTML=phInfo[ph][1]+" <b>Vuelve a enviar</b> para ver el segundo paquete.";}
+  else{$("#phX").innerHTML=phInfo[ph][1]+" Aunque envíes otra vez, el camino no cambia.";phDraw(false)}}
+function phReset(){phSent=0;$("#phH").textContent=phInfo[ph][0];$("#phX").innerHTML=phInfo[ph][1];phDraw(false)}
+seg("#phSeg",v=>{ph=v;phReset()});$("#phGo").onclick=phSend;$("#phRst").onclick=phReset;phReset();
+
+/* ---------- 11: configuración por fase ---------- */
+const CF={
+ "1hub":[["R11-Hub (fase 1)",null],["interface Tunnel100",null],[" bandwidth 4000","Ajusta el ancho de banda que usa el IGP para la métrica."],[" ip address 192.168.100.11 255.255.255.0",null],
+  [" ip mtu 1400","Deja espacio para las cabeceras GRE e IPsec y evita fragmentar."],[" ip nhrp map multicast dynamic","Replica el multicast (Hello de EIGRP u OSPF) hacia cada spoke que se registre. Sin esto, no hay vecinos de IGP."],
+  [" ip nhrp network-id 100","Identificador local de la red NHRP en esta interfaz. Es de significado local, pero conviene usar el mismo en todos."],[" ip tcp adjust-mss 1360","Ajusta el MSS de TCP para que las sesiones no generen paquetes más grandes que el túnel."],
+  [" tunnel source GigabitEthernet0/1",null],[" tunnel mode gre multipoint","El hub usa mGRE desde la fase 1: una interfaz para todos los spokes."],[" tunnel key 100","Debe ser igual en todos los routers del DMVPN. Si no coincide, los paquetes GRE se descartan."]],
+ "1spk":[["R41-Spoke (fase 1, NHRP con varios comandos)",null],["interface Tunnel100",null],[" bandwidth 4000",null],[" ip address 192.168.100.41 255.255.255.0",null],[" ip mtu 1400",null],
+  [" ip nhrp map 192.168.100.11 172.16.11.1","Mapeo estático: la IP de túnel del hub corresponde a su IP NBMA 172.16.11.1."],[" ip nhrp map multicast 172.16.11.1","El multicast (Hello del IGP) se envía al hub."],
+  [" ip nhrp network-id 100",null],[" ip nhrp nhs 192.168.100.11","Quién es el servidor NHRP: el spoke se registra con él."],[" ip tcp adjust-mss 1360",null],[" tunnel source GigabitEthernet0/1",null],
+  [" tunnel destination 172.16.11.1","En fase 1 el spoke puede usar GRE punto a punto: destino fijo, el hub."],[" tunnel key 100",null]],
+ "3hub":[["R11-Hub (fase 3)",null],["interface Tunnel100",null],[" bandwidth 4000",null],[" ip address 192.168.100.11 255.255.255.0",null],[" ip mtu 1400",null],[" ip nhrp map multicast dynamic",null],[" ip nhrp network-id 100",null],
+  [" ip nhrp redirect","Lo nuevo en el hub: cuando un paquete entra y sale por el mismo túnel, avisa al spoke de origen que hay un camino directo."],[" ip tcp adjust-mss 1360",null],[" tunnel source GigabitEthernet0/1",null],[" tunnel mode gre multipoint",null],[" tunnel key 100",null]],
+ "3spk":[["R31-Spoke (fase 3)",null],["interface Tunnel100",null],[" bandwidth 4000",null],[" ip address 192.168.100.31 255.255.255.0",null],[" ip mtu 1400",null],[" ip nhrp network-id 100",null],
+  [" ip nhrp nhs 192.168.100.11 nbma 172.16.11.1 multicast","Una sola línea reemplaza los tres comandos de la fase 1: NHS, mapeo estático al NBMA del hub y envío de multicast."],
+  [" ip nhrp shortcut","Lo nuevo en el spoke: acepta el redirect y crea la ruta directa (H) hacia el otro spoke."],[" ip tcp adjust-mss 1360",null],[" tunnel source GigabitEthernet0/1",null],
+  [" tunnel mode gre multipoint","El spoke también pasa a mGRE: necesita túneles hacia otros spokes, no solo al hub."],[" tunnel key 100",null]]};
+const CFN={"1hub":"En fase 1 el hub ya usa mGRE y NHRP dinámico; los spokes son los que pueden ser punto a punto.","1spk":"El spoke de fase 1 tiene <code>tunnel destination</code> fijo: no puede armar túneles hacia otros spokes.",
+ "3hub":"Diferencia con la fase 1 en el hub: solo <code>ip nhrp redirect</code>.","3spk":"Diferencias con la fase 1 en el spoke: <code>ip nhrp shortcut</code>, <code>tunnel mode gre multipoint</code> en vez de <code>tunnel destination</code> y la NHS en una sola línea."};
+let cfP="1",cfD="hub";
+function cfRender(){const k=cfP+(cfD==="hub"?"hub":"spk");const t=$("#cfT");const nt=t.cloneNode(false);t.replaceWith(nt);annot("#cfT","#cfX",CF[k]);$("#cfX").textContent="Selecciona una línea resaltada.";$("#cfN").innerHTML=CFN[k];}
+seg("#cfPh",v=>{cfP=v;cfRender()});seg("#cfDev",v=>{cfD=v;cfRender()});cfRender();
+
+/* ---------- 12: verificación ---------- */
+const LEG=[["Legend: Attrb --> S - Static, D - Dynamic, I - Incomplete","S: entrada estática (por ejemplo, el hub visto desde un spoke). D: aprendida por registro o resolución. I: resolución incompleta."],["        N - NATed, L - Local, X - No Socket",null],["        T1 - Route Installed, T2 - Nexthop-override",null],["        # Ent --> Number of NHRP entries with same NBMA peer",null],["        NHS Status: E --> Expecting Replies, R --> Responding, W --> Waiting","En un spoke, E significa que el hub no responde: no se registró."],["        UpDn Time --> Up or Down Time for a Tunnel",null]];
+const DV={a:[["R11-Hub# show dmvpn",null],...LEG,["=========================================================",null],["Interface: Tunnel100, IPv4 NHRP Details","La interfaz DMVPN."],["Type:Hub, NHRP Peers:2,","Rol y cantidad de pares. En un spoke diría Type:Spoke."],["",null],
+  [" # Ent  Peer NBMA Addr Peer Tunnel Add State  UpDn Tm Attrb",null],[" ----- --------------- --------------- ----- -------- -----",null],
+  ["     1 172.16.31.1      192.168.100.31    UP 00:05:26     D","R31: IP NBMA (transporte) e IP de túnel. UP y dinámico (D): se registró. NHRP o IKE caído mostraría NHRP o IKE en State."],["     1 172.16.41.1      192.168.100.41    UP 00:05:26     D",null]],
+ b:[["R11-Hub# show dmvpn detail",null],...LEG.slice(0,1),["=========================================================",null],
+  ["Interface Tunnel100 is up/up, Addr. is 192.168.100.11, VRF \"\"","Estado de la interfaz y su IP de túnel."],["   Tunnel Src./Dest. addr: 172.16.11.1/MGRE, Tunnel VRF \"\"","Origen de transporte y modo: MGRE, multipunto."],
+  ["   Protocol/Transport: \"multi-GRE/IP\", Protect \"\"","Protect vacío: el túnel no tiene IPsec. Con perfil aplicado aparece su nombre."],["   Interface State Control: Disabled",null],["   nhrp event-publisher : Disabled",null],["Type:Hub, Total NBMA Peers (v4/v6): 2",null],["",null],
+  ["# Ent  Peer NBMA Addr Peer Tunnel Add State  UpDn Tm Attrb    Target Network",null],["----- --------------- --------------- ----- -------- ----- -----------------",null],
+  ["    1 172.16.31.1      192.168.100.31    UP 00:01:05     D 192.168.100.31/32","Target Network: la red de túnel asociada a ese par."],["    1 172.16.41.1      192.168.100.41    UP 00:01:06     D 192.168.100.41/32",null]],
+ c:[["R11-Hub# show ip nhrp",null],["192.168.100.31/32 via 192.168.100.31","Entrada NHRP: IP de túnel del spoke."],["   Tunnel100 created 23:04:04, expire 01:37:26","Cuándo se creó y cuándo expira si el spoke no renueva el registro."],
+  ["   Type: dynamic, Flags: unique registered used nhop","registered: llegó por registro. unique: no se acepta otro registro con la misma IP desde otra NBMA. used: se está usando."],["   NBMA address: 172.16.31.1","La IP de transporte que corresponde a esa IP de túnel."],
+  ["192.168.100.41/32 via 192.168.100.41",null],["   Tunnel100 created 23:04:00, expire 01:37:42",null],["   Type: dynamic, Flags: unique registered used nhop",null],["   NBMA address: 172.16.41.1",null]]};
+function dvRender(v){const t=$("#dvT");const nt=t.cloneNode(false);t.replaceWith(nt);annot("#dvT","#dvX",DV[v]);$("#dvX").textContent="Selecciona una línea resaltada."}
+seg("#dvSeg",dvRender);dvRender("a");
+
+/* ---------- 13: síntomas ---------- */
+const ds=[
+ ["El spoke no se registra en el hub","Sin ruta a la NBMA del hub, IP de NHS o mapeo mal escritos, tunnel key distinta o un firewall que bloquea GRE (protocolo 47) o, con IPsec, UDP 500/4500 y ESP.","R41# show dmvpn\n  1 172.16.11.1  192.168.100.11  NHRP 00:00:30  S\nR41# show ip nhrp nhs detail\n  192.168.100.11  RE  req-sent 12 req-failed 12\nR41# ping 172.16.11.1 source Gi0/1"],
+ ["No se forman vecinos EIGRP u OSPF","Falta <code>ip nhrp map multicast dynamic</code> en el hub o el mapeo multicast en el spoke: los Hello no llegan.","R11# show ip nhrp multicast\nR11# show ip eigrp neighbors"],
+ ["Los spokes no aprenden las redes de otros spokes","Con EIGRP, el horizonte dividido del hub no reanuncia por el mismo túnel lo que aprendió de él.","interface Tunnel100\n no ip split-horizon eigrp 1"],
+ ["Fase 2: el tráfico entre spokes sigue por el hub","El hub cambia el next hop o resume. En fase 2 el next hop debe ser el spoke remoto.","interface Tunnel100\n no ip next-hop-self eigrp 1\n! y sin resumir en el hub"],
+ ["Fase 3: nunca aparece la ruta H","Falta <code>ip nhrp redirect</code> en el hub o <code>ip nhrp shortcut</code> en los spokes.","R31# show ip route nhrp\n% sin rutas H\nR11# show run interface Tunnel100 | include redirect"],
+ ["Ping funciona, pero web y transferencias se cuelgan","Problema de MTU o MSS: los paquetes grandes no caben en el túnel.","interface Tunnel100\n ip mtu 1400\n ip tcp adjust-mss 1360\nR31# ping 10.4.4.1 size 1400 df-bit"],
+ ["El túnel funciona sin IPsec y falla con IPsec","Política ISAKMP, clave o transform-set distintos entre los extremos.","R31# show crypto isakmp sa\ndst          src          state        conn-id status\n172.16.11.1  172.16.31.1  MM_NO_STATE     0 ACTIVE"]];
+picker("#dsList","#dsX",ds.map(v=>[v[0],v[1]]));
+$("#dsList").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("#dsT").textContent=ds[+b.dataset.i][0];$("#dsO").textContent=ds[+b.dataset.i][2]});
+$("#dsT").textContent=ds[0][0];$("#dsO").textContent=ds[0][2];
+
+/* ---------- 14: transporte seguro ---------- */
+function tsRender(v){const p=v==="p";
+  $("#tsSvg").innerHTML=`<line class="wire" x1="185" y1="150" x2="320" y2="150"/><line class="wire" x1="680" y1="150" x2="785" y2="150"/><line class="wire" x1="895" y1="150" x2="955" y2="150"/><line class="wire" x1="1125" y1="150" x2="1165" y2="150"/>
+  ${RB(120,150,"Sucursal","box",130,50)}
+  <path class="${p?"zone":"zone2"}" d="M330 110 Q500 50 670 110 Q720 150 670 190 Q500 250 330 190 Q280 150 330 110z"/><text x="500" y="155" text-anchor="middle">${p?"MPLS VPN o circuito privado":"Internet"}</text>
+  ${RB(840,150,"Borde","box",110,48)}${RB(1040,150,"Centro de datos","box",170,50)}
+  <path class="zone2" d="M1180 110 Q1260 80 1340 110 Q1380 150 1340 190 Q1260 220 1180 190 Q1140 150 1180 110z"/><text x="1260" y="155" text-anchor="middle">Internet</text>
+  <text class="lbl" x="120" y="30">controlado por la empresa</text><text class="lbl" x="500" y="30" text-anchor="middle">${p?"controlado por el proveedor (privado)":"proveedor público: acceso no controlado"}</text><text class="lbl" x="940" y="30" text-anchor="middle">controlado por la empresa</text><text class="lbl" x="1260" y="30" text-anchor="middle">no controlado</text>
+  ${p?`<text class="lbl k" x="500" y="235" text-anchor="middle">se asume confidencial, inmune a intrusión y de acceso controlado</text>`:`<text x="400" y="235" text-anchor="middle" style="fill:var(--bad)">intruso</text><text x="500" y="235" text-anchor="middle" style="fill:var(--bad)">espía</text><text x="620" y="235" text-anchor="middle" style="fill:var(--bad)">man-in-the-middle</text>
+  <circle cx="190" cy="150" r="9" fill="var(--bad)"/><circle cx="780" cy="150" r="9" fill="var(--bad)"/><text class="lbl" x="190" y="190" text-anchor="middle" style="fill:var(--bad)">punto de intrusión WAN</text><text class="lbl" x="780" y="190" text-anchor="middle" style="fill:var(--bad)">punto de intrusión WAN</text>`}`;
+  $("#tsTxt").innerHTML=p?"Con circuitos del proveedor, la confidencialidad depende de que el proveedor controle el acceso a su infraestructura. Por eso tradicionalmente no se cifraba la WAN.":"Internet no controla el acceso ni garantiza integridad ni confidencialidad. Cada borde (sucursal, WAN corporativa, Internet) se vuelve un punto de intrusión. Hay que cifrar: IPsec sobre el túnel DMVPN.";}
+seg("#tsSeg",tsRender);tsRender("p");
+
+/* ---------- 16: modos IPsec ---------- */
+const IPM=[
+ ["Original",[["h0","IP"],["h0","Datos",4]],"Paquete original","Protocolo 1 (ICMP), 6 (TCP) o 17 (UDP) en la cabecera IP."],
+ ["IPsec transporte",[["h0","IP"],["h1","ESP hdr"],["h2","Datos",4],["h2","ESP trailer"],["h1","ESP auth"]],"IPsec en modo transporte · protocolo 50","Conserva la cabecera IP original y cifra solo los datos. Agrega menos bytes, pero las IP de origen y destino reales quedan a la vista."],
+ ["IPsec túnel",[["h0","IP nueva"],["h1","ESP hdr"],["h2","IP original"],["h2","Datos",4],["h2","ESP trailer"],["h1","ESP auth"]],"IPsec en modo túnel · protocolo 50","Cifra el paquete completo y le pone una cabecera IP nueva con las direcciones de los equipos que terminan la VPN. Es el valor por defecto."],
+ ["DMVPN sin IPsec",[["h0","IP GRE"],["h0","GRE"],["h0","IP original"],["h0","Datos",4]],"DMVPN sin IPsec · protocolo 47 (GRE)","Todo viaja en claro: cualquiera en el camino ve el paquete original."],
+ ["DMVPN + transporte",[["h0","IP GRE"],["h1","ESP hdr"],["h2","GRE"],["h2","IP original"],["h2","Datos",3],["h2","ESP trailer"],["h1","ESP auth"]],"DMVPN con IPsec en modo transporte · protocolo 50","La cabecera IP de GRE queda afuera y ESP protege desde GRE hacia adentro. Es la opción recomendada: no repite una cabecera IP."],
+ ["DMVPN + túnel",[["h0","IPsec IP"],["h1","ESP hdr"],["h2","IP GRE"],["h2","GRE"],["h2","IP original"],["h2","Datos",3],["h2","ESP trailer"],["h1","ESP auth"]],"DMVPN con IPsec en modo túnel · protocolo 50","Funciona, pero agrega 20 bytes más por una cabecera IP que repite las mismas direcciones que la de GRE."]];
+const ipL=$("#ipmList");ipL.innerHTML=`<div class="seg" id="ipmSeg">${IPM.map((m,i)=>`<button data-v="${i}" aria-pressed="${i===4}">${m[0]}</button>`).join("")}</div>`;
+function ipmRender(i){const m=IPM[i];$("#ipmRow").innerHTML=m[1].map(c=>`<span class="${c[0]}" style="flex:${c[2]||1.2}">${c[1]}</span>`).join("");$("#ipmH").textContent=m[2];$("#ipmX").textContent=m[3];}
+seg("#ipmSeg",v=>ipmRender(+v));ipmRender(4);
+
+/* ---------- 17: IKE ---------- */
+const IK=[
+ ["1. Tráfico interesante","PC1 envía datos hacia PC2. R1 detecta que ese tráfico debe protegerse (en DMVPN: todo lo que sale por el túnel) y arranca IKE.","R1# debug crypto isakmp\nISAKMP: received ke message"],
+ ["2. IKE fase 1","R1 y R2 negocian la política (cifrado, hash, autenticación, grupo DH), se autentican y crean un canal seguro: la SA de ISAKMP.","R1# show crypto isakmp sa\ndst          src          state     conn-id status\n30.1.1.2     30.1.1.1     QM_IDLE      1001 ACTIVE"],
+ ["3. IKE fase 2","Dentro del túnel de fase 1 negocian el transform-set y crean las SA de IPsec, una por sentido, con su SPI.","R1# show crypto ipsec sa | include spi\n  current outbound spi: 0x3D3(979)\n   spi: 0x136A010F(325714191)"],
+ ["4. Transferencia de datos","Los datos viajan cifrados por las SA de IPsec. Los contadores encrypt y decrypt deben subir en ambos extremos.","R1# show crypto ipsec sa | include pkts\n #pkts encaps: 7647918, #pkts encrypt: 7647918\n #pkts decaps: 7640382, #pkts decrypt: 7640382"],
+ ["5. Terminación","Las SA vencen por tiempo o por volumen (lifetime), o se borran a mano. Si vuelve a haber tráfico, IKE renegocia.","R1# clear crypto session\n! o esperar el fin del lifetime"]];
+let ikI=0;
+function ikDraw(){const s=ikI;const tun=(x,w,y,t,cls)=>`<rect x="${x}" y="${y}" width="${w}" height="36" rx="18" fill="${cls==="p1"?"var(--accent-soft)":"var(--ok-soft)"}" stroke="${cls==="p1"?"var(--accent)":"var(--ok)"}" stroke-width="2"/><text x="${x+w/2}" y="${y+23}" text-anchor="middle" font-size="14">${t}</text>`;
+  let g=`<line class="wire" x1="80" y1="150" x2="1360" y2="150"/>${RB(80,150,"PC1","box bk",90,40)}${RB(400,150,"R1","box",110,46)}${RB(1040,150,"R2","box",110,46)}${RB(1360,150,"PC2","box bk",90,40)}`;
+  if(s>=1&&s<=3)g+=tun(470,500,30,"IKE fase 1 · SA de ISAKMP","p1");
+  if(s>=2&&s<=3)g+=tun(470,500,76,"IKE fase 2 · SA de IPsec","p2");
+  if(s===4)g+=`<rect x="470" y="30" width="500" height="82" rx="20" fill="none" stroke="var(--bad)" stroke-width="2" stroke-dasharray="7 5"/><text x="720" y="78" text-anchor="middle" style="fill:var(--bad)">SA vencidas o borradas</text>`;
+  if(s===0||s===3)g+=`<path d="M${s===0?130:130} 120 L${s===0?340:1310} 120" stroke="var(--amber)" stroke-width="5" marker-end="url(#ia)"/><defs><marker id="ia" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--amber)"/></marker></defs><text class="lbl k" x="${s===0?235:720}" y="${s===0?110:142}" text-anchor="middle">${s===0?"datos":"datos cifrados"}</text>`;
+  $("#ikSvg").innerHTML=g;$("#ikH").textContent=IK[s][0];$("#ikX").textContent=IK[s][1];$("#ikO").textContent=IK[s][2];$("#ikN").textContent=`Paso ${s+1} de 5`;$("#ikPrev").disabled=s===0;$("#ikNext").disabled=s===4;}
+$("#ikPrev").onclick=()=>{ikI=Math.max(0,ikI-1);ikDraw()};$("#ikNext").onclick=()=>{ikI=Math.min(4,ikI+1);ikDraw()};ikDraw();
+
+/* ---------- 18: show crypto ipsec sa ---------- */
+annot("#saT","#saX",[
+ ["R1# show crypto ipsec sa",null],["  interface: FastEthernet0/0",null],
+ ["    Crypto map tag: test, local addr. 30.1.1.1","Este ejemplo usa crypto map (IPsec clásico). En DMVPN aparece la interfaz Tunnel y el perfil IPsec."],
+ ["   local  ident (addr/mask/prot/port): (20.1.1.0/255.255.255.0/0/0)","El tráfico protegido de este lado. Debe ser el espejo del remote ident del otro router."],
+ ["   remote ident (addr/mask/prot/port): (10.1.1.0/255.255.255.0/0/0)","El tráfico protegido del otro lado."],
+ ["   current_peer: 30.1.1.2","El otro extremo del túnel."],["     PERMIT, flags={origin_is_acl,}",null],
+ ["    #pkts encaps: 7647918, #pkts encrypt: 7647918, #pkts digest 7647918","Paquetes cifrados y enviados. Si sube encrypt pero no decrypt, el otro lado no responde o no descifra."],
+ ["    #pkts decaps: 7640382, #pkts decrypt: 7640382, #pkts verify 7640382","Paquetes recibidos y descifrados. Deben subir junto con encrypt."],
+ ["    #send errors 1, #recv errors 0","Errores aislados son normales; si crecen, revisa MTU y el transform-set."],
+ ["     local crypto endpt.: 30.1.1.1, remote crypto endpt.: 30.1.1.2",null],
+ ["     path mtu 1500, media mtu 1500",null],["     current outbound spi: 0x3D3(979)","Identificador de la SA de salida. Un SPI 0x0 indica que no hay SA establecida."],
+ ["     inbound esp sas:",null],["      spi: 0x136A010F(325714191)",null],
+ ["        transform: esp-3des esp-md5-hmac ,","El transform-set acordado. 3DES y MD5 están obsoletos; hoy se usa AES y SHA-256 o superior."],
+ ["        in use settings ={Tunnel, }","Modo de la SA: Tunnel o Transport. En DMVPN se espera Transport."],
+ ["        sa timing: remaining key lifetime (k/sec): (4608000/52)","Lo que le queda a la SA en kilobytes y segundos antes de renegociar."],
+ ["        replay detection support: Y","Antireplay activo."]]);
+
+/* ---------- Quiz ---------- */
+quiz("#quiz",[
+ {q:"¿Por qué se encapsula OSPF en GRE antes de protegerlo con IPsec?",o:["Porque GRE cifra mejor que IPsec","Porque IPsec solo protege unicast y OSPF usa multicast","Porque OSPF no funciona sobre IP","Porque GRE reduce la MTU"],ok:1,e:"GRE convierte el multicast en un paquete IP unicast entre los extremos, que IPsec sí puede proteger."},
+ {q:"Un túnel GRE muestra up/down. ¿Causa probable?",o:["Falta tunnel key","No hay ruta al tunnel destination o el origen está caído","IPsec está mal configurado","El IGP no tiene vecinos"],ok:1,e:"Un túnel punto a punto baja su protocolo de línea sin ruta al destino, con el origen caído o si fallan los keepalive."},
+ {q:"¿Qué hace NHRP en DMVPN?",o:["Cifra el tráfico","Traduce IP de túnel a IP de transporte (NBMA)","Elige el mejor camino como un IGP","Asigna etiquetas MPLS"],ok:1,e:"Es el equivalente a ARP para túneles multipunto."},
+ {q:"¿En qué fase de DMVPN todo el tráfico entre spokes pasa siempre por el hub?",o:["Fase 1","Fase 2","Fase 3","En ninguna"],ok:0,e:"En fase 1 solo hay túneles spoke-hub."},
+ {q:"¿Qué comandos convierten una red de fase 1 en fase 3?",o:["ip nhrp redirect en el hub e ip nhrp shortcut en los spokes (con mGRE)","tunnel key en todos","ip nhrp map multicast dynamic en los spokes","no ip split-horizon en los spokes"],ok:0,e:"Además, los spokes pasan de tunnel destination a tunnel mode gre multipoint."},
+ {q:"Los spokes se registran pero no hay vecinos EIGRP con el hub. ¿Qué falta?",o:["ip nhrp shortcut","ip nhrp map multicast dynamic en el hub","ip tcp adjust-mss","tunnel protection"],ok:1,e:"Sin replicación multicast, los Hello de EIGRP no llegan a los spokes."},
+ {q:"¿Qué servicio NO entrega IPsec?",o:["Confidencialidad","Integridad","Disponibilidad","Antireplay"],ok:2,e:"IPsec entrega confidencialidad, integridad, autenticación y antireplay."},
+ {q:"¿Qué modo de IPsec se recomienda para DMVPN?",o:["Túnel, porque es el más seguro","Transporte, porque GRE ya aporta la cabecera externa","Ninguno: DMVPN ya cifra","Agresivo"],ok:1,e:"El modo transporte evita repetir una cabecera IP y ahorra 20 bytes por paquete."}]);
+
+boot();
+})();
+</script>
+</body></html>

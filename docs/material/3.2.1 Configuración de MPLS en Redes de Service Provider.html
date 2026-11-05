@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MPLS en Service Provider</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Lienzo fijo 1600x900 (16:9) escalado a la ventana. Misma paleta y tipografía que las presentaciones de la unidad 2. */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#15212c; --muted:#5a6876; --line:#d3dae1; --frame:#d8dee5;
+  --accent:#1c63a8; --accent-ink:#ffffff; --accent-soft:#e1ecf7;
+  --amber:#a8650a; --amber-soft:#fbefdc; --ok:#1f7a4a; --ok-soft:#e0f2e8; --bad:#b0322b; --bad-soft:#f9e3e1;
+  --term-bg:#0f1b26; --term-fg:#d2dee9; --term-dim:#7f93a6; --term-hl:#ffd27a; --term-prompt:#7cc0ff;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d151d; --panel:#16212c; --ink:#e3eaf1; --muted:#97a6b4; --line:#2a3846; --frame:#070c11;
+  --accent:#5aa6ea; --accent-ink:#06121c; --accent-soft:#1a3043;
+  --amber:#f0b25a; --amber-soft:#3a2a12; --ok:#5fcf91; --ok-soft:#14301f; --bad:#f08a80; --bad-soft:#3b1a17;
+  --term-bg:#0a121a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d151d; --panel:#16212c; --ink:#e3eaf1; --muted:#97a6b4; --line:#2a3846; --frame:#070c11;
+  --accent:#5aa6ea; --accent-ink:#06121c; --accent-soft:#1a3043;
+  --amber:#f0b25a; --amber-soft:#3a2a12; --ok:#5fcf91; --ok-soft:#14301f; --bad:#f08a80; --bad-soft:#3b1a17;
+  --term-bg:#0a121a; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--frame);color:var(--ink);font-family:var(--f-body);overflow:hidden}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* ---------- marco y escala ---------- */
+.deck{position:fixed;inset:0;display:flex;flex-direction:column}
+.viewport{flex:1;min-height:0;position:relative;overflow:hidden}
+.canvas{position:absolute;left:50%;top:50%;width:1600px;height:900px;transform:translate(-50%,-50%) scale(var(--s,1));transform-origin:center;background:var(--bg);box-shadow:0 6px 30px rgba(0,0,0,.18);overflow:hidden;font-size:23px;line-height:1.45}
+.slide{position:absolute;inset:0;padding:50px 72px 44px;overflow:hidden}
+.slide[hidden]{display:none!important}
+.inner{height:100%;display:flex;flex-direction:column;gap:20px}
+.slide.enter .inner{animation:enter .35s ease-out}
+@keyframes enter{from{opacity:.25;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- tipografía dentro del lienzo ---------- */
+.canvas h1{font-size:66px;font-weight:800;line-height:1.04}
+.canvas h2{font-size:40px;font-weight:800;line-height:1.1}
+.canvas h3{font-size:23px;font-weight:700}
+.eyebrow{font-family:var(--f-display);font-size:15px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.head{display:flex;flex-direction:column;gap:6px}
+.lead{font-size:24px;color:var(--muted);max-width:76ch}
+.canvas ul{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:7px}
+.canvas ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:7px}
+.canvas a{color:var(--accent)}
+code{font-family:var(--f-mono);font-size:.84em;background:var(--accent-soft);padding:1px 6px;border-radius:4px}
+.small{font-size:20px}
+.muted{color:var(--muted)}
+b,strong{font-weight:700}
+
+/* ---------- bloques ---------- */
+.fill{flex:1;min-height:0}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+.cols.st{align-items:stretch}
+.cols.w37{grid-template-columns:minmax(0,3fr) minmax(0,7fr)}
+.cols.w46{grid-template-columns:minmax(0,4fr) minmax(0,6fr)}
+.cols.w64{grid-template-columns:minmax(0,6fr) minmax(0,4fr)}
+.cols.w73{grid-template-columns:minmax(0,7fr) minmax(0,3fr)}
+.cols.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cols.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel.tight{padding:14px 16px;gap:8px}
+.note{border-left:5px solid var(--amber);background:var(--amber-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.fix{border-left:5px solid var(--ok);background:var(--ok-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.warn{border-left:5px solid var(--bad);background:var(--bad-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.fe{font-weight:700;color:var(--ok)}
+.term{background:var(--term-bg);color:var(--term-fg);font-family:var(--f-mono);font-size:17px;line-height:1.5;border-radius:8px;padding:14px 16px;white-space:pre;overflow:hidden;min-width:0;border:1px solid var(--line)}
+.term.sm{font-size:15px;padding:12px 14px}
+.term.xs{font-size:13.5px;padding:10px 12px;line-height:1.42}
+.term .p{color:var(--term-prompt)} .term .h{color:var(--term-hl)} .term .d{color:var(--term-dim)} .term .g{color:#8be0ae} .term .r{color:#ff9d94}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--panel)}
+.seg button{background:transparent;border:0;padding:8px 16px;color:var(--ink);font-size:18px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.ctl{display:flex;flex-direction:column;gap:4px;font-size:17px;color:var(--muted)}
+.ctl select,.ctl input[type=number],.ctl input[type=text]{font:inherit;font-size:18px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+.ctl input[type=range]{width:100%}
+.tog{display:inline-flex;gap:8px;align-items:center;font-size:18px;cursor:pointer}
+.tog input{width:18px;height:18px}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:7px;padding:9px 18px;font-weight:700;font-size:18px}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.btn.danger{background:var(--bad);color:var(--panel)}
+.btn:disabled{opacity:.45;cursor:default}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.badge.ok{background:var(--ok-soft);color:var(--ok)} .badge.bad{background:var(--bad-soft);color:var(--bad)} .badge.blue{background:var(--accent-soft);color:var(--accent)} .badge.amb{background:var(--amber-soft);color:var(--amber)}
+table{border-collapse:collapse;width:100%;font-size:20px}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-display);font-size:14.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td code{white-space:nowrap}
+tr.hit td{background:var(--amber-soft)}
+tr.ok td{background:var(--ok-soft)}
+tr.no td{background:var(--bad-soft)}
+.result{font-family:var(--f-display);font-size:28px;font-weight:800}
+.big{font-family:var(--f-display);font-size:34px;font-weight:800}
+
+/* ---------- SVG ---------- */
+svg{width:100%;height:auto;display:block}
+.dia text{font-family:var(--f-display);font-weight:700;font-size:15px;fill:var(--ink)}
+.dia .lbl{font-family:var(--f-mono);font-weight:400;font-size:12px;fill:var(--muted)}
+.dia .lbl.k{fill:var(--accent);font-weight:600}
+.dia .box{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.dia .box.act{fill:var(--ok-soft);stroke:var(--ok);stroke-width:2.6}
+.dia .box.amb{fill:var(--amber-soft);stroke:var(--amber);stroke-width:2.2}
+.dia .box.bk{fill:var(--panel);stroke:var(--muted)}
+.dia .box.off{fill:var(--bad-soft);stroke:var(--bad);stroke-dasharray:5 3}
+.dia .zone{fill:var(--accent-soft);stroke:var(--line);opacity:.55}
+.dia .zone2{fill:var(--amber-soft);stroke:var(--line);opacity:.6}
+.dia .host{fill:var(--panel);stroke:var(--line);stroke-width:1.4}
+.dia .wire{stroke:var(--muted);stroke-width:2.2;fill:none}
+.dia .wire.down{stroke:var(--bad);stroke-dasharray:6 4}
+.dia .wire.ok{stroke:var(--ok)}
+.dia .wire.acc{stroke:var(--accent);stroke-width:3}
+.dia .wire.dash{stroke-dasharray:6 5}
+.dia .flow{stroke:var(--ok);stroke-width:3.5;fill:none;stroke-dasharray:9 7;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.dia .pkt{fill:var(--amber)}
+.dia .tagr{fill:var(--amber);stroke:none}
+.dia .tagt{font-family:var(--f-mono);font-size:12px;font-weight:600;fill:#1b1206}
+.dia .clk{cursor:pointer}
+.dia .clk:hover{filter:brightness(1.06)}
+.dia .sel{stroke-width:3.4!important;stroke:var(--amber)!important}
+
+/* ---------- componentes ---------- */
+.log{font-family:var(--f-mono);font-size:14px;color:var(--muted);white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;overflow:hidden}
+.agenda{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.agenda button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;color:var(--ink);display:flex;flex-direction:column;gap:6px;font-size:24px}
+.agenda button:hover{border-color:var(--accent)}
+.agenda small{color:var(--muted);font-size:17px}
+.cover{justify-content:center;gap:24px}
+.cover .meta{display:flex;gap:10px;flex-wrap:wrap}
+.cards{display:grid;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.card .ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-family:var(--f-display);font-weight:800;font-size:19px}
+.card h3{font-size:21px}
+.card p{font-size:19px;color:var(--muted)}
+.steps{display:grid;gap:12px}
+.steps>div{border-top:5px solid var(--accent);background:var(--panel);border-radius:0 0 10px 10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;font-size:20px;cursor:pointer}
+.steps>div b{font-family:var(--f-display);font-size:22px}
+.steps>div.on{border-top-color:var(--amber);background:var(--amber-soft)}
+.annot .ln{display:block;padding:0 6px;margin:0 -6px;border-radius:3px}
+.annot .ln.k{color:var(--term-hl);cursor:pointer}
+.annot .ln.k:hover,.annot .ln.sel{background:rgba(255,210,122,.17)}
+.pick{display:flex;flex-direction:column;gap:8px}
+.pick button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:11px 15px;color:var(--ink);font-size:20px}
+.pick button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.quiz .opts{display:flex;flex-direction:column;gap:10px}
+.quiz .opts button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 18px;color:var(--ink);font-size:22px}
+.quiz .opts button.right{border-color:var(--ok);background:var(--ok-soft)}
+.quiz .opts button.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.quiz .q{font-size:28px;font-weight:600}
+.pktrow{display:flex;gap:0;font-family:var(--f-mono);font-size:15px;font-weight:600}
+.pktrow span{padding:12px 10px;border:1px solid var(--line);text-align:center;margin-left:-1px}
+.pktrow .h1{background:var(--accent-soft);color:var(--accent)} .pktrow .h2{background:var(--amber-soft);color:var(--amber)} .pktrow .h3{background:var(--ok-soft);color:var(--ok)} .pktrow .h4{background:var(--bad-soft);color:var(--bad)} .pktrow .h0{background:var(--panel);color:var(--ink)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:16px;color:var(--muted)}
+.legend i{display:inline-block;width:13px;height:13px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* ---------- barra de navegación ---------- */
+nav.bar{flex:none;display:flex;align-items:center;gap:10px;padding:8px max(16px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));border-top:1px solid var(--line);background:var(--panel);font-size:15px}
+nav.bar .prog{flex:1;height:5px;background:var(--line);border-radius:3px;overflow:hidden;min-width:40px}
+nav.bar .prog i{display:block;height:100%;background:var(--accent);transition:width .25s}
+nav.bar button{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px 12px}
+nav.bar button:disabled{opacity:.4}
+nav.bar .count{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px}
+:fullscreen nav.bar{opacity:0;transition:opacity .2s}
+:fullscreen nav.bar:hover{opacity:1}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- impresión: una diapositiva 16:9 por página ---------- */
+@media print{
+  @page{size:1600px 900px;margin:0}
+  html,body{height:auto;overflow:visible;background:#fff}
+  .deck{position:static;display:block}
+  nav.bar{display:none}
+  .viewport{overflow:visible}
+  .canvas{position:static;transform:none;width:auto;height:auto;box-shadow:none;background:transparent}
+  .slide,.slide[hidden]{display:block!important;position:relative;width:1600px;height:900px;break-after:page;background:var(--bg)}
+  .slide.enter .inner{animation:none}
+}
+</style></head><body>
+<div class="deck">
+<div class="viewport"><div class="canvas" id="stage">
+<!-- 1 Portada -->
+<section class="slide" data-title="Portada"><div class="inner cover">
+  <span class="eyebrow">ARY6112 · Troubleshooting · Unidad 3.2.1</span>
+  <h1>Configuración de MPLS en redes de Service Provider</h1>
+  <p class="lead">Cómo MPLS reenvía por etiquetas, cómo LDP las distribuye y cómo una VPN de capa 3 separa a los clientes con VRF, MP-BGP y una pila de dos etiquetas.</p>
+  <div class="meta"><span class="badge blue">Routing y Switching Corporativo</span><span class="badge blue">Usa ← → · F pantalla completa</span></div>
+</div></section>
+
+<!-- 2 Agenda -->
+<section class="slide" data-title="Agenda"><div class="inner">
+  <div class="head"><span class="eyebrow">Agenda</span><h2>Lo que veremos</h2></div>
+  <div class="agenda" id="agenda"></div>
+</div></section>
+
+<!-- 3 Qué es MPLS -->
+<section class="slide" data-title="Qué es MPLS" data-agenda="Operación de MPLS" data-sub="Etiquetas, LIB, LFIB, LSR y LSP"><div class="inner">
+  <div class="head"><span class="eyebrow">Introducción a MPLS</span><h2>Reenviar por etiqueta en vez de por dirección IP</h2>
+  <p class="lead">MPLS (Multiprotocol Label Switching) decide el reenvío con una etiqueta corta. Solo los routers de borde miran la IP; el núcleo cambia una etiqueta por otra.</p></div>
+  <div class="cols w64 fill">
+    <div class="panel">
+      <svg viewBox="0 0 760 330" class="dia" role="img" aria-label="Edge-2 asigna etiqueta 25, Core la cambia por 23 y Edge-1 la quita">
+        <ellipse cx="380" cy="175" rx="270" ry="130" fill="var(--accent-soft)" opacity=".5"/>
+        <line class="wire" x1="610" y1="90" x2="380" y2="270"/><line class="wire" x1="380" y1="270" x2="150" y2="90"/>
+        <rect class="box" x="560" y="62" width="110" height="50" rx="8"/><text x="615" y="93" text-anchor="middle">Edge-2</text>
+        <rect class="box" x="325" y="250" width="110" height="50" rx="8"/><text x="380" y="281" text-anchor="middle">Core</text>
+        <rect class="box" x="95" y="62" width="110" height="50" rx="8"/><text x="150" y="93" text-anchor="middle">Edge-1</text>
+        <text class="lbl k" x="690" y="40" text-anchor="end">IP 10.1.1.1 entra</text>
+        <text class="lbl k" x="70" y="40">IP 10.1.1.1 sale</text>
+        <text class="lbl" x="615" y="135" text-anchor="middle">búsqueda IP: 10.0.0.0/8 → L=25</text>
+        <text class="lbl" x="380" y="322" text-anchor="middle">cambio de etiqueta: 25 → 23</text>
+        <text class="lbl" x="150" y="135" text-anchor="middle">quita la etiqueta y busca IP</text>
+        <g id="m3Pkt" transform="translate(-100,0)"><rect x="-26" y="-14" width="52" height="28" rx="5" class="tagr"/><text class="tagt" id="m3L" text-anchor="middle" y="5">IP</text></g>
+      </svg>
+      <div class="ctrls"><button class="btn" id="m3Go">Enviar paquete</button></div>
+    </div>
+    <div class="stack">
+      <div class="panel tight"><h3>Qué aporta</h3><ul class="small">
+        <li>Menos trabajo en el núcleo: buscar una etiqueta es más simple que buscar el prefijo más largo.</li>
+        <li>Independiente del protocolo de capa 3: sirve para IPv4, IPv6 y tramas de capa 2.</li>
+        <li>Es la base de las VPN de capa 3, las de capa 2 y la ingeniería de tráfico.</li></ul></div>
+      <div class="note">MPLS no es mucho más rápido que el enrutamiento IP actual con CEF. Su valor está en los servicios que permite construir encima.</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 4 Planos LIB LFIB -->
+<section class="slide" data-title="Plano de control y de datos"><div class="inner">
+  <div class="head"><span class="eyebrow">MPLS LIB y LFIB</span><h2>Cuatro tablas en cada LSR</h2>
+  <p class="lead">Toca cada tabla para ver qué guarda y con qué comando se revisa.</p></div>
+  <div class="cols w64 fill">
+    <div class="panel">
+      <svg viewBox="0 0 760 420" class="dia" id="lsrSvg" role="img" aria-label="Plano de control con RIB y LIB; plano de datos con FIB y LFIB">
+        <rect x="150" y="10" width="460" height="400" rx="10" fill="none" stroke="var(--line)" stroke-width="2"/><text x="380" y="36" text-anchor="middle">LSR</text>
+        <rect x="170" y="50" width="420" height="200" rx="8" fill="var(--bg)" stroke="var(--line)"/><text class="lbl" x="185" y="70">Plano de control</text>
+        <rect x="170" y="265" width="420" height="130" rx="8" fill="var(--bg)" stroke="var(--line)"/><text class="lbl" x="185" y="285">Plano de datos</text>
+        <rect class="box amb clk" data-k="rp" x="200" y="80" width="360" height="34" rx="6"/><text x="380" y="103" text-anchor="middle">Protocolo de enrutamiento</text>
+        <rect class="box clk" data-k="rib" x="200" y="124" width="360" height="34" rx="6"/><text x="380" y="147" text-anchor="middle">Tabla de enrutamiento IP (RIB)</text>
+        <rect class="box clk" data-k="lib" x="200" y="168" width="360" height="34" rx="6"/><text x="380" y="191" text-anchor="middle">Label Information Base (LIB)</text>
+        <rect class="box amb clk" data-k="ldp" x="200" y="210" width="360" height="30" rx="6"/><text x="380" y="231" text-anchor="middle">LDP</text>
+        <rect class="box clk" data-k="fib" x="200" y="295" width="360" height="34" rx="6"/><text x="380" y="318" text-anchor="middle">Forwarding Table IP (FIB)</text>
+        <rect class="box clk" data-k="lfib" x="200" y="345" width="360" height="34" rx="6"/><text x="380" y="368" text-anchor="middle">Label Forwarding Table (LFIB)</text>
+        <path d="M560 141 C610 141 610 300 560 312" class="wire"/><path d="M560 185 C630 185 630 340 560 362" class="wire"/>
+        <text class="lbl" x="10" y="101">rutas con</text><text class="lbl" x="10" y="116">otros routers ↔</text>
+        <text class="lbl" x="10" y="222">etiquetas con</text><text class="lbl" x="10" y="237">otros LSR ↔</text>
+        <text class="lbl" x="10" y="312">IP sin etiqueta →</text><text class="lbl" x="10" y="362">con etiqueta →</text>
+        <text class="lbl" x="625" y="312">→ sale con o</text><text class="lbl" x="625" y="327">sin etiqueta</text><text class="lbl" x="625" y="362">→ sale con</text><text class="lbl" x="625" y="377">etiqueta</text>
+      </svg>
+    </div>
+    <div class="panel"><span class="eyebrow" id="lsrT"></span><p id="lsrX"></p><div class="term sm" id="lsrO"></div></div>
+  </div>
+</div></section>
+
+<!-- 5 LSR -->
+<section class="slide" data-title="LSR de borde e intermedios"><div class="inner">
+  <div class="head"><span class="eyebrow">LSR</span><h2>Cada router del dominio cumple un rol</h2>
+  <p class="lead">Un LSR (Label Switching Router) entiende etiquetas MPLS. Toca un router para ver qué hace con un paquete que va de 192.168.0.0/24 hacia 10.0.0.0/24.</p></div>
+  <div class="panel">
+    <svg viewBox="0 0 1440 230" class="dia" id="lsrRow" role="img" aria-label="Cinco routers R1 a R5 en un dominio MPLS"></svg>
+  </div>
+  <div class="cols w64">
+    <div class="panel"><span class="eyebrow" id="roleT"></span><p id="roleX"></p></div>
+    <div class="panel tight"><table><thead><tr><th>Acción</th><th>Quién</th></tr></thead><tbody>
+      <tr><td><b>push</b> (imponer)</td><td>LSR de entrada</td></tr><tr><td><b>swap</b> (cambiar)</td><td>LSR intermedios</td></tr><tr><td><b>pop</b> (quitar)</td><td>Penúltimo o último LSR</td></tr></tbody></table></div>
+  </div>
+</div></section>
+
+<!-- 6 LSP -->
+<section class="slide" data-title="LSP"><div class="inner">
+  <div class="head"><span class="eyebrow">LSP</span><h2>El camino etiquetado es de un solo sentido</h2>
+  <p class="lead">Un LSP (Label Switched Path) es la secuencia de LSR que sigue un paquete etiquetado hacia un prefijo. El retorno usa otro LSP, con otras etiquetas, aunque normalmente pase por los mismos routers porque el IGP es simétrico.</p></div>
+  <div class="ctrls"><div class="seg" id="lspSeg"><button data-v="f" aria-pressed="true">LSP hacia 10.0.0.0/24</button><button data-v="r" aria-pressed="false">LSP de retorno a 192.168.0.0/24</button></div></div>
+  <div class="panel"><svg viewBox="0 0 1440 260" class="dia" id="lspSvg" role="img" aria-label="LSP entre R1 y R5"></svg></div>
+  <div class="note" id="lspTxt"></div>
+</div></section>
+
+<!-- 7 Etiqueta -->
+<section class="slide" data-title="La etiqueta MPLS"><div class="inner">
+  <div class="head"><span class="eyebrow">Etiquetas</span><h2>Una cabecera de 32 bits entre la capa 2 y la capa 3</h2>
+  <p class="lead">Por ir entre las dos cabeceras se le llama <i>shim header</i>. Mueve los valores y mira cómo quedan los 32 bits.</p></div>
+  <div class="panel">
+    <div class="pktrow" style="font-size:19px"><span class="h0" style="flex:1.3">Trama capa 2</span><span class="h2" style="flex:1">Etiqueta MPLS</span><span class="h1" style="flex:1.6">Cabecera IP</span><span class="h0" style="flex:2.4">Datos</span></div>
+  </div>
+  <div class="cols w46 fill">
+    <div class="panel">
+      <label class="ctl">Label (20 bits): <b id="lbV"></b><input type="range" id="lbR" min="0" max="1048575" value="87"></label>
+      <div class="ctrls"><label class="ctl">EXP / TC (3 bits)<input type="number" id="exR" min="0" max="7" value="0"></label><label class="ctl">S (1 bit)<input type="number" id="sR" min="0" max="1" value="1"></label><label class="ctl">TTL (8 bits)<input type="number" id="ttR" min="0" max="255" value="254"></label></div>
+      <div class="ctrls"><button class="btn ghost" data-lb="3">Label 3 (implicit-null)</button><button class="btn ghost" data-lb="0">Label 0 (explicit-null)</button><button class="btn ghost" data-lb="87">Label 87</button></div>
+    </div>
+    <div class="stack">
+      <div class="pktrow" id="lbBits" style="font-size:16px"></div>
+      <div class="term" id="lbOut"></div>
+      <p class="small" id="lbTxt"></p>
+    </div>
+  </div>
+</div></section>
+
+<!-- 8 LDP -->
+<section class="slide" data-title="LDP"><div class="inner">
+  <div class="head"><span class="eyebrow">Label Distribution Protocol</span><h2>LDP descubre vecinos y les reparte etiquetas</h2>
+  <p class="lead">Recorre las etapas de una sesión LDP entre dos LSR directamente conectados.</p></div>
+  <div class="cols w46 fill">
+    <div class="steps" id="ldpSteps" style="grid-template-columns:1fr">
+      <div data-x="Al ejecutar <code>mpls ip</code> en la interfaz, el router envía Hellos por <b>UDP 646</b> a <b>224.0.0.2</b> (todos los routers del enlace). Revisa con <code>show mpls ldp discovery</code>."><b>1. Descubrimiento</b><span>Hello UDP 646 a 224.0.0.2</span></div>
+      <div data-x="El router con el <b>LDP ID más alto</b> es el activo y abre la sesión <b>TCP 646</b> hacia la dirección de transporte del otro. Esa dirección (normalmente la loopback, el LDP ID) debe ser alcanzable por el IGP."><b>2. Sesión TCP</b><span>Abre el de LDP ID más alto</span></div>
+      <div data-x="Cada LSR anuncia a todos sus vecinos LDP una etiqueta local por cada prefijo de su tabla. Las guarda en la LIB. Revisa con <code>show mpls ldp bindings</code>."><b>3. Intercambio</b><span>Etiqueta local por prefijo</span></div>
+      <div data-x="De todas las etiquetas recibidas, se usa la del vecino que es el siguiente salto del IGP para ese prefijo. Esa entra en la LFIB. Revisa con <code>show mpls forwarding-table</code>."><b>4. Selección</b><span>La del siguiente salto del IGP</span></div>
+    </div>
+    <div class="stack">
+      <div class="panel tight"><p id="ldpX">Pasa el cursor o toca una etapa.</p></div>
+      <div class="term sm"><span class="p">R2#</span> show mpls ldp neighbor
+    Peer LDP Ident: 3.3.3.3:0; Local LDP Ident 2.2.2.2:0
+        TCP connection: 3.3.3.3.646 - 2.2.2.2.29718
+        State: Oper; Msgs sent/rcvd: 52/51; Downstream
+        Up time: 00:21:14
+        LDP discovery sources:
+          GigabitEthernet0/1, Src IP addr: 10.23.0.3
+        Addresses bound to peer LDP Ident:
+          10.23.0.3       10.34.0.3       3.3.3.3</div>
+      <div class="note">La sesión TCP va <b>a la dirección del LDP ID</b>. Si esa loopback no está en el IGP, hay Hellos pero nunca hay sesión. Fíjala con <code>mpls ldp router-id Loopback0 force</code>.</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 9 Simulador de conmutación -->
+<section class="slide" data-title="Simulador: conmutación de etiquetas"><div class="inner">
+  <div class="head"><span class="eyebrow">Label switching en vivo</span><h2>Sigue el paquete de R1 a R5</h2>
+  <p class="lead">Cada salto consulta una tabla. Activa PHP para ver cómo R4 quita la etiqueta y R5 hace una sola búsqueda.</p></div>
+  <div class="ctrls"><button class="btn" id="swGo">▶ Enviar a 10.0.0.0/24</button><button class="btn ghost" id="swStep">Paso →</button><label class="tog"><input type="checkbox" id="swPhp"> PHP (R5 anuncia pop)</label><span class="badge amb" id="swBadge"></span></div>
+  <div class="panel"><svg viewBox="0 0 1440 360" class="dia" id="swSvg" role="img" aria-label="Paquete etiquetado recorriendo R1 a R5"></svg></div>
+  <div class="note" id="swTxt">Pulsa enviar o avanza paso a paso.</div>
+</div></section>
+
+<!-- 10 PHP -->
+<section class="slide" data-title="Penultimate Hop Popping"><div class="inner">
+  <div class="head"><span class="eyebrow">PHP</span><h2>El penúltimo salto quita la etiqueta</h2>
+  <p class="lead">Sin PHP, R5 busca en la LFIB, ve que no hay etiqueta de salida, la quita y vuelve a buscar en la FIB. Con PHP, R5 anuncia la etiqueta especial <b>3 (implicit-null)</b>: R4 entiende que debe quitarla y enviar el paquete IP limpio.</p></div>
+  <div class="cols st fill">
+    <div class="panel"><h3>Sin PHP: dos búsquedas en R5</h3>
+      <div class="term sm"><span class="p">R4#</span> show mpls forwarding-table 10.0.0.0
+Local      Outgoing   Prefix          Bytes   Outgoing   Next Hop
+Label      Label      or Tunnel Id    Switched interface
+65         <span class="h">23</span>         10.0.0.0/24     0       Gi0/1      10.45.0.5
+
+<span class="p">R5#</span> show mpls forwarding-table 10.0.0.0
+Local      Outgoing   Prefix          Bytes   Outgoing   Next Hop
+Label      Label      or Tunnel Id    Switched interface
+23         <span class="h">No Label</span>   10.0.0.0/24     0       Gi0/2      10.0.0.1</div>
+      <p class="small">R5 recibe la etiqueta 23, la quita (LFIB) y luego busca 10.0.0.0/24 en la FIB.</p></div>
+    <div class="panel"><h3>Con PHP: una búsqueda en R5</h3>
+      <div class="term sm"><span class="p">R4#</span> show mpls forwarding-table 10.0.0.0
+Local      Outgoing   Prefix          Bytes   Outgoing   Next Hop
+Label      Label      or Tunnel Id    Switched interface
+65         <span class="h">Pop Label</span>  10.0.0.0/24     0       Gi0/1      10.45.0.5
+
+<span class="p">R5#</span> show mpls ldp bindings 10.0.0.0 24
+  lib entry: 10.0.0.0/24, rev 12
+        local binding:  label: <span class="h">imp-null</span>
+        remote binding: lsr: 4.4.4.4:0, label: 65</div>
+      <p class="small">R5 anuncia <code>imp-null</code> para sus redes conectadas. Es el comportamiento por defecto en IOS.</p></div>
+  </div>
+</div></section>
+
+<!-- 11 Verificación MPLS -->
+<section class="slide" data-title="Verificación de MPLS"><div class="inner">
+  <div class="head"><span class="eyebrow">Troubleshooting MPLS</span><h2>Del enlace a la etiqueta: qué revisar y en qué orden</h2>
+  <p class="lead">Toca un paso para ver el comando y cómo se ve cuando falla.</p></div>
+  <div class="cols w37 fill">
+    <div id="vfList"></div>
+    <div class="panel"><span class="eyebrow" id="vfT"></span><p id="vfX"></p><div class="term sm" id="vfO"></div></div>
+  </div>
+</div></section>
+
+<!-- 12 MPLS L3 VPN -->
+<section class="slide" data-title="MPLS VPN de capa 3" data-agenda="MPLS VPN de capa 3" data-sub="VRF, MP-BGP, VPNv4 y pila de etiquetas"><div class="inner">
+  <div class="head"><span class="eyebrow">MPLS VPN de capa 3</span><h2>Un mismo núcleo, clientes que no se ven entre sí</h2>
+  <p class="lead">El dominio MPLS del proveedor es la <b>red P</b>; los sitios de los clientes son la <b>red C</b>. Toca un router para ver su rol y qué sabe de los clientes.</p></div>
+  <div class="cols w64 fill">
+    <div class="panel"><svg viewBox="0 0 900 400" class="dia" id="vpnSvg" role="img" aria-label="Clientes A y B conectados por PE_R1, P_R2 a P_R4 y PE_R5"></svg></div>
+    <div class="panel"><span class="eyebrow" id="vpT"></span><p id="vpX"></p></div>
+  </div>
+</div></section>
+
+<!-- 13 Propagación de rutas -->
+<section class="slide" data-title="VRF en el PE y MP-BGP"><div class="inner">
+  <div class="head"><span class="eyebrow">Implementación de MPLS VPN de capa 3</span><h2>Cómo viaja una ruta del cliente de un sitio al otro</h2>
+  <p class="lead">Avanza paso a paso con la ruta 10.0.2.0/24 del cliente B, desde CE_RB hasta CE_RA.</p></div>
+  <div class="ctrls"><button class="btn ghost" id="rpPrev">← Paso</button><button class="btn" id="rpNext">Paso →</button><span class="badge blue" id="rpN"></span></div>
+  <div class="panel"><svg viewBox="0 0 1440 250" class="dia" id="rpSvg" role="img" aria-label="Propagación de la ruta del cliente B"></svg></div>
+  <div class="cols w64">
+    <div class="panel tight"><h3 id="rpH"></h3><p id="rpX"></p></div>
+    <div class="term sm" id="rpO"></div>
+  </div>
+</div></section>
+
+<!-- 14 VPNv4 -->
+<section class="slide" data-title="Dirección VPNv4"><div class="inner">
+  <div class="head"><span class="eyebrow">Dirección VPNv4</span><h2>El RD hace único un prefijo repetido</h2>
+  <p class="lead">Los clientes A y B pueden usar las mismas redes. El PE antepone a cada prefijo el <b>Route Distinguisher</b> (8 bytes) de la VRF y obtiene una dirección VPNv4 de 12 bytes. Elige cliente y prefijo.</p></div>
+  <div class="cols w46 fill">
+    <div class="panel">
+      <div class="ctrls"><div class="seg" id="rdC"><button data-v="A" aria-pressed="true">Cliente A · RD 1:100</button><button data-v="B" aria-pressed="false">Cliente B · RD 1:110</button></div></div>
+      <div class="ctrls"><div class="seg" id="rdP"><button data-v="192.168.0.0/24" aria-pressed="true">192.168.0.0/24</button><button data-v="10.0.0.0/24" aria-pressed="false">10.0.0.0/24</button></div></div>
+      <div class="pktrow" style="font-size:18px"><span class="h2" style="flex:2" id="rdRD"></span><span class="h1" style="flex:1" id="rdIP"></span></div>
+      <div class="legend"><span><i style="background:var(--amber-soft);outline:1px solid var(--amber)"></i>RD: 8 bytes (ASN:número o IP:número)</span><span><i style="background:var(--accent-soft);outline:1px solid var(--accent)"></i>IPv4: 4 bytes</span></div>
+      <div class="result" id="rdRes"></div>
+    </div>
+    <div class="stack">
+      <div class="term sm" id="rdTbl"></div>
+      <div class="fix"><span class="fe">Lo que falta en el original.</span> El RD solo hace única la ruta. Lo que decide en qué VRF se instala es el <b>Route Target</b> (RT): el PE exporta con <code>route-target export</code> y el PE remoto importa con <code>route-target import</code>. Si el RT no calza, la ruta llega por MP-BGP pero no aparece en la VRF.</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 15 Pila de etiquetas -->
+<section class="slide" data-title="Simulador: pila de dos etiquetas"><div class="inner">
+  <div class="head"><span class="eyebrow">Pila de etiquetas</span><h2>Etiqueta VPN para el cliente, etiqueta LDP para el camino</h2>
+  <p class="lead">PE_R5 asigna la etiqueta VPN 35 a 1:110:10.0.2.0/24 y la anuncia por MP-iBGP. LDP arma el LSP hacia PE_R5. Avanza y mira la pila en cada salto.</p></div>
+  <div class="ctrls"><button class="btn ghost" id="stPrev">← Paso</button><button class="btn" id="stNext">Paso →</button><span class="badge blue" id="stN"></span></div>
+  <div class="panel"><svg viewBox="0 0 1440 300" class="dia" id="stSvg" role="img" aria-label="Paquete del cliente B con etiquetas VPN y LDP recorriendo el núcleo"></svg></div>
+  <div class="cols w64">
+    <div class="panel tight"><h3 id="stH"></h3><p id="stX"></p></div>
+    <div class="term sm" id="stO"></div>
+  </div>
+</div></section>
+
+<!-- 16 Síntomas L3VPN -->
+<section class="slide" data-title="L3VPN: del síntoma a la causa"><div class="inner">
+  <div class="head"><span class="eyebrow">Troubleshooting MPLS VPN</span><h2>Del síntoma a la causa</h2><p class="lead">Toca un síntoma para ver dónde mirar primero.</p></div>
+  <div class="cols w37 fill">
+    <div id="l3List"></div>
+    <div class="panel"><span class="eyebrow" id="l3T"></span><div id="l3X"></div><div class="term sm" id="l3O"></div></div>
+  </div>
+</div></section>
+
+<!-- 17 Resumen -->
+<section class="slide" data-title="Resumen"><div class="inner">
+  <div class="head"><span class="eyebrow">Resumen</span><h2>Lo que hay que llevarse</h2></div>
+  <div class="cols c3 st">
+    <div class="panel"><h3>Operación de MPLS</h3><ul>
+      <li>Los PE (LSR de borde) ponen y quitan etiquetas; los P las cambian.</li>
+      <li>LDP: Hello UDP 646, sesión TCP 646 hacia el LDP ID.</li>
+      <li>El LSP es unidireccional.</li>
+      <li>PHP: el penúltimo salto quita la etiqueta (imp-null).</li></ul></div>
+    <div class="panel"><h3>VPN de capa 3</h3><ul>
+      <li>Una VRF por cliente en cada PE.</li>
+      <li>Los CE no saben nada de MPLS.</li>
+      <li>RD + IPv4 = VPNv4, intercambiada por MP-BGP entre PE.</li>
+      <li>El RT decide en qué VRF se importa.</li></ul></div>
+    <div class="panel"><h3>Diagnóstico</h3><ul>
+      <li>Abajo hacia arriba: IGP, LDP, LFIB, MP-BGP, VRF.</li>
+      <li>Loopbacks /32 de los PE en el IGP.</li>
+      <li>Pila: etiqueta VPN adentro, LDP afuera.</li>
+      <li>Prueba con <code>ping vrf</code> y <code>traceroute vrf</code>.</li></ul></div>
+  </div>
+</div></section>
+
+<!-- 18 Quiz -->
+<section class="slide" data-title="Preguntas" data-agenda="Preguntas" data-sub="Comprueba lo aprendido"><div class="inner">
+  <div class="head"><span class="eyebrow">Preguntas</span><h2>Comprueba lo aprendido</h2></div>
+  <div class="panel quiz fill" id="quiz"></div>
+</div></section>
+
+<!-- 19 Referencias -->
+<section class="slide" data-title="Referencias"><div class="inner">
+  <div class="head"><span class="eyebrow">Referencias</span><h2>Bibliografía</h2></div>
+  <div class="panel"><ul>
+    <li>Raymond Lacoste, Brad Edgeworth. <i>CCNP Enterprise Advanced Routing ENARSI 300-410 Official Cert Guide</i>. Cisco Press. Capítulo 18, VRF, MPLS and MPLS Layer 3 VPNs.</li>
+    <li>IETF <a href="https://www.rfc-editor.org/rfc/rfc3031" target="_blank" rel="noopener">RFC 3031</a> (arquitectura MPLS), <a href="https://www.rfc-editor.org/rfc/rfc3032" target="_blank" rel="noopener">RFC 3032</a> (codificación de etiquetas), <a href="https://www.rfc-editor.org/rfc/rfc5036" target="_blank" rel="noopener">RFC 5036</a> (LDP) y <a href="https://www.rfc-editor.org/rfc/rfc4364" target="_blank" rel="noopener">RFC 4364</a> (BGP/MPLS IP VPN).</li>
+    <li>Cisco. <i>MPLS Basic Configuration Guide</i> y <i>MPLS Layer 3 VPNs Configuration Guide</i>, Cisco IOS XE.</li>
+  </ul></div>
+</div></section>
+
+</div></div>
+<nav class="bar" aria-label="Navegación de diapositivas">
+  <button id="prev" aria-label="Diapositiva anterior">←</button>
+  <span class="count" id="count"></span>
+  <div class="prog"><i id="prog"></i></div>
+  <select id="jump" aria-label="Ir a diapositiva"></select>
+  <button id="fs" aria-label="Pantalla completa" title="Pantalla completa (F)">⛶</button>
+  <button id="next" aria-label="Diapositiva siguiente">→</button>
+</nav>
+</div>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pad=(s,n)=>{s=String(s);return s.length>=n?s+" ":s+" ".repeat(n-s.length)};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+/* Botones segmentados: <div class="seg" id="x"><button data-v="a" aria-pressed="true">…</div> */
+function seg(id,cb){const el=$(id);el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;el.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.v)});}
+/* Mueve un elemento SVG (circle o g) por una lista de puntos */
+function animate(el,pts,ms){return new Promise(res=>{
+  const put=(x,y)=>{if(el.tagName==="circle"){el.setAttribute("cx",x);el.setAttribute("cy",y)}else el.setAttribute("transform",`translate(${x},${y})`)};
+  if(reduce||pts.length<2){put(...pts[pts.length-1]);return res()}
+  const n=pts.length-1,t0=performance.now();
+  (function f(t){const k=Math.max(0,Math.min(1,(t-t0)/ms)),s=Math.min(n-1,Math.floor(k*n)),u=k*n-s,a=pts[s],b=pts[s+1];
+    put(a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u);if(k<1)requestAnimationFrame(f);else res()})(t0);});}
+/* Salida anotada: lines=[[texto, explicación|null], …] */
+function annot(termId,outId,lines){
+  const t=$(termId);
+  t.innerHTML=lines.map((a,i)=>`<span class="ln${a[1]?" k":""}" data-i="${i}"${a[1]?' tabindex="0"':""}>${esc(a[0])||" "}</span>`).join("");
+  t.addEventListener("click",e=>{const l=e.target.closest(".ln");if(!l||!lines[l.dataset.i][1])return;t.querySelectorAll(".ln").forEach(x=>x.classList.toggle("sel",x===l));$(outId).innerHTML=lines[l.dataset.i][1]});
+  t.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.classList.contains("ln"))e.target.click()});
+}
+/* Lista de opciones que muestra un detalle: items=[[etiqueta, html], …] */
+function picker(listId,outId,items,first=0){
+  const l=$(listId);l.classList.add("pick");
+  l.innerHTML=items.map((it,i)=>`<button type="button" data-i="${i}" aria-pressed="false">${it[0]}</button>`).join("");
+  const show=i=>{l.querySelectorAll("button").forEach((b,k)=>b.setAttribute("aria-pressed",k===i));$(outId).innerHTML=items[i][1]};
+  l.addEventListener("click",e=>{const b=e.target.closest("button");if(b)show(+b.dataset.i)});
+  show(first);
+}
+/* Pasos con tarjetas: <div class="steps" id="x"><div data-x="…">…</div></div> */
+function stepsCards(id,outId){const el=$(id);const all=[...el.children];
+  const on=d=>{all.forEach(x=>x.classList.toggle("on",x===d));$(outId).innerHTML=d.dataset.x};
+  all.forEach(d=>{d.tabIndex=0;d.addEventListener("click",()=>on(d));d.addEventListener("mouseenter",()=>on(d));d.addEventListener("keydown",e=>{if(e.key==="Enter")on(d)})});}
+/* Cuestionario de una pregunta a la vez */
+function quiz(id,Q){
+  const el=$(id);let i=0;const ans=Q.map(()=>null);
+  function render(){
+    const q=Q[i],a=ans[i];
+    el.innerHTML=`<div class="ctrls" style="justify-content:space-between"><span class="eyebrow">Pregunta ${i+1} de ${Q.length}</span><span class="badge blue">Puntaje: ${ans.filter((x,k)=>x===Q[k].ok).length} / ${Q.length}</span></div>
+    <p class="q">${q.q}</p>
+    <div class="opts">${q.o.map((o,k)=>`<button type="button" data-k="${k}" class="${a===null?"":(k===q.ok?"right":(k===a?"wrong":""))}" ${a!==null?"disabled":""}>${String.fromCharCode(65+k)}. ${o}</button>`).join("")}</div>
+    <div class="${a===null?"":(a===q.ok?"fix":"warn")}" style="min-height:62px">${a===null?'<span class="muted">Elige una respuesta.</span>':(a===q.ok?"<b>Correcto.</b> ":"<b>No.</b> ")+(a===null?"":q.e)}</div>
+    <div class="ctrls"><button class="btn ghost" data-nav="-1" ${i===0?"disabled":""}>← Anterior</button><button class="btn" data-nav="1" ${i===Q.length-1?"disabled":""}>Siguiente →</button><button class="btn ghost" data-nav="0">Reiniciar</button></div>`;
+  }
+  el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;
+    if(b.dataset.k!==undefined&&ans[i]===null){ans[i]=+b.dataset.k;render()}
+    else if(b.dataset.nav!==undefined){const d=+b.dataset.nav;if(d===0){ans.fill(null);i=0}else i=Math.max(0,Math.min(Q.length-1,i+d));render()}});
+  render();
+}
+/* ---------- navegación y escala ---------- */
+const slides=$$(".slide");let cur=0;
+function fit(){const v=$(".viewport").getBoundingClientRect();const s=Math.min(v.width/1600,v.height/900);$(".canvas").style.setProperty("--s",s);}
+window.addEventListener("resize",fit);
+$("#jump").innerHTML=slides.map((s,i)=>`<option value="${i}">${i+1}. ${esc(s.dataset.title)}</option>`).join("");
+function go(i){
+  i=Math.max(0,Math.min(slides.length-1,i));
+  slides.forEach((s,k)=>{s.hidden=k!==i;s.classList.toggle("enter",k===i)});
+  cur=i;$("#count").textContent=`${i+1} / ${slides.length}`;
+  $("#prog").style.width=((i+1)/slides.length*100)+"%";$("#jump").value=i;
+  $("#prev").disabled=i===0;$("#next").disabled=i===slides.length-1;
+  try{history.replaceState(null,"","#s"+(i+1))}catch(e){}
+  slides[i].dispatchEvent(new CustomEvent("show"));
+}
+$("#prev").onclick=()=>go(cur-1);$("#next").onclick=()=>go(cur+1);
+$("#jump").onchange=e=>go(+e.target.value);
+$("#fs").onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(e){}};
+document.addEventListener("keydown",e=>{
+  if(e.target.closest("input,select,textarea"))return;
+  if(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" "){go(cur+1);e.preventDefault()}
+  else if(e.key==="ArrowLeft"||e.key==="PageUp"){go(cur-1);e.preventDefault()}
+  else if(e.key==="Home")go(0);else if(e.key==="End")go(slides.length-1);
+  else if(e.key==="f"||e.key==="F")$("#fs").click();
+});
+/* toque: deslizar para cambiar */
+let tx=null;$(".viewport").addEventListener("touchstart",e=>{tx=e.touches[0].clientX},{passive:true});
+$(".viewport").addEventListener("touchend",e=>{if(tx===null)return;const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>60&&!e.target.closest("input,button,select,.term"))go(cur+(d<0?1:-1));tx=null});
+/* Agenda automática a partir de data-agenda */
+(function(){const ag=$("#agenda");if(!ag)return;
+  ag.innerHTML=slides.map((s,i)=>s.dataset.agenda?`<button data-go="${i}"><small>Diapositiva ${i+1}</small><b>${esc(s.dataset.agenda)}</b><small>${esc(s.dataset.sub||"")}</small></button>`:"").join("");
+  ag.onclick=e=>{const b=e.target.closest("[data-go]");if(b)go(+b.dataset.go)};})();
+function boot(){fit();const m=location.hash.match(/^#s(\d+)/);go(m?+m[1]-1:0);
+  /* ?check: informa qué diapositivas desbordan el lienzo (uso interno al construir) */
+  if(location.search.includes("check")){const out=[];$(".canvas").style.setProperty("--s",1);
+    slides.forEach((s,k)=>{s.hidden=false;const R=s.getBoundingClientRect();
+      s.querySelectorAll(".inner *").forEach(el=>{const r=el.getBoundingClientRect();if(!r.width)return;
+        const sc=getComputedStyle(el);
+        if(r.bottom>R.bottom-36+1||r.right>R.right-60+1)out.push(`s${k+1} sale del lienzo: <${el.tagName.toLowerCase()} class="${el.className}"> b=${Math.round(r.bottom-R.top)} r=${Math.round(r.right-R.left)}`);
+        if((sc.overflow==="hidden"||sc.overflowY==="hidden")&&el.scrollHeight>el.clientHeight+2)out.push(`s${k+1} recorta: <${el.tagName.toLowerCase()} class="${el.className}" id="${el.id}"> ${el.scrollHeight}>${el.clientHeight}`);
+        if(el.matches(".panel,.card,.stack,.note,.fix,.warn,td,th")&&el.scrollWidth>el.clientWidth+2)out.push(`s${k+1} desborda ancho: <${el.tagName.toLowerCase()} class="${el.className}"> ${el.scrollWidth}>${el.clientWidth}`);
+        if(sc.overflow==="hidden"&&el.scrollWidth>el.clientWidth+2)out.push(`s${k+1} recorta ancho: <${el.tagName.toLowerCase()} class="${el.className}" id="${el.id}"> ${el.scrollWidth}>${el.clientWidth}`);});
+      s.hidden=k!==cur;});
+    const pre=document.createElement("pre");pre.id="__report";pre.textContent=out.length?[...new Set(out)].join("\n"):"OK";document.body.appendChild(pre);}
+}
+
+/* utilidades SVG */
+const R=(x,y,name,cls="box",w=120,h=50,extra="")=>`<rect class="${cls}" x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="8" ${extra}/><text x="${x}" y="${y+6}" text-anchor="middle">${name}</text>`;
+const tag=(id)=>`<g id="${id}" transform="translate(-200,0)"></g>`;
+function stackG(labels){/* dibuja la pila: IP + etiquetas, la de arriba a la izquierda */
+  const parts=[...labels.map((l,i)=>({t:l.t,c:l.c||"tagr"})),{t:"IP",c:"ip"}];const w=46,tot=parts.length*w;
+  return parts.map((p,i)=>`<rect x="${-tot/2+i*w}" y="-15" width="${w-2}" height="30" rx="4" ${p.c==="ip"?'fill="var(--panel)" stroke="var(--muted)"':`class="tagr"${p.c==="vpn"?' style="fill:var(--ok)"':""}`}/><text class="tagt" x="${-tot/2+i*w+w/2-1}" y="5" text-anchor="middle"${p.c==="ip"?' style="fill:var(--ink)"':(p.c==="vpn"?' style="fill:#fff"':"")}>${p.t}</text>`).join("");}
+
+/* ---------- 3: Edge / Core ---------- */
+$("#m3Go").onclick=async()=>{const g=$("#m3Pkt"),t=$("#m3L");
+  t.textContent="IP";await animate(g,[[700,60],[615,87]],400);t.textContent="25";await sleep(250);
+  await animate(g,[[615,87],[380,262]],800);t.textContent="23";await sleep(250);
+  await animate(g,[[380,262],[150,87]],800);t.textContent="IP";await sleep(250);await animate(g,[[150,87],[60,60]],400);};
+
+/* ---------- 4: tablas del LSR ---------- */
+const lsr={rp:["Protocolo de enrutamiento","OSPF, IS-IS o EIGRP intercambian rutas con los vecinos y llenan la RIB. MPLS depende de él: sin ruta IP no hay etiqueta.","R2# show ip protocols\nR2# show ip ospf neighbor"],
+ rib:["RIB","La tabla de enrutamiento IP: el mejor camino a cada prefijo según el IGP.","R2# show ip route 10.0.0.0\nRouting entry for 10.0.0.0/24\n  Known via \"ospf 1\", distance 110, metric 4\n  * 10.23.0.3, via GigabitEthernet0/1"],
+ lib:["LIB","Todas las etiquetas: la local que este router asignó a cada prefijo y las remotas que anunció cada vecino LDP.","R2# show mpls ldp bindings 10.0.0.0 24\n  lib entry: 10.0.0.0/24, rev 8\n    local binding:  label: 87\n    remote binding: lsr: 1.1.1.1:0, label: 19\n    remote binding: lsr: 3.3.3.3:0, label: 11"],
+ ldp:["LDP","Intercambia etiquetas con los LSR vecinos y las guarda en la LIB.","R2# show mpls ldp neighbor\nR2# show mpls ldp discovery"],
+ fib:["FIB (CEF)","Para paquetes IP sin etiqueta. En el LSR de entrada, la FIB ya indica qué etiqueta poner.","R1# show ip cef 10.0.0.0\n10.0.0.0/24\n  nexthop 10.12.0.2 GigabitEthernet0/1 label 87"],
+ lfib:["LFIB","Para paquetes con etiqueta: etiqueta de entrada → etiqueta de salida, interfaz y siguiente salto.","R2# show mpls forwarding-table\nLocal  Outgoing  Prefix        Bytes  Outgoing  Next Hop\nLabel  Label     or Tunnel Id  Switched interface\n87     11        10.0.0.0/24   0      Gi0/1     10.23.0.3"]};
+function lsrShow(k){$$("#lsrSvg .clk").forEach(e=>e.classList.toggle("sel",e.dataset.k===k));$("#lsrT").textContent=lsr[k][0];$("#lsrX").textContent=lsr[k][1];$("#lsrO").textContent=lsr[k][2]}
+$("#lsrSvg").addEventListener("click",e=>{const b=e.target.closest(".clk");if(b)lsrShow(b.dataset.k)});lsrShow("lib");
+
+/* ---------- 5: roles ---------- */
+const X5=[220,470,720,970,1220];
+const roles=[["R1 · LSR de borde (entrada)","Recibe el paquete IP sin etiqueta desde 192.168.0.0/24, busca en la FIB y le <b>impone</b> (push) la etiqueta 87."],
+ ["R2 · LSR intermedio","Solo mira la etiqueta: busca 87 en la LFIB y la <b>cambia</b> (swap) por 11."],
+ ["R3 · LSR intermedio","Cambia 11 por 65. No mira la dirección IP de destino."],
+ ["R4 · LSR intermedio (penúltimo salto)","Cambia 65 por 23. Con PHP, en cambio, <b>quita</b> (pop) la etiqueta y entrega el paquete IP a R5."],
+ ["R5 · LSR de borde (salida)","Quita la última etiqueta si llega alguna y reenvía por IP hacia 10.0.0.0/24, fuera del dominio MPLS."]];
+$("#lsrRow").innerHTML=`<rect class="zone" x="140" y="20" width="1160" height="190" rx="14"/><text class="lbl" x="160" y="44">Dominio MPLS</text>
+ <line class="wire" x1="40" y1="110" x2="1400" y2="110"/><text class="lbl k" x="40" y="96">192.168.0.0/24</text><text class="lbl k" x="1400" y="96" text-anchor="end">10.0.0.0/24</text>`+
+ X5.map((x,i)=>`<g class="clk" data-i="${i}">${R(x,110,"R"+(i+1),"box",120,52)}</g><text class="lbl" x="${x}" y="170" text-anchor="middle">${i===0||i===4?"Edge LSR":"Intermediate LSR"}</text>`).join("");
+function roleShow(i){$$("#lsrRow .clk rect").forEach((r,k)=>r.setAttribute("class",k===i?"box amb":"box"));$("#roleT").textContent=roles[i][0];$("#roleX").innerHTML=roles[i][1]}
+$("#lsrRow").addEventListener("click",e=>{const g=e.target.closest(".clk");if(g)roleShow(+g.dataset.i)});roleShow(0);
+
+/* ---------- 6: LSP ---------- */
+function lspRender(v){const f=v==="f",labs=f?["87","11","65","23"]:["42","16","77","19"];
+  $("#lspSvg").innerHTML=`<rect class="zone" x="140" y="30" width="1160" height="200" rx="14"/>
+  <line class="wire" x1="40" y1="150" x2="1400" y2="150"/>
+  <text class="lbl k" x="40" y="252">192.168.0.0/24 ${f?"(origen)":"(destino)"}</text><text class="lbl k" x="1400" y="252" text-anchor="end">10.0.0.0/24 ${f?"(destino)":"(origen)"}</text>
+  <path d="${f?"M200 70 L1240 70":"M1240 70 L200 70"}" stroke="var(--accent)" stroke-width="5" marker-end="url(#la)"/>
+  <defs><marker id="la" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--accent)"/></marker></defs>
+  <text x="720" y="58" text-anchor="middle">${f?"LSP hacia 10.0.0.0/24":"LSP hacia 192.168.0.0/24"}</text>`+
+  X5.map((x,i)=>R(x,150,"R"+(i+1),"box",120,52)).join("")+
+  [0,1,2,3].map(k=>{const i=f?k:3-k;const mx=(X5[i]+X5[i+1])/2;return `<rect class="tagr" x="${mx-24}" y="186" width="48" height="26" rx="4"/><text class="tagt" x="${mx}" y="204" text-anchor="middle">${labs[k]}</text>`}).join("");
+  $("#lspTxt").innerHTML=f?"Etiquetas que usa el tráfico hacia 10.0.0.0/24: 87, 11, 65 y 23. Cada LSR eligió la suya para ese prefijo.":"El retorno hacia 192.168.0.0/24 es otro LSP, con etiquetas distintas (aquí, de ejemplo). Por eso al diagnosticar hay que revisar <b>ambos sentidos</b>: un LSP puede estar sano y el de vuelta roto.";}
+seg("#lspSeg",lspRender);lspRender("f");
+
+/* ---------- 7: codificador de etiqueta ---------- */
+function lbRender(){const L=Math.max(0,Math.min(1048575,+$("#lbR").value|0)),E=Math.max(0,Math.min(7,+$("#exR").value|0)),S=Math.max(0,Math.min(1,+$("#sR").value|0)),T=Math.max(0,Math.min(255,+$("#ttR").value|0));
+  $("#lbV").textContent=L;const v=((L<<12)|(E<<9)|(S<<8)|T)>>>0;
+  const b=(n,w)=>n.toString(2).padStart(w,"0");
+  $("#lbBits").innerHTML=`<span class="h2" style="flex:20">Label ${b(L,20)}</span><span class="h1" style="flex:5">EXP ${b(E,3)}</span><span class="h3" style="flex:3">S ${S}</span><span class="h0" style="flex:8">TTL ${b(T,8)}</span>`;
+  $("#lbOut").textContent=`Bits   0 ─────────────── 19 20─22  23  24 ── 31\nValor  0x${v.toString(16).toUpperCase().padStart(8,"0")}\nLabel  ${L}\nEXP/TC ${E}   S ${S}   TTL ${T}`;
+  const sp={0:"Etiqueta 0, explicit-null: el último salto la recibe y la quita, pero conserva el valor EXP para QoS.",1:"Etiqueta 1, router alert.",3:"Etiqueta 3, implicit-null: nunca viaja en un paquete. Se anuncia para pedir PHP al vecino."};
+  $("#lbTxt").innerHTML=(L<16?(sp[L]||"Las etiquetas 0 a 15 están reservadas para usos especiales.")+" ":"")+(S?"S=1: es la última etiqueta de la pila (la más cercana a la cabecera IP).":"S=0: hay más etiquetas debajo, como en una VPN MPLS.")+" EXP hoy se llama Traffic Class (RFC 5462).";}
+["#lbR","#exR","#sR","#ttR"].forEach(s=>$(s).oninput=lbRender);
+$$("[data-lb]").forEach(b=>b.onclick=()=>{$("#lbR").value=b.dataset.lb;lbRender()});lbRender();
+
+/* ---------- 8: LDP ---------- */
+stepsCards("#ldpSteps","#ldpX");
+
+/* ---------- 9: simulador de conmutación ---------- */
+const XS=[150,435,720,1005,1290],YS=90;
+function swTables(php,hl){/* hl: índice de router y tabla resaltada */
+  const T=[
+   [["FIB","Dst IP","Out","Via"],["10.0.0.0/24","87","R2"]],
+   [["LFIB","In","Out","Via"],["87","11","R3"]],
+   [["LFIB","In","Out","Via"],["11","65","R4"]],
+   [["LFIB","In","Out","Via"],["65",php?"pop":"23","R5"]],
+   php?[["FIB","Dst IP","Out","Via"],["10.0.0.0/24","—","conectada"]]:[["LFIB","In","Out","Via"],["23","N/A","FIB"]]];
+  let s="";T.forEach((t,i)=>{const x=XS[i]-125,y=165,on=hl.includes(i);
+    s+=`<text class="lbl k" x="${x}" y="${y-6}">${t[0][0]} ${["R1","R2","R3","R4","R5"][i]}</text><rect x="${x}" y="${y}" width="250" height="60" rx="6" fill="${on?"var(--amber-soft)":"var(--panel)"}" stroke="${on?"var(--amber)":"var(--line)"}" stroke-width="${on?2:1}"/>`;
+    const CX=[10,118,170];
+    t[0].slice(1).forEach((h,k)=>{s+=`<text class="lbl" x="${x+CX[k]}" y="${y+22}">${h}</text>`});
+    t[1].forEach((c,k)=>{s+=`<text x="${x+CX[k]}" y="${y+48}" style="font-family:var(--f-mono);font-size:14px">${c}</text>`});});
+  if(!php){const x=XS[4]-125;const on=hl.includes(5);s+=`<text class="lbl k" x="${x}" y="259">FIB R5</text><rect x="${x}" y="265" width="250" height="60" rx="6" fill="${on?"var(--amber-soft)":"var(--panel)"}" stroke="${on?"var(--amber)":"var(--line)"}" stroke-width="${on?2:1}"/><text class="lbl" x="${x+10}" y="287">Dst IP</text><text class="lbl" x="${x+118}" y="287">Out</text><text class="lbl" x="${x+170}" y="287">Via</text><text x="${x+10}" y="313" style="font-family:var(--f-mono);font-size:14px">10.0.0.0/24</text><text x="${x+118}" y="313" style="font-family:var(--f-mono);font-size:14px">—</text><text x="${x+170}" y="313" style="font-family:var(--f-mono);font-size:14px">conectada</text>`}
+  return s;}
+let sw={i:-1,busy:false};
+function swDraw(){const php=$("#swPhp").checked,i=sw.i;
+  const hl=i<0?[]:(i===4&&!php?[4,5]:[i]);
+  $("#swSvg").innerHTML=`<rect class="zone" x="20" y="20" width="1400" height="330" rx="14"/><line class="wire" x1="0" y1="${YS}" x2="1440" y2="${YS}"/>`+XS.map((x,k)=>R(x,YS,"R"+(k+1),k===i?"box amb":"box",110,48)).join("")+`<text class="lbl k" x="30" y="44">desde 192.168.0.0/24</text><text class="lbl k" x="1410" y="44" text-anchor="end">hacia 10.0.0.0/24</text>`+swTables(php,hl)+tag("swPkt");
+  $("#swBadge").textContent=php?"PHP activo: R5 hace 1 búsqueda":"Sin PHP: R5 hace 2 búsquedas";}
+const swLab=php=>["87","11","65",php?"":"23",""];
+const swMsg=php=>["<b>R1 (entrada):</b> paquete IP sin etiqueta. Busca 10.0.0.0/24 en la FIB, impone la etiqueta 87 y lo envía a R2.","<b>R2:</b> llega con 87. Busca en la LFIB: sale con 11 hacia R3.","<b>R3:</b> llega con 11. LFIB: sale con 65 hacia R4.",
+ php?"<b>R4 (penúltimo):</b> llega con 65. LFIB dice <b>pop</b>: quita la etiqueta y entrega el paquete IP a R5.":"<b>R4:</b> llega con 65. LFIB: sale con 23 hacia R5.",
+ php?"<b>R5 (salida):</b> llega un paquete IP. Una sola búsqueda en la FIB y lo entrega a 10.0.0.0/24.":"<b>R5 (salida):</b> llega con 23. Primero busca en la LFIB (sin etiqueta de salida, la quita) y luego busca de nuevo en la FIB: <b>dos búsquedas</b>. PHP evita esto."];
+async function swTo(i){const php=$("#swPhp").checked;sw.i=i;swDraw();const g=$("#swPkt");
+  const lb=i===0?"":swLab(php)[i-1];g.innerHTML=stackG(lb?[{t:lb}]:[]);
+  const from=i===0?[0,YS-45]:[XS[i-1],YS-45];await animate(g,[from,[XS[i],YS-45]],reduce?0:650);
+  const out=swLab(php)[i];g.innerHTML=stackG(out?[{t:out}]:[]);$("#swTxt").innerHTML=swMsg(php)[i];}
+$("#swStep").onclick=async()=>{if(sw.busy)return;sw.busy=true;await swTo(sw.i>=4?0:sw.i+1);sw.busy=false};
+$("#swGo").onclick=async()=>{if(sw.busy)return;sw.busy=true;for(let i=0;i<5;i++){await swTo(i);await sleep(reduce?0:900)}sw.busy=false};
+$("#swPhp").onchange=()=>{sw.i=-1;swDraw();$("#swTxt").textContent="Pulsa enviar o avanza paso a paso."};swDraw();
+
+/* ---------- 11: verificación ---------- */
+const vf=[
+ ["1. IGP y loopbacks","Cada PE debe tener una ruta /32 a la loopback de los otros. Si se resume, no hay etiqueta para la /32 y el LSP se rompe.","R1# show ip route 5.5.5.5\nRouting entry for 5.5.5.5/32\n  Known via \"ospf 1\", distance 110, metric 4"],
+ ["2. CEF activo","MPLS necesita CEF. Sin él no se llenan la FIB ni la LFIB.","R1# show ip cef summary\nIPv4 CEF is enabled for distributed and running"],
+ ["3. MPLS en las interfaces","Busca Yes (ldp) y Operational Yes en cada interfaz del núcleo. Una interfaz sin mpls ip deja un hueco en el LSP.","R2# show mpls interfaces\nInterface              IP            Tunnel   BGP Static Operational\nGigabitEthernet0/0     Yes (ldp)     No       No  No     Yes\nGigabitEthernet0/1     Yes (ldp)     No       No  No     Yes"],
+ ["4. Descubrimiento LDP","xmit/recv: se envían y reciben Hellos. Solo xmit: el vecino no habla LDP en ese enlace (falta mpls ip o una ACL bloquea UDP 646).","R2# show mpls ldp discovery\n Local LDP Identifier:\n    2.2.2.2:0\n    Discovery Sources:\n    Interfaces:\n        GigabitEthernet0/0 (ldp): xmit/recv\n            LDP Id: 1.1.1.1:0\n        GigabitEthernet0/1 (ldp): xmit"],
+ ["5. Sesión LDP","State: Oper. Si hay Hellos pero no sesión, el LDP ID del vecino no es alcanzable o TCP 646 está bloqueado.","R2# show mpls ldp neighbor\n    Peer LDP Ident: 3.3.3.3:0; Local LDP Ident 2.2.2.2:0\n        TCP connection: 3.3.3.3.646 - 2.2.2.2.29718\n        State: Oper; Msgs sent/rcvd: 52/51; Downstream"],
+ ["6. LIB y LFIB","Cada prefijo debe tener etiqueta local y de salida. Untagged / No Label en un P indica que el siguiente salto no anunció etiqueta.","R2# show mpls forwarding-table 10.0.0.0\nLocal  Outgoing  Prefix        Bytes  Outgoing  Next Hop\nLabel  Label     or Tunnel Id  Switched interface\n87     11        10.0.0.0/24   0      Gi0/1     10.23.0.3"],
+ ["7. Prueba extremo a extremo","traceroute muestra la etiqueta que recibe cada salto. Donde desaparecen las etiquetas antes de tiempo, está la falla.","R1# traceroute 10.0.0.1\n  1 10.12.0.2 [MPLS: Label 87 Exp 0] 2 msec\n  2 10.23.0.3 [MPLS: Label 11 Exp 0] 2 msec\n  3 10.34.0.4 [MPLS: Label 65 Exp 0] 2 msec\n  4 10.45.0.5 3 msec"]];
+picker("#vfList","#vfX",vf.map(v=>[v[0],v[1]]));
+$("#vfList").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("#vfT").textContent=vf[+b.dataset.i][0];$("#vfO").textContent=vf[+b.dataset.i][2]});
+$("#vfT").textContent=vf[0][0];$("#vfO").textContent=vf[0][2];
+
+/* ---------- 12: topología VPN ---------- */
+const VN={cer1:[90,90,"CE_R1"],cera:[90,310,"CE_RA"],pe1:[230,200,"PE_R1"],p2:[390,200,"P_R2"],p3:[530,200,"P_R3"],p4:[670,200,"P_R4"],pe5:[810,200,"PE_R5"]};
+const VN2={cer2:[810,70,"CE_R2"],cerb:[810,330,"CE_RB"]};
+const vrole={cer1:["CE_R1 · Cliente A, sitio 1","Router del cliente. Anuncia 192.168.0.0/24 a PE_R1 con un protocolo normal. No sabe nada de MPLS, etiquetas ni VRF."],
+ cera:["CE_RA · Cliente B, sitio 1","Router del cliente B, con la red 10.0.0.0/24. Tampoco ejecuta MPLS."],
+ pe1:["PE_R1 · Provider Edge","Tiene una VRF por cliente (A y B) asociada a cada interfaz hacia un CE. Aprende las rutas del CE, las pasa a MP-BGP y es el LSR de entrada/salida."],
+ p2:["P_R2 · Provider","Router del núcleo. Solo ejecuta el IGP y LDP. No conoce las rutas de los clientes ni ejecuta BGP: cambia etiquetas LDP."],
+ p3:["P_R3 · Provider","Igual que P_R2: conmuta etiquetas sin mirar al cliente."],
+ p4:["P_R4 · Provider (penúltimo salto)","Conmuta etiquetas; con PHP quita la etiqueta LDP antes de PE_R5."],
+ pe5:["PE_R5 · Provider Edge","Mantiene las VRF de A y B del otro sitio. Intercambia rutas VPNv4 con PE_R1 por MP-iBGP."],
+ cer2:["CE_R2 · Cliente A, sitio 2","Red 192.168.2.0/24. Ve las rutas del sitio 1 del cliente A como si fueran normales."],
+ cerb:["CE_RB · Cliente B, sitio 2","Red 10.0.2.0/24. Nunca ve las rutas del cliente A."]};
+function vpnDraw(sel){const all={...VN,...VN2};
+  let s=`<rect class="zone" x="170" y="140" width="700" height="120" rx="14"/><text class="lbl" x="185" y="160">Dominio MPLS (red P)</text>
+  <path d="M90 90 L230 200 L810 200 L810 70" class="wire" stroke-width="5" style="stroke:var(--accent)"/><path d="M90 310 L230 200 M810 200 L810 330" class="wire" stroke-width="5" style="stroke:var(--amber)"/>
+  <text class="lbl k" x="20" y="40">Cliente A sitio 1 · 192.168.0.0/24</text><text class="lbl" x="20" y="370" style="fill:var(--amber)">Cliente B sitio 1 · 10.0.0.0/24</text>
+  <text class="lbl k" x="880" y="30" text-anchor="end">Cliente A sitio 2 · 192.168.2.0/24</text><text class="lbl" x="880" y="380" text-anchor="end" style="fill:var(--amber)">Cliente B sitio 2 · 10.0.2.0/24</text>`;
+  Object.entries(all).forEach(([k,v])=>{s+=`<g class="clk" data-k="${k}">${R(v[0],v[1],v[2],k===sel?"box amb":(k.startsWith("ce")?"box bk":"box"),104,44)}</g>`});
+  $("#vpnSvg").innerHTML=s;$("#vpT").textContent=vrole[sel][0];$("#vpX").innerHTML=vrole[sel][1];}
+$("#vpnSvg").addEventListener("click",e=>{const g=e.target.closest(".clk");if(g)vpnDraw(g.dataset.k)});vpnDraw("pe1");
+
+/* ---------- 13: propagación de la ruta ---------- */
+const RX=[110,330,720,1110,1330];
+const rp=[
+ [4,"1. CE_RB anuncia la ruta","CE_RB anuncia 10.0.2.0/24 a PE_R5 con el protocolo PE-CE acordado: estático, OSPF, EIGRP, RIP o eBGP.","PE_R5# show ip route vrf B 10.0.2.0\nRouting entry for 10.0.2.0/24\n  Known via \"ospf 2\", distance 110\n  * 10.5.0.6, via GigabitEthernet0/2"],
+ [3,"2. Queda en la VRF del cliente B","PE_R5 instala la ruta en la VRF B, no en la tabla global. La VRF tiene su RD (1:110) y sus route targets.","PE_R5# show ip vrf\n  Name       Default RD    Interfaces\n  A          1:100         Gi0/1\n  B          1:110         Gi0/2"],
+ [3,"3. Pasa a MP-BGP como VPNv4","PE_R5 redistribuye la ruta en BGP. Se convierte en 1:110:10.0.2.0/24, recibe la etiqueta VPN 35 y se marca con el RT de exportación.","PE_R5# show bgp vpnv4 unicast all labels\n   Network          Next Hop      In label/Out label\nRoute Distinguisher: 1:110 (B)\n   10.0.2.0/24      10.5.0.6      35/nolabel"],
+ [2,"4. MP-iBGP entre los PE","La ruta VPNv4 viaja de PE_R5 a PE_R1 con next hop 5.5.5.5 (loopback de PE_R5). Los routers P no ejecutan BGP ni la ven.","PE_R1# show bgp vpnv4 unicast all\n   Network          Next Hop     Metric LocPrf Weight Path\nRoute Distinguisher: 1:110 (default for vrf B)\n *>i 10.0.2.0/24     5.5.5.5          0    100      0 ?"],
+ [1,"5. PE_R1 la importa en la VRF B","El RT de la ruta coincide con el import de la VRF B, así que PE_R1 la instala ahí con next hop PE_R5.","PE_R1# show ip route vrf B 10.0.2.0\nRouting entry for 10.0.2.0/24\n  Known via \"bgp 1\", distance 200, metric 0\n  * 5.5.5.5 (default), from 5.5.5.5"],
+ [0,"6. Llega a CE_RA","PE_R1 la anuncia a CE_RA por el protocolo PE-CE. CE_RA la ve como una ruta cualquiera.","CE_RA# show ip route 10.0.2.0\nO E2     10.0.2.0/24 [110/1] via 10.1.0.1, Gi0/0"]];
+let rpI=0;
+function rpDraw(){const st=rp[rpI];
+  const names=["CE_RA","PE_R1","P_R2 · P_R3 · P_R4","PE_R5","CE_RB"];
+  let s=`<rect class="zone" x="230" y="70" width="980" height="130" rx="14"/><text class="lbl" x="245" y="90">Dominio MPLS</text><line class="wire" x1="110" y1="135" x2="1330" y2="135"/>`;
+  RX.forEach((x,k)=>{s+=R(x,135,names[k],k===st[0]?"box amb":(k===0||k===4?"box bk":"box"),k===2?250:130,50)});
+  const arrows=[[1330,1110],[1110,1110],[1110,1110],[1110,330],[330,330],[330,110]];const a=arrows[rpI];
+  s+=`<path d="M${a[0]} 60 L${a[1]+(a[0]===a[1]?0:10)} 60" stroke="var(--ok)" stroke-width="5" marker-end="url(#ra)"/><defs><marker id="ra" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--ok)"/></marker></defs>`;
+  s+=`<text class="lbl k" x="720" y="235" text-anchor="middle">${rpI>=2&&rpI<=4?"1:110:10.0.2.0/24 · etiqueta VPN 35 · next hop 5.5.5.5":"10.0.2.0/24"}</text>`;
+  if(rpI===3)s+=`<path d="M1110 105 C900 30 540 30 330 105" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="8 6"/><text class="lbl k" x="720" y="40" text-anchor="middle">sesión MP-iBGP entre loopbacks</text>`;
+  $("#rpSvg").innerHTML=s;$("#rpH").textContent=st[1];$("#rpX").textContent=st[2];$("#rpO").textContent=st[3];$("#rpN").textContent=`Paso ${rpI+1} de ${rp.length}`;
+  $("#rpPrev").disabled=rpI===0;$("#rpNext").disabled=rpI===rp.length-1;}
+$("#rpPrev").onclick=()=>{rpI=Math.max(0,rpI-1);rpDraw()};$("#rpNext").onclick=()=>{rpI=Math.min(rp.length-1,rpI+1);rpDraw()};rpDraw();
+
+/* ---------- 14: VPNv4 ---------- */
+let rdc="A",rdp="192.168.0.0/24";
+function rdRender(){const rd=rdc==="A"?"1:100":"1:110";$("#rdRD").textContent="RD "+rd;$("#rdIP").textContent=rdp;$("#rdRes").textContent=`VPNv4: ${rd}:${rdp}`;
+  const rows=[["1:100","192.168.0.0/24","A"],["1:100","10.0.0.0/24","A"],["1:110","10.0.0.0/24","B"],["1:110","10.0.2.0/24","B"]];
+  $("#rdTbl").innerHTML=`<span class="p">PE_R1#</span> show bgp vpnv4 unicast all\n   Network            Next Hop\n`+rows.map(r=>{const on=r[0]===rd&&r[1]===rdp;return `${on?'<span class="h">':""}Route Distinguisher: ${r[0]} (vrf ${r[2]})\n *>  ${pad(r[1],18)} 0.0.0.0${on?"</span>":""}`}).join("\n")+`\n<span class="d">! 10.0.0.0/24 aparece dos veces, sin conflicto:</span>\n<span class="d">! 1:100:10.0.0.0/24 y 1:110:10.0.0.0/24</span>`;}
+seg("#rdC",v=>{rdc=v;rdRender()});seg("#rdP",v=>{rdp=v;rdRender()});rdRender();
+
+/* ---------- 15: pila de etiquetas ---------- */
+const SX=[90,280,520,760,1000,1200,1360];
+const SN=["CE_RA","PE_R1","P_R2","P_R3","P_R4","PE_R5","CE_RB"];
+const st=[
+ [0,[],"CE_RA envía un paquete IP","Destino 10.0.2.10. CE_RA no sabe que hay MPLS: lo envía a PE_R1 como a cualquier router.","CE_RA# show ip route 10.0.2.0\nO E2  10.0.2.0/24 [110/1] via 10.1.0.1"],
+ [1,[{t:"99"},{t:"35",c:"vpn"}],"PE_R1 impone dos etiquetas","Busca en la VRF B: 1:110:10.0.2.0/24 → etiqueta VPN 35, next hop PE_R5. Para llegar a PE_R5, LDP le dio la etiqueta 99 vía P_R2. Pone 35 abajo y 99 arriba.","PE_R1# show ip cef vrf B 10.0.2.0\n10.0.2.0/24\n  nexthop 10.12.0.2 Gi0/1 label 99 35"],
+ [2,[{t:"10"},{t:"35",c:"vpn"}],"P_R2 cambia solo la de arriba","Mira únicamente la etiqueta LDP: 99 → 10 hacia P_R3. La etiqueta VPN 35 viaja sin cambios.","P_R2# show mpls forwarding-table labels 99\nLocal  Outgoing  Prefix      Outgoing  Next Hop\n99     10        5.5.5.5/32  Gi0/1     10.23.0.3"],
+ [3,[{t:"52"},{t:"35",c:"vpn"}],"P_R3 cambia 10 por 52","Igual que P_R2. Ningún router P sabe a qué cliente pertenece el paquete.","P_R3# show mpls forwarding-table labels 10\n10     52        5.5.5.5/32  Gi0/1     10.34.0.4"],
+ [4,[{t:"35",c:"vpn"}],"P_R4 hace PHP","PE_R5 le anunció imp-null para su loopback: P_R4 quita la etiqueta LDP y envía el paquete solo con la etiqueta VPN.","P_R4# show mpls forwarding-table labels 52\n52     Pop Label 5.5.5.5/32  Gi0/1     10.45.0.5"],
+ [5,[],"PE_R5 lee la etiqueta VPN","La etiqueta 35 le dice a qué VRF pertenece el paquete (B). La quita y lo reenvía por IP a CE_RB.","PE_R5# show mpls forwarding-table labels 35\n35     No Label  10.0.2.0/24[V] Gi0/2  10.5.0.6"],
+ [6,[],"CE_RB recibe el paquete IP","Llega igual que salió de CE_RA. Sin la etiqueta VPN, PE_R5 no sabría si 10.0.2.10 es del cliente A o del B.","CE_RB# ! recibe 10.0.2.10 desde 10.0.0.x"]];
+let stI=0;
+function stDraw(){const s0=st[stI];
+  let s=`<rect class="zone" x="190" y="90" width="1110" height="150" rx="14"/><text class="lbl" x="205" y="110">Dominio MPLS</text><line class="wire" x1="90" y1="180" x2="1360" y2="180"/>`;
+  SX.forEach((x,k)=>{s+=R(x,180,SN[k],k===s0[0]?"box amb":(k===0||k===6?"box bk":"box"),k===0||k===6?120:110,48)});
+  const ldp=["","99","10","52","pop"];[1,2,3,4].forEach(k=>{s+=`<text class="lbl" x="${(SX[k]+SX[k+1])/2}" y="230" text-anchor="middle">LDP ${ldp[k]}</text>`});
+  s+=`<text class="lbl k" x="1200" y="125" text-anchor="middle">VPN 35 asignada aquí</text><path d="M1200 90 C1000 20 480 20 280 90" fill="none" stroke="var(--ok)" stroke-width="2.5" stroke-dasharray="7 5"/><text class="lbl" x="740" y="36" text-anchor="middle" style="fill:var(--ok)">MP-iBGP: 1:110:10.0.2.0/24 → etiqueta 35</text>`;
+  s+=`<g transform="translate(${SX[s0[0]]},${135})">${stackG(s0[1])}</g>`;
+  $("#stSvg").innerHTML=s;$("#stH").textContent=s0[2];$("#stX").textContent=s0[3];$("#stO").textContent=s0[4];$("#stN").textContent=`Paso ${stI+1} de ${st.length}`;
+  $("#stPrev").disabled=stI===0;$("#stNext").disabled=stI===st.length-1;}
+$("#stPrev").onclick=()=>{stI=Math.max(0,stI-1);stDraw()};$("#stNext").onclick=()=>{stI=Math.min(st.length-1,stI+1);stDraw()};stDraw();
+
+/* ---------- 16: síntomas L3VPN ---------- */
+const l3=[
+ ["El CE remoto no recibe la ruta","Falta redistribuir entre BGP y el protocolo PE-CE en algún PE, en alguno de los dos sentidos.","PE_R1# show run | section router bgp\n address-family ipv4 vrf B\n  redistribute ospf 2\nPE_R1# show run | section router ospf 2\n redistribute bgp 1 subnets"],
+ ["La ruta está en BGP VPNv4 pero no en la VRF","El route target importado no coincide con el exportado por el otro PE.","PE_R1# show ip vrf detail B\n  Export VPN route-target communities\n    RT:1:110\n  Import VPN route-target communities\n    RT:1:111   <-- no calza"],
+ ["No hay vecindad VPNv4 entre PE","El vecino no está activado en address-family vpnv4, o falta send-community extended (los RT viajan como comunidades extendidas).","PE_R1# show bgp vpnv4 unicast all summary\nPE_R1# show run | section vpnv4\n  neighbor 5.5.5.5 activate\n  neighbor 5.5.5.5 send-community extended"],
+ ["La ruta está en la VRF, pero el ping falla","No hay LSP completo hacia la loopback del PE remoto: un enlace sin mpls ip, LDP caído o la /32 resumida en el IGP.","PE_R1# show mpls forwarding-table 5.5.5.5\nPE_R1# traceroute 5.5.5.5 source lo0\n  2 10.23.0.3 3 msec   <-- sin etiqueta"],
+ ["Prueba desde el PE falla, desde el CE funciona","Se hizo ping en la tabla global. Hay que indicar la VRF.","PE_R1# ping vrf B 10.0.2.10\nPE_R1# traceroute vrf B 10.0.2.10"],
+ ["Dos clientes con la misma red se mezclan","Las dos VRF usan el mismo RD o comparten route targets por error.","PE_R1# show ip vrf\n  A    1:100   Gi0/1\n  B    1:100   Gi0/2   <-- mismo RD"]];
+picker("#l3List","#l3X",l3.map(v=>[v[0],v[1]]));
+$("#l3List").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("#l3T").textContent=l3[+b.dataset.i][0];$("#l3O").textContent=l3[+b.dataset.i][2]});
+$("#l3T").textContent=l3[0][0];$("#l3O").textContent=l3[0][2];
+
+/* ---------- Quiz ---------- */
+quiz("#quiz",[
+ {q:"¿Qué hace un LSR intermedio con un paquete etiquetado?",o:["Busca la IP de destino en la FIB","Cambia la etiqueta según la LFIB (swap)","Agrega una segunda etiqueta","Lo envía al PE para que decida"],ok:1,e:"Los LSR intermedios solo miran la etiqueta superior y la cambian según la LFIB."},
+ {q:"¿Con qué mensajes descubre LDP a sus vecinos?",o:["TCP 646 a la loopback","UDP 646 a 224.0.0.2","UDP 179 a 224.0.0.5","TCP 179 al vecino"],ok:1,e:"Los Hello van por UDP 646 a 224.0.0.2. Luego la sesión se establece por TCP 646."},
+ {q:"Hay Hellos LDP en ambos sentidos pero la sesión no sube. ¿Qué revisas?",o:["La MTU de la interfaz","Que el LDP ID (loopback) del vecino sea alcanzable por el IGP","El valor de EXP","El RD de la VRF"],ok:1,e:"La sesión TCP se abre hacia la dirección de transporte, que por defecto es el LDP ID. Sin ruta a esa loopback no hay sesión."},
+ {q:"¿Para qué sirve PHP?",o:["Para que el último router haga una sola búsqueda","Para cifrar las etiquetas","Para elegir el LDP ID","Para balancear entre LSP"],ok:0,e:"El penúltimo salto quita la etiqueta, así el router de salida solo busca en la FIB."},
+ {q:"¿Qué es una dirección VPNv4?",o:["Una IPv4 con máscara /32","RD de 8 bytes + prefijo IPv4 de 4 bytes","Una etiqueta MPLS de 32 bits","RT + etiqueta VPN"],ok:1,e:"El RD (64 bits) antepuesto al prefijo IPv4 (32 bits) forma una dirección de 96 bits."},
+ {q:"En la pila de una VPN de capa 3, ¿qué etiqueta va arriba (la más externa)?",o:["La etiqueta VPN","La etiqueta LDP","El RD","El RT"],ok:1,e:"Arriba va la LDP, que los P cambian salto a salto. Abajo va la VPN, que solo lee el PE de salida."},
+ {q:"¿Qué saben los routers CE de MPLS?",o:["Todo: ejecutan LDP","Solo las etiquetas VPN","Nada: intercambian rutas IP normales con el PE","Solo los RD"],ok:2,e:"El CE no ejecuta MPLS ni conoce las VRF. Eso facilita que el cliente use el servicio."},
+ {q:"La ruta del cliente llega a PE_R1 por MP-BGP pero no aparece en su VRF. ¿Causa más probable?",o:["El RD es distinto en cada PE","El route target importado no coincide","Falta PHP","El CE no tiene MPLS"],ok:1,e:"El RT decide en qué VRF se importa una ruta VPNv4. El RD puede ser distinto en cada PE sin problema."}]);
+
+boot();
+})();
+</script>
+</body></html>

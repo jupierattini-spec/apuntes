@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MPLS VPN de Capa 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Lienzo fijo 1600x900 (16:9) escalado a la ventana. Misma paleta y tipografía que las presentaciones de la unidad 2. */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#15212c; --muted:#5a6876; --line:#d3dae1; --frame:#d8dee5;
+  --accent:#1c63a8; --accent-ink:#ffffff; --accent-soft:#e1ecf7;
+  --amber:#a8650a; --amber-soft:#fbefdc; --ok:#1f7a4a; --ok-soft:#e0f2e8; --bad:#b0322b; --bad-soft:#f9e3e1;
+  --term-bg:#0f1b26; --term-fg:#d2dee9; --term-dim:#7f93a6; --term-hl:#ffd27a; --term-prompt:#7cc0ff;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d151d; --panel:#16212c; --ink:#e3eaf1; --muted:#97a6b4; --line:#2a3846; --frame:#070c11;
+  --accent:#5aa6ea; --accent-ink:#06121c; --accent-soft:#1a3043;
+  --amber:#f0b25a; --amber-soft:#3a2a12; --ok:#5fcf91; --ok-soft:#14301f; --bad:#f08a80; --bad-soft:#3b1a17;
+  --term-bg:#0a121a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d151d; --panel:#16212c; --ink:#e3eaf1; --muted:#97a6b4; --line:#2a3846; --frame:#070c11;
+  --accent:#5aa6ea; --accent-ink:#06121c; --accent-soft:#1a3043;
+  --amber:#f0b25a; --amber-soft:#3a2a12; --ok:#5fcf91; --ok-soft:#14301f; --bad:#f08a80; --bad-soft:#3b1a17;
+  --term-bg:#0a121a; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--frame);color:var(--ink);font-family:var(--f-body);overflow:hidden}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* ---------- marco y escala ---------- */
+.deck{position:fixed;inset:0;display:flex;flex-direction:column}
+.viewport{flex:1;min-height:0;position:relative;overflow:hidden}
+.canvas{position:absolute;left:50%;top:50%;width:1600px;height:900px;transform:translate(-50%,-50%) scale(var(--s,1));transform-origin:center;background:var(--bg);box-shadow:0 6px 30px rgba(0,0,0,.18);overflow:hidden;font-size:23px;line-height:1.45}
+.slide{position:absolute;inset:0;padding:50px 72px 44px;overflow:hidden}
+.slide[hidden]{display:none!important}
+.inner{height:100%;display:flex;flex-direction:column;gap:20px}
+.slide.enter .inner{animation:enter .35s ease-out}
+@keyframes enter{from{opacity:.25;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- tipografía dentro del lienzo ---------- */
+.canvas h1{font-size:66px;font-weight:800;line-height:1.04}
+.canvas h2{font-size:40px;font-weight:800;line-height:1.1}
+.canvas h3{font-size:23px;font-weight:700}
+.eyebrow{font-family:var(--f-display);font-size:15px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.head{display:flex;flex-direction:column;gap:6px}
+.lead{font-size:24px;color:var(--muted);max-width:76ch}
+.canvas ul{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:7px}
+.canvas ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:7px}
+.canvas a{color:var(--accent)}
+code{font-family:var(--f-mono);font-size:.84em;background:var(--accent-soft);padding:1px 6px;border-radius:4px}
+.small{font-size:20px}
+.muted{color:var(--muted)}
+b,strong{font-weight:700}
+
+/* ---------- bloques ---------- */
+.fill{flex:1;min-height:0}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+.cols.st{align-items:stretch}
+.cols.w37{grid-template-columns:minmax(0,3fr) minmax(0,7fr)}
+.cols.w46{grid-template-columns:minmax(0,4fr) minmax(0,6fr)}
+.cols.w64{grid-template-columns:minmax(0,6fr) minmax(0,4fr)}
+.cols.w73{grid-template-columns:minmax(0,7fr) minmax(0,3fr)}
+.cols.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cols.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel.tight{padding:14px 16px;gap:8px}
+.note{border-left:5px solid var(--amber);background:var(--amber-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.fix{border-left:5px solid var(--ok);background:var(--ok-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.warn{border-left:5px solid var(--bad);background:var(--bad-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.fe{font-weight:700;color:var(--ok)}
+.term{background:var(--term-bg);color:var(--term-fg);font-family:var(--f-mono);font-size:17px;line-height:1.5;border-radius:8px;padding:14px 16px;white-space:pre;overflow:hidden;min-width:0;border:1px solid var(--line)}
+.term.sm{font-size:15px;padding:12px 14px}
+.term.xs{font-size:13.5px;padding:10px 12px;line-height:1.42}
+.term .p{color:var(--term-prompt)} .term .h{color:var(--term-hl)} .term .d{color:var(--term-dim)} .term .g{color:#8be0ae} .term .r{color:#ff9d94}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--panel)}
+.seg button{background:transparent;border:0;padding:8px 16px;color:var(--ink);font-size:18px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.ctl{display:flex;flex-direction:column;gap:4px;font-size:17px;color:var(--muted)}
+.ctl select,.ctl input[type=number],.ctl input[type=text]{font:inherit;font-size:18px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+.ctl input[type=range]{width:100%}
+.tog{display:inline-flex;gap:8px;align-items:center;font-size:18px;cursor:pointer}
+.tog input{width:18px;height:18px}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:7px;padding:9px 18px;font-weight:700;font-size:18px}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.btn.danger{background:var(--bad);color:var(--panel)}
+.btn:disabled{opacity:.45;cursor:default}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.badge.ok{background:var(--ok-soft);color:var(--ok)} .badge.bad{background:var(--bad-soft);color:var(--bad)} .badge.blue{background:var(--accent-soft);color:var(--accent)} .badge.amb{background:var(--amber-soft);color:var(--amber)}
+table{border-collapse:collapse;width:100%;font-size:20px}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-display);font-size:14.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td code{white-space:nowrap}
+tr.hit td{background:var(--amber-soft)}
+tr.ok td{background:var(--ok-soft)}
+tr.no td{background:var(--bad-soft)}
+.result{font-family:var(--f-display);font-size:28px;font-weight:800}
+.big{font-family:var(--f-display);font-size:34px;font-weight:800}
+
+/* ---------- SVG ---------- */
+svg{width:100%;height:auto;display:block}
+.dia text{font-family:var(--f-display);font-weight:700;font-size:15px;fill:var(--ink)}
+.dia .lbl{font-family:var(--f-mono);font-weight:400;font-size:12px;fill:var(--muted)}
+.dia .lbl.k{fill:var(--accent);font-weight:600}
+.dia .box{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.dia .box.act{fill:var(--ok-soft);stroke:var(--ok);stroke-width:2.6}
+.dia .box.amb{fill:var(--amber-soft);stroke:var(--amber);stroke-width:2.2}
+.dia .box.bk{fill:var(--panel);stroke:var(--muted)}
+.dia .box.off{fill:var(--bad-soft);stroke:var(--bad);stroke-dasharray:5 3}
+.dia .zone{fill:var(--accent-soft);stroke:var(--line);opacity:.55}
+.dia .zone2{fill:var(--amber-soft);stroke:var(--line);opacity:.6}
+.dia .host{fill:var(--panel);stroke:var(--line);stroke-width:1.4}
+.dia .wire{stroke:var(--muted);stroke-width:2.2;fill:none}
+.dia .wire.down{stroke:var(--bad);stroke-dasharray:6 4}
+.dia .wire.ok{stroke:var(--ok)}
+.dia .wire.acc{stroke:var(--accent);stroke-width:3}
+.dia .wire.dash{stroke-dasharray:6 5}
+.dia .flow{stroke:var(--ok);stroke-width:3.5;fill:none;stroke-dasharray:9 7;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.dia .pkt{fill:var(--amber)}
+.dia .tagr{fill:var(--amber);stroke:none}
+.dia .tagt{font-family:var(--f-mono);font-size:12px;font-weight:600;fill:#1b1206}
+.dia .clk{cursor:pointer}
+.dia .clk:hover{filter:brightness(1.06)}
+.dia .sel{stroke-width:3.4!important;stroke:var(--amber)!important}
+
+/* ---------- componentes ---------- */
+.log{font-family:var(--f-mono);font-size:14px;color:var(--muted);white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;overflow:hidden}
+.agenda{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.agenda button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;color:var(--ink);display:flex;flex-direction:column;gap:6px;font-size:24px}
+.agenda button:hover{border-color:var(--accent)}
+.agenda small{color:var(--muted);font-size:17px}
+.cover{justify-content:center;gap:24px}
+.cover .meta{display:flex;gap:10px;flex-wrap:wrap}
+.cards{display:grid;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.card .ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-family:var(--f-display);font-weight:800;font-size:19px}
+.card h3{font-size:21px}
+.card p{font-size:19px;color:var(--muted)}
+.steps{display:grid;gap:12px}
+.steps>div{border-top:5px solid var(--accent);background:var(--panel);border-radius:0 0 10px 10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;font-size:20px;cursor:pointer}
+.steps>div b{font-family:var(--f-display);font-size:22px}
+.steps>div.on{border-top-color:var(--amber);background:var(--amber-soft)}
+.annot .ln{display:block;padding:0 6px;margin:0 -6px;border-radius:3px}
+.annot .ln.k{color:var(--term-hl);cursor:pointer}
+.annot .ln.k:hover,.annot .ln.sel{background:rgba(255,210,122,.17)}
+.pick{display:flex;flex-direction:column;gap:8px}
+.pick button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:11px 15px;color:var(--ink);font-size:20px}
+.pick button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.quiz .opts{display:flex;flex-direction:column;gap:10px}
+.quiz .opts button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 18px;color:var(--ink);font-size:22px}
+.quiz .opts button.right{border-color:var(--ok);background:var(--ok-soft)}
+.quiz .opts button.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.quiz .q{font-size:28px;font-weight:600}
+.pktrow{display:flex;gap:0;font-family:var(--f-mono);font-size:15px;font-weight:600}
+.pktrow span{padding:12px 10px;border:1px solid var(--line);text-align:center;margin-left:-1px}
+.pktrow .h1{background:var(--accent-soft);color:var(--accent)} .pktrow .h2{background:var(--amber-soft);color:var(--amber)} .pktrow .h3{background:var(--ok-soft);color:var(--ok)} .pktrow .h4{background:var(--bad-soft);color:var(--bad)} .pktrow .h0{background:var(--panel);color:var(--ink)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:16px;color:var(--muted)}
+.legend i{display:inline-block;width:13px;height:13px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* ---------- barra de navegación ---------- */
+nav.bar{flex:none;display:flex;align-items:center;gap:10px;padding:8px max(16px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));border-top:1px solid var(--line);background:var(--panel);font-size:15px}
+nav.bar .prog{flex:1;height:5px;background:var(--line);border-radius:3px;overflow:hidden;min-width:40px}
+nav.bar .prog i{display:block;height:100%;background:var(--accent);transition:width .25s}
+nav.bar button{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px 12px}
+nav.bar button:disabled{opacity:.4}
+nav.bar .count{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px}
+:fullscreen nav.bar{opacity:0;transition:opacity .2s}
+:fullscreen nav.bar:hover{opacity:1}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- impresión: una diapositiva 16:9 por página ---------- */
+@media print{
+  @page{size:1600px 900px;margin:0}
+  html,body{height:auto;overflow:visible;background:#fff}
+  .deck{position:static;display:block}
+  nav.bar{display:none}
+  .viewport{overflow:visible}
+  .canvas{position:static;transform:none;width:auto;height:auto;box-shadow:none;background:transparent}
+  .slide,.slide[hidden]{display:block!important;position:relative;width:1600px;height:900px;break-after:page;background:var(--bg)}
+  .slide.enter .inner{animation:none}
+}
+</style></head><body>
+<div class="deck">
+<div class="viewport"><div class="canvas" id="stage">
+<!-- 1 Portada -->
+<section class="slide" data-title="Portada"><div class="inner cover">
+  <span class="eyebrow">ARY6112 · Troubleshooting · Unidad 3.3.1</span>
+  <h1>Configuración de MPLS VPN de capa 2</h1>
+  <p class="lead">Cómo se habilita MPLS en el núcleo, por qué hay que ajustar la MTU, qué tipos de VPN existen y cómo un pseudowire AToM une dos sitios como si estuvieran en el mismo cable.</p>
+  <div class="meta"><span class="badge blue">Routing y Switching Corporativo</span><span class="badge blue">Usa ← → · F pantalla completa</span></div>
+</div></section>
+
+<!-- 2 Agenda -->
+<section class="slide" data-title="Agenda"><div class="inner">
+  <div class="head"><span class="eyebrow">Agenda</span><h2>Lo que veremos</h2></div>
+  <div class="agenda" id="agenda"></div>
+</div></section>
+
+<!-- 3 CEF -->
+<section class="slide" data-title="Primero CEF" data-agenda="Implementación de MPLS" data-sub="CEF, mpls ip, LDP y MTU"><div class="inner">
+  <div class="head"><span class="eyebrow">Implementación de MPLS · paso 1</span><h2>Sin CEF no hay MPLS</h2>
+  <p class="lead">MPLS usa la FIB de CEF para saber qué etiqueta imponer. CEF se activa de forma global y queda activo en todas las interfaces que lo soportan.</p></div>
+  <div class="cols st fill">
+    <div class="stack">
+      <div class="panel"><h3><code>ip cef [distributed]</code></h3><ul class="small">
+        <li>Modo de configuración global. Inicia CEF y crea la FIB.</li>
+        <li><code>distributed</code> activa dCEF, que corre en las tarjetas de línea (VIP).</li>
+        <li>Todas las interfaces compatibles quedan con CEF.</li></ul></div>
+      <div class="panel"><h3><code>ip route-cache cef</code></h3><ul class="small">
+        <li>Modo interfaz. Activa CEF en una interfaz en particular.</li>
+        <li>Casi nunca hace falta: con el comando global ya está activo.</li>
+        <li><code>no ip route-cache cef</code> lo desactiva en esa interfaz.</li></ul></div>
+      <div class="panel"><h3><code>mpls label range 16 1000</code></h3><p class="small">Opcional. Limita el rango de etiquetas que asigna el router, por ejemplo para reconocer de un vistazo qué router asignó cada etiqueta en un laboratorio.</p></div>
+    </div>
+    <div class="stack">
+      <div class="term"><span class="p">R1#</span> show ip cef summary
+IPv4 CEF is enabled and running
+VRF Default
+ 23 prefixes (23/0 fwd/non-fwd)
+
+<span class="p">R1#</span> show cef interface Gi0/1 | include switching
+  IP CEF switching enabled
+
+<span class="p">R1#</span> show mpls label range
+Downstream Generic label region: Min/Max label: 16/1000</div>
+      <div class="note">Si <code>show ip cef</code> responde <code>%IPv4 CEF not running</code>, ningún paquete se etiqueta aunque LDP esté arriba. Es lo primero que se revisa.</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 4 mpls ip y protocolo -->
+<section class="slide" data-title="mpls ip y protocolo de etiquetas"><div class="inner">
+  <div class="head"><span class="eyebrow">Implementación de MPLS · paso 2</span><h2>Activar MPLS en cada interfaz del núcleo</h2></div>
+  <div class="cols fill">
+    <div class="stack">
+      <div class="term"><span class="p">Router(config-if)#</span> mpls ip
+<span class="d">! activa la conmutación de etiquetas en la</span>
+<span class="d">! interfaz e inicia LDP</span>
+
+<span class="p">Router(config-if)#</span> mpls label protocol [tdp | ldp | both]
+<span class="d">! elige el protocolo de distribución</span></div>
+      <div class="fix"><span class="fe">Actualización.</span> TDP es el protocolo antiguo de Cisco y ya no existe en IOS actual. Desde IOS 12.4(3) el valor por defecto es LDP, y en IOS-XE solo queda LDP. Las opciones <code>tdp</code> y <code>both</code> se explican porque aparecen en el original y en redes heredadas.</div>
+    </div>
+    <div class="panel">
+      <table><thead><tr><th></th><th>TDP</th><th>LDP</th></tr></thead><tbody>
+        <tr><td>Origen</td><td>Cisco, propietario</td><td>Estándar IETF (RFC 5036)</td></tr>
+        <tr><td>Transporte</td><td>TCP 711</td><td>UDP 646 (Hello), TCP 646 (sesión)</td></tr>
+        <tr><td>Interoperabilidad</td><td>Solo Cisco</td><td>Cualquier fabricante</td></tr>
+        <tr><td>Estado actual</td><td>Obsoleto</td><td>Por defecto</td></tr>
+      </tbody></table>
+      <h3>Lo que hacen los dos</h3>
+      <ul class="small"><li>Asignan una etiqueta a cada prefijo que eligió el IGP.</li><li>Descubren vecinos, abren, supervisan y cierran sesiones.</li><li>Distribuyen, solicitan y liberan asociaciones etiqueta-prefijo.</li><li>Construyen los LSP que usan los servicios del proveedor, como las VPN.</li></ul>
+    </div>
+  </div>
+</div></section>
+
+<!-- 5 Red con filtro LDP -->
+<section class="slide" data-title="Habilitar MPLS en el núcleo"><div class="inner">
+  <div class="head"><span class="eyebrow">Implementación de MPLS</span><h2>MPLS en el núcleo, nunca hacia el cliente</h2>
+  <p class="lead">El proveedor activa <code>mpls ip</code> en todas las interfaces internas y bloquea LDP en las que dan al cliente. Toca una interfaz para ver su configuración; prueba qué pasa sin la ACL.</p></div>
+  <div class="cols w64 fill">
+    <div class="panel">
+      <svg viewBox="0 0 860 260" class="dia" id="nlSvg" role="img" aria-label="C1 conectado a A, A a B, B a un switch y C, C a C2"></svg>
+      <div class="ctrls"><label class="tog"><input type="checkbox" id="nlAcl" checked> ACL NoLDP en A Serial3/1</label><button class="btn ghost" id="nlGo">C1 envía Hello LDP</button></div>
+    </div>
+    <div class="stack"><div class="term sm" id="nlCfg"></div><p class="note" id="nlTxt"></p></div>
+  </div>
+</div></section>
+
+<!-- 6 Red mixta -->
+<section class="slide" data-title="Red con TDP y LDP"><div class="inner">
+  <div class="head"><span class="eyebrow">Implementación de MPLS</span><h2>Cada enlace habla el protocolo que entiende el vecino</h2>
+  <p class="lead">En la red del ejemplo, A es un Cisco antiguo que solo habla TDP, y L1 y L2 son de otros fabricantes que solo hablan LDP. B elige el protocolo por interfaz. Toca un enlace.</p></div>
+  <div class="cols w64 fill">
+    <div class="panel"><svg viewBox="0 0 860 330" class="dia" id="mxSvg" role="img" aria-label="Router B con enlaces a A, L1 y al switch hacia C y L2"></svg></div>
+    <div class="stack"><div class="term" id="mxCfg"></div><p class="note" id="mxTxt"></p></div>
+  </div>
+</div></section>
+
+<!-- 7 MTU -->
+<section class="slide" data-title="MTU en redes MPLS"><div class="inner">
+  <div class="head"><span class="eyebrow">Configuración de MTU</span><h2>Cada etiqueta suma 4 bytes al paquete</h2>
+  <p class="lead">Un paquete IP de 1500 bytes con etiquetas ya no cabe en una MTU LAN de 1500. Para no fragmentar, se sube la MTU MPLS en todos los routers del segmento y se activan jumbo frames en los switches del camino. Elige el servicio.</p></div>
+  <div class="cols w46 fill">
+    <div class="panel">
+      <div id="mtuList"></div>
+      <div class="pktrow" id="mtuRow" style="font-size:15px"></div>
+      <div class="result" id="mtuRes"></div>
+    </div>
+    <div class="stack">
+      <div class="term" id="mtuCfg"></div>
+      <div class="note" id="mtuTxt"></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 8 Taxonomía -->
+<section class="slide" data-title="Taxonomía de VPN" data-agenda="Tipos de VPN" data-sub="Overlay y peer-to-peer, ventajas y desventajas"><div class="inner">
+  <div class="head"><span class="eyebrow">Taxonomía de VPN</span><h2>Dos grandes familias: overlay y peer-to-peer</h2>
+  <p class="lead">Toca un tipo para ver cómo funciona y quién hace qué.</p></div>
+  <div class="cols w64 fill">
+    <div class="panel"><svg viewBox="0 0 860 400" class="dia" id="txSvg" role="img" aria-label="Árbol de redes virtuales: VPN overlay de capa 2 y 3 y VPN peer-to-peer"></svg></div>
+    <div class="stack"><div class="panel"><span class="eyebrow" id="txT"></span><p id="txX"></p></div>
+      <div class="fix"><span class="fe">Fe de erratas.</span> El original traduce <i>peer-to-peer VPN</i> como “VPN punto a punto”. El término correcto es VPN <b>de igual a igual</b> (o par a par): el proveedor participa en el enrutamiento del cliente. Punto a punto es otra cosa.</div></div>
+  </div>
+</div></section>
+
+<!-- 9 Overlay por capas -->
+<section class="slide" data-title="VPN overlay por capa"><div class="inner">
+  <div class="head"><span class="eyebrow">Taxonomía de VPN</span><h2>En el modelo overlay, el proveedor solo transporta</h2>
+  <p class="lead">Cambia de capa para ver qué vende el proveedor y de qué se encarga el cliente.</p></div>
+  <div class="ctrls"><div class="seg" id="ovSeg"><button data-v="1" aria-pressed="false">Capa 1</button><button data-v="2" aria-pressed="true">Capa 2</button><button data-v="3" aria-pressed="false">Capa 3</button></div></div>
+  <div class="cols w46 fill">
+    <div class="panel"><svg viewBox="0 0 560 320" class="dia" id="ovSvg" role="img" aria-label="Pila de capas del proveedor y del cliente"></svg></div>
+    <div class="stack"><div class="panel"><h3 id="ovH"></h3><p id="ovX"></p><p class="small muted" id="ovTec"></p></div></div>
+  </div>
+</div></section>
+
+<!-- 10 Peer to peer -->
+<section class="slide" data-title="VPN peer-to-peer"><div class="inner">
+  <div class="head"><span class="eyebrow">Taxonomía de VPN</span><h2>En el modelo peer-to-peer, el proveedor enruta por el cliente</h2>
+  <p class="lead">Proveedor y cliente usan el mismo protocolo de red. El CE forma adyacencia de capa 3 con el PE, y el núcleo del proveedor transporta las rutas del cliente.</p></div>
+  <div class="cols w64 fill">
+    <div class="panel"><svg viewBox="0 0 860 330" class="dia" role="img" aria-label="Cuatro sitios del cliente conectados a cuatro routers PE">
+      <rect class="zone" x="260" y="40" width="340" height="250" rx="14"/><text class="lbl" x="275" y="62">Red del proveedor</text>
+      <g font-size="14">
+      <rect class="host" x="20" y="60" width="160" height="70" rx="8"/><text x="100" y="100" text-anchor="middle">Router A</text>
+      <rect class="host" x="20" y="200" width="160" height="70" rx="8"/><text x="100" y="240" text-anchor="middle">Router B</text>
+      <rect class="host" x="680" y="60" width="160" height="70" rx="8"/><text x="760" y="100" text-anchor="middle">Router C</text>
+      <rect class="host" x="680" y="200" width="160" height="70" rx="8"/><text x="760" y="240" text-anchor="middle">Router D</text></g>
+      <line class="wire" x1="180" y1="95" x2="300" y2="95"/><line class="wire" x1="180" y1="235" x2="300" y2="235"/><line class="wire" x1="560" y1="95" x2="680" y2="95"/><line class="wire" x1="560" y1="235" x2="680" y2="235"/>
+      <rect class="box" x="300" y="75" width="90" height="40" rx="6"/><text x="345" y="100" text-anchor="middle">PE</text>
+      <rect class="box" x="300" y="215" width="90" height="40" rx="6"/><text x="345" y="240" text-anchor="middle">PE</text>
+      <rect class="box" x="470" y="75" width="90" height="40" rx="6"/><text x="515" y="100" text-anchor="middle">PE</text>
+      <rect class="box" x="470" y="215" width="90" height="40" rx="6"/><text x="515" y="240" text-anchor="middle">PE</text>
+      <path class="flow" d="M390 95 L470 95 M390 235 L470 235 M345 115 L345 215 M515 115 L515 215"/>
+      <text class="lbl k" x="240" y="85" text-anchor="middle">1</text><text class="lbl k" x="430" y="165" text-anchor="middle">2</text><text class="lbl k" x="620" y="85" text-anchor="middle">3</text>
+    </svg></div>
+    <div class="steps" style="grid-template-columns:1fr">
+      <div><b>1. CE ↔ PE</b><span>El CE y el PE intercambian rutas: forman adyacencia de capa 3.</span></div>
+      <div><b>2. PE ↔ PE</b><span>Los PE se pasan las rutas del cliente a través del núcleo.</span></div>
+      <div><b>3. PE → CE</b><span>Las rutas llegan a los demás CE.</span></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 11 Ventajas y desventajas -->
+<section class="slide" data-title="Ventajas y desventajas"><div class="inner">
+  <div class="head"><span class="eyebrow">Beneficios y desventajas</span><h2>Overlay frente a peer-to-peer</h2></div>
+  <div class="cols st fill">
+    <div class="panel"><h3>VPN overlay</h3>
+      <p class="eyebrow" style="color:var(--ok)">Ventajas</p><ul class="small"><li>Conocida y fácil de implementar.</li><li>El proveedor no participa en el enrutamiento del cliente.</li><li>Las redes del cliente y del proveedor quedan bien aisladas.</li></ul>
+      <p class="eyebrow" style="color:var(--bad)">Desventajas</p><ul class="small"><li>El enrutamiento óptimo exige una malla completa de circuitos virtuales.</li><li>Los circuitos se aprovisionan a mano.</li><li>El ancho de banda se contrata sitio por sitio.</li><li>Siempre hay sobrecarga de encapsulación (GRE o IPsec).</li></ul></div>
+    <div class="panel"><h3>VPN peer-to-peer</h3>
+      <p class="eyebrow" style="color:var(--ok)">Ventajas</p><ul class="small"><li>Enrutamiento óptimo entre los sitios del cliente.</li><li>Es más fácil aprovisionar una VPN nueva.</li><li>Se aprovisionan sitios, no enlaces entre ellos.</li></ul>
+      <p class="eyebrow" style="color:var(--bad)">Desventajas</p><ul class="small"><li>El proveedor participa en el enrutamiento del cliente.</li><li>El proveedor responde por la convergencia del cliente.</li><li>Los PE llevan las rutas de todos los clientes.</li><li>El proveedor necesita conocimiento detallado de IP.</li></ul></div>
+  </div>
+  <div class="note">La MPLS VPN de capa 3 es peer-to-peer pero resuelve el aislamiento con VRF. La MPLS VPN de capa 2 vuelve al modelo overlay: el proveedor no ve las rutas del cliente, pero sin circuitos manuales en una red de capa 2 dedicada.</div>
+</div></section>
+
+<!-- 12 MPLS L2VPN -->
+<section class="slide" data-title="MPLS VPN de capa 2" data-agenda="MPLS VPN de capa 2" data-sub="Pseudowire, modos y AToM"><div class="inner">
+  <div class="head"><span class="eyebrow">Características de MPLS VPN de capa 2</span><h2>Un cable virtual entre dos sitios, sobre el núcleo MPLS</h2>
+  <p class="lead">El PE no forma adyacencia con el CE ni guarda sus rutas. Toma la trama que llega por el circuito de acceso y la mete en un <b>pseudowire</b> hacia el otro PE. Los CE quedan como vecinos directos de capa 2.</p></div>
+  <div class="panel">
+    <svg viewBox="0 0 1440 210" class="dia" role="img" aria-label="CE, PE, núcleo MPLS con pseudowire, PE y CE">
+      <rect class="zone" x="300" y="20" width="840" height="170" rx="14"/><text class="lbl" x="315" y="42">Núcleo IP/MPLS del proveedor</text>
+      <line class="wire" x1="150" y1="110" x2="380" y2="110"/><line class="wire" x1="1060" y1="110" x2="1290" y2="110"/>
+      <rect class="host" x="40" y="80" width="140" height="60" rx="8"/><text x="110" y="116" text-anchor="middle">CE sitio 1</text>
+      <rect class="host" x="1260" y="80" width="140" height="60" rx="8"/><text x="1330" y="116" text-anchor="middle">CE sitio 2</text>
+      <rect class="box" x="380" y="80" width="120" height="60" rx="8"/><text x="440" y="116" text-anchor="middle">PE</text>
+      <rect class="box" x="940" y="80" width="120" height="60" rx="8"/><text x="1000" y="116" text-anchor="middle">PE</text>
+      <rect x="500" y="92" width="440" height="36" rx="18" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="2"/><text x="720" y="116" text-anchor="middle" style="fill:var(--ok)">pseudowire (VC ID 204)</text>
+      <path class="flow" d="M510 110 L930 110" style="opacity:.6"/>
+      <text class="lbl k" x="265" y="98" text-anchor="middle">circuito de acceso (AC)</text><text class="lbl k" x="1175" y="98" text-anchor="middle">circuito de acceso (AC)</text>
+      <text class="lbl" x="720" y="170" text-anchor="middle">Los CE se ven como vecinos de capa 2: OSPF, STP, CDP o cualquier protocolo pasa transparente</text>
+    </svg>
+  </div>
+  <div class="cols c3">
+    <div class="card"><div class="ic">1</div><h3>IP y no IP</h3><p>Transporta cualquier tráfico de capa 2, no solo IP.</p></div>
+    <div class="card"><div class="ic">2</div><h3>Sin tablas del cliente</h3><p>El PE no mantiene VRF ni rutas del cliente: menos carga y menos complejidad.</p></div>
+    <div class="card"><div class="ic">3</div><h3>Nuevos servicios</h3><p>Diseño simple sobre IP/MPLS y servicios como PWE3 (Pseudowire Emulation Edge to Edge).</p></div>
+  </div>
+</div></section>
+
+<!-- 13 L2 vs L3 -->
+<section class="slide" data-title="VPN de capa 2 frente a capa 3"><div class="inner">
+  <div class="head"><span class="eyebrow">Características de MPLS VPN de capa 2</span><h2>Lo mismo en el núcleo, distinto en el borde</h2>
+  <p class="lead">Las dos dependen del transporte IP/MPLS del núcleo. La diferencia está en la relación entre el PE y el CE.</p></div>
+  <div class="panel"><table><thead><tr><th></th><th>MPLS VPN de capa 3</th><th>MPLS VPN de capa 2 (AToM)</th></tr></thead><tbody>
+    <tr><td>Relación PE-CE</td><td>Adyacencia de enrutamiento (OSPF, EIGRP, eBGP…)</td><td>Ninguna: el PE solo conmuta tramas</td></tr>
+    <tr><td>Tablas en el PE</td><td>Una VRF por cliente</td><td>No guarda rutas del cliente</td></tr>
+    <tr><td>Tráfico</td><td>Solo IP</td><td>IP y no IP (cualquier trama)</td></tr>
+    <tr><td>Señalización</td><td>MP-BGP con VPNv4</td><td>Sesión LDP dirigida (targeted) entre los PE</td></tr>
+    <tr><td>Pila de etiquetas</td><td>LDP afuera + VPN adentro</td><td>LDP afuera + etiqueta del VC adentro</td></tr>
+    <tr><td>Identificador</td><td>RD y RT</td><td>VC ID, igual en los dos PE</td></tr>
+    <tr><td>Qué ve el cliente</td><td>Un router del proveedor como vecino</td><td>Al CE remoto como vecino directo</td></tr>
+  </tbody></table></div>
+</div></section>
+
+<!-- 14 Modos -->
+<section class="slide" data-title="Modos del pseudowire Ethernet"><div class="inner">
+  <div class="head"><span class="eyebrow">Modos de MPLS VPN de capa 2</span><h2>Etiquetado o sin procesar: qué pasa con la etiqueta 802.1Q</h2>
+  <p class="lead">Cambia de modo y mira cómo viaja la trama por el pseudowire.</p></div>
+  <div class="ctrls"><div class="seg" id="pwSeg"><button data-v="t" aria-pressed="true">Etiquetado · tipo 0x0004</button><button data-v="r" aria-pressed="false">Sin procesar (raw) · tipo 0x0005</button></div><label class="tog"><input type="checkbox" id="pwNo"> La trama llega del AC sin etiqueta VLAN</label></div>
+  <div class="panel stack">
+    <div><span class="eyebrow">Trama que entrega el CE</span><div class="pktrow" id="pwIn" style="margin-top:6px"></div></div>
+    <div><span class="eyebrow">Dentro del pseudowire</span><div class="pktrow" id="pwMid" style="margin-top:6px"></div></div>
+  </div>
+  <div class="cols"><div class="panel"><p id="pwTxt"></p></div><div class="note" id="pwNote"></div></div>
+</div></section>
+
+<!-- 15 AToM config -->
+<section class="slide" data-title="Configurar AToM"><div class="inner">
+  <div class="head"><span class="eyebrow">AToM · Any Transport over MPLS</span><h2>Un comando en la interfaz del cliente: xconnect</h2>
+  <p class="lead"><code>xconnect &lt;IP del PE remoto&gt; &lt;VC ID&gt; encapsulation mpls</code> en cada PE. Cambia los valores y mira si el pseudowire sube.</p></div>
+  <div class="cols w46 fill">
+    <div class="stack">
+      <div class="panel tight">
+        <svg viewBox="0 0 560 120" class="dia" role="img" aria-label="R2 y R4 unidos por el núcleo MPLS">
+          <rect class="zone" x="120" y="20" width="320" height="80" rx="12"/><text class="lbl" x="280" y="40" text-anchor="middle">núcleo MPLS</text>
+          <rect class="box" id="xR2" x="80" y="45" width="110" height="46" rx="8"/><text x="135" y="66" text-anchor="middle">R2</text><text class="lbl" x="135" y="83" text-anchor="middle">Lo0 2.2.2.2</text>
+          <rect class="box" id="xR4" x="370" y="45" width="110" height="46" rx="8"/><text x="425" y="66" text-anchor="middle">R4</text><text class="lbl" x="425" y="83" text-anchor="middle">Lo0 4.4.4.4</text>
+          <line class="wire" id="xPw" x1="190" y1="68" x2="370" y2="68"/>
+          <text class="lbl" x="40" y="72" text-anchor="middle">f0/0</text><text class="lbl" x="520" y="72" text-anchor="middle">f0/0</text>
+        </svg>
+      </div>
+      <div class="cols" style="gap:14px">
+        <div class="panel tight"><h3>R2 f0/0</h3>
+          <label class="ctl">Peer<select id="x2p"><option>4.4.4.4</option><option>10.24.0.4</option><option>2.2.2.2</option></select></label>
+          <label class="ctl">VC ID<input type="number" id="x2v" value="204" min="1"></label>
+          <label class="tog"><input type="checkbox" id="x2s"> shutdown</label></div>
+        <div class="panel tight"><h3>R4 f0/0</h3>
+          <label class="ctl">Peer<select id="x4p"><option>2.2.2.2</option><option>10.24.0.2</option><option>4.4.4.4</option></select></label>
+          <label class="ctl">VC ID<input type="number" id="x4v" value="204" min="1"></label>
+          <label class="tog"><input type="checkbox" id="x4s" checked> shutdown</label></div>
+      </div>
+    </div>
+    <div class="stack"><div class="term sm" id="xCfg"></div><div class="term sm" id="xOut"></div><p id="xWhy" class="note"></p></div>
+  </div>
+</div></section>
+
+<!-- 16 Verificación AToM -->
+<section class="slide" data-title="Verificar AToM"><div class="inner">
+  <div class="head"><span class="eyebrow">Verificación de AToM</span><h2>Dos segmentos: el del cliente y el del núcleo</h2>
+  <p class="lead">En <code>show xconnect</code>, <b>S1</b> es el circuito de acceso (puerto hacia el cliente) y <b>S2</b> es el pseudowire por el núcleo. Toca una línea resaltada.</p></div>
+  <div class="cols w64 fill">
+    <div class="term sm annot" id="avT"></div>
+    <div class="panel"><span class="eyebrow">Interpretación</span><p id="avX">Selecciona una línea resaltada.</p></div>
+  </div>
+</div></section>
+
+<!-- 17 Síntomas -->
+<section class="slide" data-title="AToM: del síntoma a la causa"><div class="inner">
+  <div class="head"><span class="eyebrow">Troubleshooting AToM</span><h2>Del síntoma a la causa</h2><p class="lead">Toca un síntoma para ver dónde mirar primero.</p></div>
+  <div class="cols w37 fill">
+    <div id="aSyList"></div>
+    <div class="panel"><span class="eyebrow" id="aSyT"></span><div id="aSyX"></div><div class="term sm" id="aSyO"></div></div>
+  </div>
+</div></section>
+
+<!-- 18 Resumen -->
+<section class="slide" data-title="Resumen"><div class="inner">
+  <div class="head"><span class="eyebrow">Resumen</span><h2>Lo que hay que llevarse</h2></div>
+  <div class="cols c3 st">
+    <div class="panel"><h3>Núcleo MPLS</h3><ul>
+      <li><code>ip cef</code> primero.</li><li><code>mpls ip</code> en cada interfaz interna; LDP por defecto.</li>
+      <li>Bloquear UDP/TCP 646 hacia los clientes.</li><li>MTU: 1500 + 4 bytes por etiqueta.</li></ul></div>
+    <div class="panel"><h3>Tipos de VPN</h3><ul>
+      <li>Overlay: el proveedor solo transporta (L1, L2, L3).</li><li>Peer-to-peer: el proveedor enruta por el cliente.</li>
+      <li>MPLS L3VPN: peer-to-peer con VRF.</li><li>MPLS L2VPN: overlay sobre MPLS.</li></ul></div>
+    <div class="panel"><h3>AToM</h3><ul>
+      <li><code>xconnect</code> con la loopback del PE remoto.</li><li>VC ID igual en ambos extremos.</li>
+      <li>S1 = acceso, S2 = núcleo.</li><li>MTU de los AC igual en los dos PE.</li></ul></div>
+  </div>
+</div></section>
+
+<!-- 19 Quiz -->
+<section class="slide" data-title="Preguntas" data-agenda="Preguntas" data-sub="Comprueba lo aprendido"><div class="inner">
+  <div class="head"><span class="eyebrow">Preguntas</span><h2>Comprueba lo aprendido</h2></div>
+  <div class="panel quiz fill" id="quiz"></div>
+</div></section>
+
+<!-- 20 Referencias -->
+<section class="slide" data-title="Referencias"><div class="inner">
+  <div class="head"><span class="eyebrow">Referencias</span><h2>Bibliografía</h2></div>
+  <div class="panel"><ul>
+    <li>Raymond Lacoste, Brad Edgeworth. <i>CCNP Enterprise Advanced Routing ENARSI 300-410 Official Cert Guide</i>. Cisco Press. Capítulo 18, VRF, MPLS and MPLS Layer 3 VPNs.</li>
+    <li>Cisco. <i>MPLS Basic Configuration Guide</i> y <i>Any Transport over MPLS Configuration Guide</i>, Cisco IOS XE.</li>
+    <li>IETF <a href="https://www.rfc-editor.org/rfc/rfc4448" target="_blank" rel="noopener">RFC 4448</a> (encapsulación de Ethernet sobre MPLS, modos tagged y raw) y <a href="https://www.rfc-editor.org/rfc/rfc8077" target="_blank" rel="noopener">RFC 8077</a> (señalización de pseudowires con LDP).</li>
+  </ul></div>
+</div></section>
+
+</div></div>
+<nav class="bar" aria-label="Navegación de diapositivas">
+  <button id="prev" aria-label="Diapositiva anterior">←</button>
+  <span class="count" id="count"></span>
+  <div class="prog"><i id="prog"></i></div>
+  <select id="jump" aria-label="Ir a diapositiva"></select>
+  <button id="fs" aria-label="Pantalla completa" title="Pantalla completa (F)">⛶</button>
+  <button id="next" aria-label="Diapositiva siguiente">→</button>
+</nav>
+</div>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pad=(s,n)=>{s=String(s);return s.length>=n?s+" ":s+" ".repeat(n-s.length)};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+/* Botones segmentados: <div class="seg" id="x"><button data-v="a" aria-pressed="true">…</div> */
+function seg(id,cb){const el=$(id);el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;el.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.v)});}
+/* Mueve un elemento SVG (circle o g) por una lista de puntos */
+function animate(el,pts,ms){return new Promise(res=>{
+  const put=(x,y)=>{if(el.tagName==="circle"){el.setAttribute("cx",x);el.setAttribute("cy",y)}else el.setAttribute("transform",`translate(${x},${y})`)};
+  if(reduce||pts.length<2){put(...pts[pts.length-1]);return res()}
+  const n=pts.length-1,t0=performance.now();
+  (function f(t){const k=Math.max(0,Math.min(1,(t-t0)/ms)),s=Math.min(n-1,Math.floor(k*n)),u=k*n-s,a=pts[s],b=pts[s+1];
+    put(a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u);if(k<1)requestAnimationFrame(f);else res()})(t0);});}
+/* Salida anotada: lines=[[texto, explicación|null], …] */
+function annot(termId,outId,lines){
+  const t=$(termId);
+  t.innerHTML=lines.map((a,i)=>`<span class="ln${a[1]?" k":""}" data-i="${i}"${a[1]?' tabindex="0"':""}>${esc(a[0])||" "}</span>`).join("");
+  t.addEventListener("click",e=>{const l=e.target.closest(".ln");if(!l||!lines[l.dataset.i][1])return;t.querySelectorAll(".ln").forEach(x=>x.classList.toggle("sel",x===l));$(outId).innerHTML=lines[l.dataset.i][1]});
+  t.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.classList.contains("ln"))e.target.click()});
+}
+/* Lista de opciones que muestra un detalle: items=[[etiqueta, html], …] */
+function picker(listId,outId,items,first=0){
+  const l=$(listId);l.classList.add("pick");
+  l.innerHTML=items.map((it,i)=>`<button type="button" data-i="${i}" aria-pressed="false">${it[0]}</button>`).join("");
+  const show=i=>{l.querySelectorAll("button").forEach((b,k)=>b.setAttribute("aria-pressed",k===i));$(outId).innerHTML=items[i][1]};
+  l.addEventListener("click",e=>{const b=e.target.closest("button");if(b)show(+b.dataset.i)});
+  show(first);
+}
+/* Pasos con tarjetas: <div class="steps" id="x"><div data-x="…">…</div></div> */
+function stepsCards(id,outId){const el=$(id);const all=[...el.children];
+  const on=d=>{all.forEach(x=>x.classList.toggle("on",x===d));$(outId).innerHTML=d.dataset.x};
+  all.forEach(d=>{d.tabIndex=0;d.addEventListener("click",()=>on(d));d.addEventListener("mouseenter",()=>on(d));d.addEventListener("keydown",e=>{if(e.key==="Enter")on(d)})});}
+/* Cuestionario de una pregunta a la vez */
+function quiz(id,Q){
+  const el=$(id);let i=0;const ans=Q.map(()=>null);
+  function render(){
+    const q=Q[i],a=ans[i];
+    el.innerHTML=`<div class="ctrls" style="justify-content:space-between"><span class="eyebrow">Pregunta ${i+1} de ${Q.length}</span><span class="badge blue">Puntaje: ${ans.filter((x,k)=>x===Q[k].ok).length} / ${Q.length}</span></div>
+    <p class="q">${q.q}</p>
+    <div class="opts">${q.o.map((o,k)=>`<button type="button" data-k="${k}" class="${a===null?"":(k===q.ok?"right":(k===a?"wrong":""))}" ${a!==null?"disabled":""}>${String.fromCharCode(65+k)}. ${o}</button>`).join("")}</div>
+    <div class="${a===null?"":(a===q.ok?"fix":"warn")}" style="min-height:62px">${a===null?'<span class="muted">Elige una respuesta.</span>':(a===q.ok?"<b>Correcto.</b> ":"<b>No.</b> ")+(a===null?"":q.e)}</div>
+    <div class="ctrls"><button class="btn ghost" data-nav="-1" ${i===0?"disabled":""}>← Anterior</button><button class="btn" data-nav="1" ${i===Q.length-1?"disabled":""}>Siguiente →</button><button class="btn ghost" data-nav="0">Reiniciar</button></div>`;
+  }
+  el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;
+    if(b.dataset.k!==undefined&&ans[i]===null){ans[i]=+b.dataset.k;render()}
+    else if(b.dataset.nav!==undefined){const d=+b.dataset.nav;if(d===0){ans.fill(null);i=0}else i=Math.max(0,Math.min(Q.length-1,i+d));render()}});
+  render();
+}
+/* ---------- navegación y escala ---------- */
+const slides=$$(".slide");let cur=0;
+function fit(){const v=$(".viewport").getBoundingClientRect();const s=Math.min(v.width/1600,v.height/900);$(".canvas").style.setProperty("--s",s);}
+window.addEventListener("resize",fit);
+$("#jump").innerHTML=slides.map((s,i)=>`<option value="${i}">${i+1}. ${esc(s.dataset.title)}</option>`).join("");
+function go(i){
+  i=Math.max(0,Math.min(slides.length-1,i));
+  slides.forEach((s,k)=>{s.hidden=k!==i;s.classList.toggle("enter",k===i)});
+  cur=i;$("#count").textContent=`${i+1} / ${slides.length}`;
+  $("#prog").style.width=((i+1)/slides.length*100)+"%";$("#jump").value=i;
+  $("#prev").disabled=i===0;$("#next").disabled=i===slides.length-1;
+  try{history.replaceState(null,"","#s"+(i+1))}catch(e){}
+  slides[i].dispatchEvent(new CustomEvent("show"));
+}
+$("#prev").onclick=()=>go(cur-1);$("#next").onclick=()=>go(cur+1);
+$("#jump").onchange=e=>go(+e.target.value);
+$("#fs").onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(e){}};
+document.addEventListener("keydown",e=>{
+  if(e.target.closest("input,select,textarea"))return;
+  if(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" "){go(cur+1);e.preventDefault()}
+  else if(e.key==="ArrowLeft"||e.key==="PageUp"){go(cur-1);e.preventDefault()}
+  else if(e.key==="Home")go(0);else if(e.key==="End")go(slides.length-1);
+  else if(e.key==="f"||e.key==="F")$("#fs").click();
+});
+/* toque: deslizar para cambiar */
+let tx=null;$(".viewport").addEventListener("touchstart",e=>{tx=e.touches[0].clientX},{passive:true});
+$(".viewport").addEventListener("touchend",e=>{if(tx===null)return;const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>60&&!e.target.closest("input,button,select,.term"))go(cur+(d<0?1:-1));tx=null});
+/* Agenda automática a partir de data-agenda */
+(function(){const ag=$("#agenda");if(!ag)return;
+  ag.innerHTML=slides.map((s,i)=>s.dataset.agenda?`<button data-go="${i}"><small>Diapositiva ${i+1}</small><b>${esc(s.dataset.agenda)}</b><small>${esc(s.dataset.sub||"")}</small></button>`:"").join("");
+  ag.onclick=e=>{const b=e.target.closest("[data-go]");if(b)go(+b.dataset.go)};})();
+function boot(){fit();const m=location.hash.match(/^#s(\d+)/);go(m?+m[1]-1:0);
+  /* ?check: informa qué diapositivas desbordan el lienzo (uso interno al construir) */
+  if(location.search.includes("check")){const out=[];$(".canvas").style.setProperty("--s",1);
+    slides.forEach((s,k)=>{s.hidden=false;const R=s.getBoundingClientRect();
+      s.querySelectorAll(".inner *").forEach(el=>{const r=el.getBoundingClientRect();if(!r.width)return;
+        const sc=getComputedStyle(el);
+        if(r.bottom>R.bottom-36+1||r.right>R.right-60+1)out.push(`s${k+1} sale del lienzo: <${el.tagName.toLowerCase()} class="${el.className}"> b=${Math.round(r.bottom-R.top)} r=${Math.round(r.right-R.left)}`);
+        if((sc.overflow==="hidden"||sc.overflowY==="hidden")&&el.scrollHeight>el.clientHeight+2)out.push(`s${k+1} recorta: <${el.tagName.toLowerCase()} class="${el.className}" id="${el.id}"> ${el.scrollHeight}>${el.clientHeight}`);
+        if(el.matches(".panel,.card,.stack,.note,.fix,.warn,td,th")&&el.scrollWidth>el.clientWidth+2)out.push(`s${k+1} desborda ancho: <${el.tagName.toLowerCase()} class="${el.className}"> ${el.scrollWidth}>${el.clientWidth}`);
+        if(sc.overflow==="hidden"&&el.scrollWidth>el.clientWidth+2)out.push(`s${k+1} recorta ancho: <${el.tagName.toLowerCase()} class="${el.className}" id="${el.id}"> ${el.scrollWidth}>${el.clientWidth}`);});
+      s.hidden=k!==cur;});
+    const pre=document.createElement("pre");pre.id="__report";pre.textContent=out.length?[...new Set(out)].join("\n"):"OK";document.body.appendChild(pre);}
+}
+
+const RB=(x,y,name,cls="box",w=110,h=48)=>`<rect class="${cls}" x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="8"/><text x="${x}" y="${y+6}" text-anchor="middle">${name}</text>`;
+
+/* ---------- 5: núcleo con filtro LDP ---------- */
+const NL={A:[260,130],B:[460,130],SW:[620,130],C:[770,130]};
+const nlCfg={A:`<span class="d">! Router A</span>
+ip cef
+!
+interface Serial2/1
+ <span class="h">mpls ip</span>
+!
+interface Serial3/1          <span class="d">! hacia el cliente C1</span>
+ <span class="h">ip access-group NoLDP in</span>
+!
+ip access-list extended NoLDP
+ deny   udp any any eq 646
+ deny   tcp any any eq 646
+ permit ip any any`,B:`<span class="d">! Router B</span>
+ip cef
+!
+interface Serial2/1
+ <span class="h">mpls ip</span>
+!
+interface FastEthernet0/0
+ <span class="h">mpls ip</span>`};
+let nlSel="A";
+function nlDraw(state){const acl=$("#nlAcl").checked;
+  $("#nlSvg").innerHTML=`<rect class="zone" x="190" y="50" width="640" height="170" rx="14"/><text class="lbl" x="205" y="72">Red del proveedor</text>
+  <line class="wire" x1="90" y1="130" x2="770" y2="130"/><line class="wire" x1="770" y1="130" x2="850" y2="130"/>
+  ${RB(70,130,"C1","box bk",80)}${RB(850-30,130,"C2","box bk",70)}
+  <g class="clk" data-k="A">${RB(NL.A[0],130,"A",nlSel==="A"?"box amb":"box")}</g><g class="clk" data-k="B">${RB(NL.B[0],130,"B",nlSel==="B"?"box amb":"box")}</g>
+  <rect class="host" x="585" y="112" width="70" height="36" rx="5"/><text x="620" y="135" text-anchor="middle" font-size="12">Cat6000</text>${RB(NL.C[0]-40,130,"C","box",70)}
+  <text class="lbl" x="150" y="118" text-anchor="middle">S3/1</text><text class="lbl" x="360" y="118" text-anchor="middle">S2/1</text><text class="lbl" x="550" y="118" text-anchor="middle">Fa0/0</text>
+  ${acl?`<rect class="tagr" x="170" y="140" width="66" height="22" rx="4"/><text class="tagt" x="203" y="156" text-anchor="middle">NoLDP</text>`:""}
+  <text class="lbl k" x="430" y="200" text-anchor="middle">mpls ip solo en interfaces internas</text>
+  <circle class="pkt" id="nlP" r="8" cx="-20" cy="0"/>
+  ${state==="drop"?`<text x="200" y="98" text-anchor="middle" style="fill:var(--bad)">✕ descartado por la ACL</text>`:state==="ign"?`<text x="230" y="98" text-anchor="middle" style="fill:var(--amber)">llega, A lo ignora</text>`:""}`;
+  $("#nlCfg").innerHTML=nlCfg[nlSel];
+  $("#nlTxt").innerHTML=acl?"La ACL descarta los Hello LDP (UDP 646) y las sesiones (TCP 646) que llegan desde el cliente. El original solo bloquea UDP 646; conviene bloquear también TCP 646.":"Sin <code>mpls ip</code> en S3/1, A no responde Hellos de enlace. Pero quedas con una sola barrera: un Hello <i>dirigido</i> (targeted) a la loopback de A, o un <code>mpls ip</code> puesto por error, abriría una sesión LDP con el cliente.";}
+$("#nlSvg").addEventListener("click",e=>{const g=e.target.closest(".clk");if(g){nlSel=g.dataset.k;nlDraw()}});
+$("#nlAcl").onchange=()=>nlDraw();
+$("#nlGo").onclick=async()=>{nlDraw();const acl=$("#nlAcl").checked;await animate($("#nlP"),[[110,130],[acl?195:240,130]],700);nlDraw(acl?"drop":"ign")};
+nlDraw();
+
+/* ---------- 6: red mixta ---------- */
+const MX={s10:["interface Serial1/0\n mpls ip\n mpls label protocol tdp","Hacia A, un Cisco antiguo que solo habla TDP."],
+ s21:["interface Serial2/1\n mpls ip\n mpls label protocol ldp","Hacia L1, de otro fabricante: solo LDP, porque TDP es propietario de Cisco."],
+ fa00:["interface FastEthernet0/0\n mpls ip\n mpls label protocol both","En la LAN hay vecinos de los dos tipos (C y L2). Con both, B habla TDP con unos y LDP con otros en la misma interfaz."]};
+let mxSel="fa00";
+function mxDraw(){const L=(k,x1,y1,x2,y2,lx,ly,t)=>`<g class="clk" data-k="${k}"><line class="wire${mxSel===k?" acc":""}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${mxSel===k?5:3}"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="transparent" stroke-width="22"/><text class="lbl${mxSel===k?" k":""}" x="${lx}" y="${ly}">${t}</text></g>`;
+  $("#mxSvg").innerHTML=`<rect class="zone" x="10" y="10" width="840" height="310" rx="14"/><text class="lbl" x="830" y="34" text-anchor="end">Red del proveedor</text>
+  ${L("s10",130,90,330,90,195,78,"S1/0 · tdp")}${L("s21",330,90,150,250,200,190,"S2/1 · ldp")}${L("fa00",330,90,540,90,400,78,"Fa0/0 · both")}
+  <line class="wire" x1="540" y1="90" x2="720" y2="90"/><line class="wire" x1="560" y1="90" x2="560" y2="250"/>
+  ${RB(130,90,"A")}${RB(330,90,"B","box amb")}${RB(150,250,"L1","box bk")}${RB(560,250,"L2","box bk")}${RB(720,90,"C")}
+  <rect class="host" x="520" y="72" width="80" height="36" rx="5"/><text x="560" y="95" text-anchor="middle" font-size="12">switch</text>
+  <text class="lbl" x="130" y="135" text-anchor="middle">Cisco, solo TDP</text><text class="lbl" x="150" y="295" text-anchor="middle">otro fabricante, solo LDP</text><text class="lbl" x="560" y="295" text-anchor="middle">otro fabricante, solo LDP</text><text class="lbl" x="720" y="135" text-anchor="middle">Cisco</text>`;
+  $("#mxCfg").textContent="ip cef\n!\n"+MX[mxSel][0];$("#mxTxt").textContent=MX[mxSel][1];}
+$("#mxSvg").addEventListener("click",e=>{const g=e.target.closest(".clk");if(g){mxSel=g.dataset.k;mxDraw()}});mxDraw();
+
+/* ---------- 7: MTU ---------- */
+const MT=[
+ ["IP sin MPLS",0,1500,"Sin etiquetas: el paquete de 1500 bytes cabe en la MTU LAN por defecto."],
+ ["MPLS puro (1 etiqueta)",1,1504,"Una etiqueta LDP: 1500 + 4 = 1504."],
+ ["MPLS VPN de capa 3 (2 etiquetas)",2,1508,"Etiqueta LDP + etiqueta VPN: 1500 + 8 = 1508."],
+ ["MPLS VPN + ingeniería de tráfico (3)",3,1512,"Etiqueta TE + LDP + VPN: 1500 + 12 = 1512. Es el valor del ejemplo, que soporta pilas de hasta tres etiquetas."],
+ ["AToM / EoMPLS (trama completa)",2,1526,"El pseudowire lleva la trama Ethernet entera: 1500 + 14 de cabecera Ethernet + 4 de control word + 8 de dos etiquetas = 1526. Con 802.1Q suma 4 más (1530). Es la fórmula de Cisco: MTU núcleo ≥ MTU borde + cabecera de transporte + cabecera AToM + etiquetas × 4."]];
+function mtuShow(i){const m=MT[i];
+  $("#mtuRow").innerHTML=(i===4?'<span class="h4" style="flex:1.2">Eth 14</span><span class="h3" style="flex:1">CW 4</span>':"")+Array.from({length:m[1]},(_,k)=>`<span class="h2" style="flex:1">Etiq. 4</span>`).join("")+`<span class="h1" style="flex:6">Paquete IP 1500</span>`;
+  $("#mtuRes").textContent=`MTU MPLS mínima: ${m[2]} bytes`;
+  $("#mtuCfg").innerHTML=`<span class="d">! en cada router del segmento LAN</span>
+interface FastEthernet0/0
+ mpls ip
+ <span class="h">mpls mtu ${Math.max(m[2],1500)}</span>
+
+<span class="d">! en el switch del camino (CatOS, del ejemplo)</span>
+set port 1/3 jumbo enable
+set port 1/4 jumbo enable
+<span class="d">! en un switch IOS: system mtu jumbo 9000</span>`;
+  $("#mtuTxt").innerHTML=m[3]+" <b>Todos</b> los routers del segmento deben tener el mismo valor, y el switch debe dejar pasar esas tramas: si no, los paquetes grandes se pierden y los pequeños (como el ping por defecto) funcionan.";}
+picker("#mtuList","#mtuTxt",MT.map(m=>[m[0],""]),3);
+$("#mtuList").addEventListener("click",e=>{const b=e.target.closest("button");if(b)mtuShow(+b.dataset.i)});mtuShow(3);
+
+/* ---------- 8: taxonomía ---------- */
+const TX={vn:[430,30,"Redes virtuales",300],vpn:[150,100,"VPN",160],vdn:[430,100,"Virtual Dialup",180],vlan:[700,100,"VLAN",160],
+ ov:[200,175,"VPN overlay",220],pp:[660,175,"VPN peer-to-peer",240],
+ l2:[90,260,"VPN capa 2",160],l3:[310,260,"VPN capa 3",160],
+ x25:[90,320,"X.25 · FR · ATM",170],gre:[310,320,"GRE · IPsec",160],
+ acl:[560,260,"ACL (router compartido)",230],split:[790,260,"Split routing",130],mpls:[660,340,"MPLS VPN",200]};
+const TXD={vn:"Todo lo que crea redes lógicas sobre una infraestructura compartida: VPN, redes virtuales de acceso telefónico y VLAN.",
+ vpn:"Una red privada construida sobre una red compartida. Se dividen según quién enruta: overlay o peer-to-peer.",
+ vdn:"Acceso remoto por línea conmutada (dial-up) tratado como parte de la red privada. Hoy es histórico.",
+ vlan:"Separación lógica de dominios de capa 2 en un mismo switch.",
+ ov:"El proveedor solo transporta. Los routers del cliente forman adyacencias entre sí a través de circuitos o túneles; el proveedor no conoce sus rutas.",
+ pp:"El proveedor participa en el enrutamiento: el CE forma adyacencia con el PE y el núcleo transporta las rutas del cliente.",
+ l2:"El proveedor vende circuitos virtuales (VC) de capa 2 entre sitios, como reemplazo de los enlaces dedicados. El cliente pone IP encima.",
+ l3:"El cliente arma túneles IP (GRE o IPsec) sobre la red del proveedor. Permite usar direcciones privadas sin NAT.",
+ x25:"Tecnologías de la WAN conmutada tradicional: X.25, Frame Relay, ATM y SMDS.",
+ gre:"Túneles de capa 3. GRE encapsula casi cualquier protocolo; IPsec lo protege.",
+ acl:"Peer-to-peer temprano: un PE compartido entre clientes y ACL para separarlos. Difícil de mantener.",
+ split:"Peer-to-peer con un router dedicado por cliente en el borde del proveedor. Costoso.",
+ mpls:"Peer-to-peer moderno: un PE compartido con una VRF por cliente. Une la escala del peer-to-peer con el aislamiento del overlay."};
+const TXL=[["vn","vpn"],["vn","vdn"],["vn","vlan"],["vpn","ov"],["vpn","pp"],["ov","l2"],["ov","l3"],["l2","x25"],["l3","gre"],["pp","acl"],["pp","split"],["pp","mpls"]];
+let txSel="pp";
+function txDraw(){let s=TXL.map(([a,b])=>`<line class="wire" x1="${TX[a][0]}" y1="${TX[a][1]+16}" x2="${TX[b][0]}" y2="${TX[b][1]-16}"/>`).join("");
+  Object.entries(TX).forEach(([k,v])=>{s+=`<g class="clk" data-k="${k}"><rect class="${k===txSel?"box amb":(["ov","l2","l3","x25","gre"].includes(k)?"box":(["pp","acl","split","mpls"].includes(k)?"box act":"box bk"))}" x="${v[0]-v[3]/2}" y="${v[1]-17}" width="${v[3]}" height="34" rx="17"/><text x="${v[0]}" y="${v[1]+5}" text-anchor="middle" font-size="14">${v[2]}</text></g>`});
+  $("#txSvg").innerHTML=s;$("#txT").textContent=TX[txSel][2];$("#txX").textContent=TXD[txSel];}
+$("#txSvg").addEventListener("click",e=>{const g=e.target.closest(".clk");if(g){txSel=g.dataset.k;txDraw()}});txDraw();
+
+/* ---------- 9: overlay por capas ---------- */
+const OV={1:["VPN sobre capa 1","El proveedor vende tuberías de bits (circuitos TDM) y solo establece la conectividad física. El cliente implementa todo lo demás: PPP o HDLC en capa 2 e IP en capa 3. Se menciona por razones históricas.","Tecnologías: ISDN, DS0, E1/T1, SDH, SONET.",1],
+ 2:["VPN sobre capa 2","El proveedor vende circuitos virtuales entre sitios y transporta las tramas de capa 2. El cliente se encarga de IP y del enrutamiento. Es la base de las VPN tradicionales.","Tecnologías: X.25, Frame Relay, ATM, SMDS.",2],
+ 3:["VPN sobre capa 3","El proveedor entrega conectividad IP; el cliente arma túneles GRE o IPsec entre sus routers. El protocolo de enrutamiento corre directo entre los routers del cliente y el proveedor no conoce sus rutas.","Tecnologías: GRE, IPsec.",3]};
+function ovRender(v){const o=OV[v],n=o[3];const L=["Física","Enlace de datos","Red (IP)","Enrutamiento"];
+  let s=`<text x="140" y="24" text-anchor="middle">Proveedor</text><text x="420" y="24" text-anchor="middle">Cliente</text>`;
+  L.forEach((l,i)=>{const y=260-i*64,sp=i<n&&i<3,cu=!sp||(n===3&&i===2),ct=sp?(n===3&&i===2?"túnel GRE/IPsec":"—"):l;
+   s+=`<rect class="${sp?"box":"box bk"}" x="40" y="${y}" width="200" height="50" rx="8" opacity="${sp?1:.35}"/><text x="140" y="${y+31}" text-anchor="middle" opacity="${sp?1:.35}">${sp?l:"—"}</text>
+   <rect class="${cu?"box act":"box bk"}" x="320" y="${y}" width="200" height="50" rx="8" opacity="${cu?1:.35}"/><text x="420" y="${y+31}" text-anchor="middle" opacity="${cu?1:.35}">${ct}</text>`});
+  $("#ovSvg").innerHTML=s;$("#ovH").textContent=o[0];$("#ovX").textContent=o[1];$("#ovTec").textContent=o[2];}
+seg("#ovSeg",ovRender);ovRender("2");
+
+/* ---------- 14: modos del pseudowire ---------- */
+function pwRender(){const m=$("#pwSeg button[aria-pressed=true]").dataset.v,no=$("#pwNo").checked;
+  const eth=(tag,dummy)=>`<span class="h0" style="flex:2">DA · SA</span>${tag?`<span class="${dummy?"h4":"h2"}" style="flex:1.6">802.1Q ${dummy?"ficticia":"VLAN 10"}</span>`:""}<span class="h0" style="flex:1">Type</span><span class="h0" style="flex:4">Payload</span>`;
+  $("#pwIn").innerHTML=eth(!no,false);
+  const lab=`<span class="h1" style="flex:1.2">LDP</span><span class="h3" style="flex:1.2">VC</span>`;
+  if(m==="t"){$("#pwMid").innerHTML=lab+eth(true,no);
+    $("#pwTxt").innerHTML=no?"En modo etiquetado, cada trama del pseudowire <b>debe</b> llevar una etiqueta VLAN delimitadora de servicio. Como llegó sin ella, el PE le antepone una etiqueta VLAN ficticia.":"La etiqueta 802.1Q viaja dentro del pseudowire. Es la etiqueta “delimitadora de servicio”: identifica al cliente en el circuito de acceso.";
+    $("#pwNote").innerHTML="El VLAN ID debe coincidir en los circuitos de acceso de ambos extremos. Si el PE de salida lo cambia, STP puede dejar de funcionar bien.";}
+  else{$("#pwMid").innerHTML=lab+eth(false,false);
+    $("#pwTxt").innerHTML=no?"La trama no trae etiqueta delimitadora y viaja tal cual.":"En modo sin procesar, la etiqueta delimitadora de servicio <b>se quita</b> antes de enviar la trama por el pseudowire. Para los extremos no tiene importancia.";
+    $("#pwNote").innerHTML="En IOS, un xconnect en una interfaz física (modo puerto) usa por defecto el tipo 5 (raw); en una subinterfaz 802.1Q usa el tipo 4 (VLAN). Ambos PE deben usar el mismo tipo o el VC no sube.";}}
+seg("#pwSeg",pwRender);$("#pwNo").onchange=pwRender;pwRender();
+
+/* ---------- 15: configurador xconnect ---------- */
+function xRender(){const p2=$("#x2p").value,p4=$("#x4p").value,v2=+$("#x2v").value,v4=+$("#x4v").value,s2=$("#x2s").checked,s4=$("#x4s").checked;
+  const probs=[];
+  if(p2!=="4.4.4.4")probs.push(p2==="2.2.2.2"?"R2 apunta a su propia loopback.":"R2 apunta a una IP física de R4. El peer debe ser la loopback que R4 usa como LDP ID (4.4.4.4), alcanzable como /32.");
+  if(p4!=="2.2.2.2")probs.push(p4==="4.4.4.4"?"R4 apunta a su propia loopback.":"R4 apunta a una IP física de R2. Debe ser 2.2.2.2.");
+  if(v2!==v4)probs.push(`El VC ID no coincide (${v2} y ${v4}). Debe ser igual en los dos extremos.`);
+  const sig=probs.length===0;const s2up=sig&&!s2&&!s4;
+  const st=(sh)=>sh?"AD":"UP";
+  $("#xCfg").innerHTML=`<span class="p">R2(config)#</span> interface f0/0
+<span class="p">R2(config-if)#</span> ${s2?"shutdown":"no shutdown"}
+<span class="p">R2(config-if)#</span> xconnect ${p2} ${v2} encapsulation mpls
+<span class="p">R4(config)#</span> interface f0/0
+<span class="p">R4(config-if)#</span> ${s4?"shutdown":"no shutdown"}
+<span class="p">R4(config-if)#</span> xconnect ${p4} ${v4} encapsulation mpls`;
+  const line=(me,peer,vc,sh)=>`${(s2up&&!sh)?'<span class="g">UP</span>':'<span class="r">DN</span>'}     ac   Fa0/0(Ethernet)              ${sh?'<span class="r">AD</span>':'<span class="g">UP</span>'} mpls ${pad(peer+":"+vc,20)} ${s2up?'<span class="g">UP</span>':'<span class="r">DN</span>'}`;
+  $("#xOut").innerHTML=`<span class="p">R2#</span> show xconnect all
+XC ST  Segment 1                         S1 Segment 2              S2
+------+---------------------------------+--+----------------------+--
+${line("R2",p2,v2,s2)}
+<span class="p">R4#</span> show xconnect all
+${line("R4",p4,v4,s4)}`;
+  $("#xPw").setAttribute("class",s2up?"wire ok":(sig?"wire":"wire down"));
+  $("#xR2").setAttribute("class",s2?"box off":"box");$("#xR4").setAttribute("class",s4?"box off":"box");
+  $("#xWhy").innerHTML=probs.length?probs.join(" "):(s2||s4?`El pseudowire está bien configurado, pero ${s2&&s4?"los dos circuitos de acceso están":"un circuito de acceso está"} en <b>shutdown</b> (S1 = AD). Mientras un extremo esté abajo, el VC completo queda DN. Es el caso del ejemplo: hay que hacer <code>no shutdown</code> en f0/0 en todos los equipos.`:"Peer correcto, VC ID igual y circuitos de acceso arriba: XC ST, S1 y S2 en UP.");
+  $("#xWhy").className=probs.length||s2||s4?"warn":"fix";}
+["#x2p","#x4p","#x2v","#x4v","#x2s","#x4s"].forEach(s=>$(s).addEventListener("input",xRender));["#x2s","#x4s"].forEach(s=>$(s).addEventListener("change",xRender));xRender();
+
+/* ---------- 16: verificación anotada ---------- */
+annot("#avT","#avX",[
+ ["R2# show xconnect all",null],
+ ["Legend: XC ST=Xconnect State, S1=Segment1 State, S2=Segment2 State","S1 es el circuito de acceso (lado cliente) y S2 el pseudowire (lado núcleo)."],
+ ["  UP=Up, DN=Down, AD=Admin Down, IA=Inactive, NH=No Hardware",null],
+ ["XC ST  Segment 1                     S1 Segment 2            S2",null],
+ ["------+-----------------------------+--+--------------------+--",null],
+ ["DN     ac   Fa0/0(Ethernet)          AD mpls 4.4.4.4:204     DN","Antes de corregir: S1 en AD porque Fa0/0 está en shutdown. Por eso S2 y el xconnect completo (XC ST) quedan DN."],
+ ["",null],
+ ["R4# show xconnect peer 2.2.2.2 vcid 204",null],
+ ["UP     ac   Fa0/0(Ethernet)          UP mpls 2.2.2.2:204     UP","Después de no shutdown en todos los equipos: los tres estados en UP. Se puede filtrar por peer y VC ID."],
+ ["",null],
+ ["R4# show mpls l2transport vc 204 detail",null],
+ ["Local interface: Fa0/0 up, line protocol up, Ethernet up","Estado del circuito de acceso local."],
+ ["  Destination address: 2.2.2.2, VC ID: 204, VC status: up","El PE remoto y el VC ID. Deben ser la loopback del otro PE y el mismo número."],
+ ["    Output interface: Fa0/1, imposed label stack {17 19}","Pila que se impone: 17 es la etiqueta LDP hacia 2.2.2.2 y 19 la etiqueta del VC que anunció R2."],
+ ["  Signaling protocol: LDP, peer 2.2.2.2:0 up","La sesión LDP dirigida (targeted) con el PE remoto. Si está down, revisa la ruta /32 a 2.2.2.2 y que TCP 646 no esté bloqueado."],
+ ["    MPLS VC labels: local 21, remote 19",null],
+ ["    MTU: local 1500, remote 1500","Si las MTU de los circuitos de acceso no coinciden, el VC no sube."]]);
+
+/* ---------- 17: síntomas ---------- */
+const asy=[
+ ["S1 en AD","La interfaz hacia el cliente está en shutdown en este PE.","R2# show interfaces f0/0 | include line\nFastEthernet0/0 is administratively down\nR2(config)# interface f0/0\nR2(config-if)# no shutdown"],
+ ["S1 UP, S2 DN, con LDP dirigido arriba","El VC ID no coincide, el otro extremo tiene su AC caído o las MTU difieren.","R2# show mpls l2transport vc detail\n  VC status: down\n  Last error: MTU mismatch\n    MTU: local 1500, remote 1600"],
+ ["S2 DN y sin sesión LDP con el peer","El peer del xconnect no es la loopback del otro PE, no hay ruta /32 hacia ella o se bloqueó TCP 646.","R2# show mpls ldp neighbor 4.4.4.4\n% no LDP neighbor\nR2# show ip route 4.4.4.4\n% Network not in table"],
+ ["El VC sube, pero el tráfico grande se pierde","La MTU del núcleo no alcanza para la trama completa más etiquetas y control word.","R2# ping 4.4.4.4 size 1526 df-bit\n.....\n! subir mtu / mpls mtu en el núcleo"],
+ ["El xconnect no acepta el comando","Falta CEF o MPLS global, o la encapsulación no está soportada en la plataforma.","R2(config-if)# xconnect 4.4.4.4 204 encapsulation mpls\n% CEF not enabled"],
+ ["Funciona en un sentido de la VLAN","Modo distinto en cada PE (puerto en un lado y subinterfaz en el otro): tipo 4 contra tipo 5.","R2# show mpls l2transport vc 204 detail\n  Remote VC type: Eth VLAN  Local: Ethernet"]];
+picker("#aSyList","#aSyX",asy.map(v=>[v[0],v[1]]));
+$("#aSyList").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("#aSyT").textContent=asy[+b.dataset.i][0];$("#aSyO").textContent=asy[+b.dataset.i][2]});
+$("#aSyT").textContent=asy[0][0];$("#aSyO").textContent=asy[0][2];
+
+/* ---------- Quiz ---------- */
+quiz("#quiz",[
+ {q:"¿Qué se debe habilitar antes que MPLS en un router?",o:["NTP","CEF","OSPF en todas las interfaces","IPsec"],ok:1,e:"MPLS usa la FIB de CEF. Sin CEF no se etiquetan paquetes."},
+ {q:"¿Qué hace mpls ip en una interfaz?",o:["Solo crea la LFIB","Activa la conmutación de etiquetas e inicia LDP","Cambia la MTU a 1504","Bloquea LDP hacia el cliente"],ok:1,e:"Habilita MPLS en modo trama en esa interfaz y arranca el descubrimiento LDP."},
+ {q:"¿Qué MTU MPLS necesita una VPN de capa 3 para transportar paquetes IP de 1500 bytes sin fragmentar?",o:["1500","1504","1508","1512"],ok:2,e:"Dos etiquetas (LDP + VPN) de 4 bytes: 1500 + 8 = 1508."},
+ {q:"¿Qué es una VPN peer-to-peer?",o:["Una VPN entre dos puntos solamente","Una donde el proveedor participa en el enrutamiento del cliente","Una VPN de capa 1","Una VPN sin proveedor"],ok:1,e:"El CE forma adyacencia con el PE y el proveedor transporta las rutas del cliente. No es lo mismo que punto a punto."},
+ {q:"En una MPLS VPN de capa 2, ¿qué guarda el PE sobre el cliente?",o:["Una VRF con sus rutas","Sus vecinos OSPF","Nada de su enrutamiento: solo conmuta tramas al pseudowire","Una copia de su tabla ARP"],ok:2,e:"Esa es la gran diferencia con la VPN de capa 3."},
+ {q:"show xconnect muestra S1 = AD y S2 = DN. ¿Qué revisas primero?",o:["El VC ID","La interfaz hacia el cliente: está en shutdown","La sesión MP-BGP","El RD"],ok:1,e:"AD es Admin Down en el segmento 1, el circuito de acceso. Mientras esté así, el resto queda DN."},
+ {q:"¿Qué dirección se pone como peer en xconnect?",o:["La IP física del enlace hacia el núcleo","La loopback (LDP ID) del PE remoto","La IP del CE remoto","La dirección multicast 224.0.0.2"],ok:1,e:"El PE abre una sesión LDP dirigida hacia esa dirección; debe ser su loopback /32 alcanzable."},
+ {q:"En modo etiquetado (tipo 0x0004), llega una trama sin VLAN. ¿Qué hace el PE?",o:["La descarta","Le antepone una etiqueta VLAN ficticia","La envía por la VPN de capa 3","Cambia a modo raw"],ok:1,e:"En modo etiquetado cada trama del pseudowire debe llevar una etiqueta delimitadora de servicio."}]);
+
+boot();
+})();
+</script>
+</body></html>

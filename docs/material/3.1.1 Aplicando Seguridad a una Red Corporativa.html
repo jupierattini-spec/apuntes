@@ -1,0 +1,1097 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Seguridad en Red Corporativa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Lienzo fijo 1600x900 (16:9) escalado a la ventana. Misma paleta y tipografía que las presentaciones de la unidad 2. */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#15212c; --muted:#5a6876; --line:#d3dae1; --frame:#d8dee5;
+  --accent:#1c63a8; --accent-ink:#ffffff; --accent-soft:#e1ecf7;
+  --amber:#a8650a; --amber-soft:#fbefdc; --ok:#1f7a4a; --ok-soft:#e0f2e8; --bad:#b0322b; --bad-soft:#f9e3e1;
+  --term-bg:#0f1b26; --term-fg:#d2dee9; --term-dim:#7f93a6; --term-hl:#ffd27a; --term-prompt:#7cc0ff;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d151d; --panel:#16212c; --ink:#e3eaf1; --muted:#97a6b4; --line:#2a3846; --frame:#070c11;
+  --accent:#5aa6ea; --accent-ink:#06121c; --accent-soft:#1a3043;
+  --amber:#f0b25a; --amber-soft:#3a2a12; --ok:#5fcf91; --ok-soft:#14301f; --bad:#f08a80; --bad-soft:#3b1a17;
+  --term-bg:#0a121a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d151d; --panel:#16212c; --ink:#e3eaf1; --muted:#97a6b4; --line:#2a3846; --frame:#070c11;
+  --accent:#5aa6ea; --accent-ink:#06121c; --accent-soft:#1a3043;
+  --amber:#f0b25a; --amber-soft:#3a2a12; --ok:#5fcf91; --ok-soft:#14301f; --bad:#f08a80; --bad-soft:#3b1a17;
+  --term-bg:#0a121a; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--frame);color:var(--ink);font-family:var(--f-body);overflow:hidden}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* ---------- marco y escala ---------- */
+.deck{position:fixed;inset:0;display:flex;flex-direction:column}
+.viewport{flex:1;min-height:0;position:relative;overflow:hidden}
+.canvas{position:absolute;left:50%;top:50%;width:1600px;height:900px;transform:translate(-50%,-50%) scale(var(--s,1));transform-origin:center;background:var(--bg);box-shadow:0 6px 30px rgba(0,0,0,.18);overflow:hidden;font-size:23px;line-height:1.45}
+.slide{position:absolute;inset:0;padding:50px 72px 44px;overflow:hidden}
+.slide[hidden]{display:none!important}
+.inner{height:100%;display:flex;flex-direction:column;gap:20px}
+.slide.enter .inner{animation:enter .35s ease-out}
+@keyframes enter{from{opacity:.25;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- tipografía dentro del lienzo ---------- */
+.canvas h1{font-size:66px;font-weight:800;line-height:1.04}
+.canvas h2{font-size:40px;font-weight:800;line-height:1.1}
+.canvas h3{font-size:23px;font-weight:700}
+.eyebrow{font-family:var(--f-display);font-size:15px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.head{display:flex;flex-direction:column;gap:6px}
+.lead{font-size:24px;color:var(--muted);max-width:76ch}
+.canvas ul{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:7px}
+.canvas ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:7px}
+.canvas a{color:var(--accent)}
+code{font-family:var(--f-mono);font-size:.84em;background:var(--accent-soft);padding:1px 6px;border-radius:4px}
+.small{font-size:20px}
+.muted{color:var(--muted)}
+b,strong{font-weight:700}
+
+/* ---------- bloques ---------- */
+.fill{flex:1;min-height:0}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+.cols.st{align-items:stretch}
+.cols.w37{grid-template-columns:minmax(0,3fr) minmax(0,7fr)}
+.cols.w46{grid-template-columns:minmax(0,4fr) minmax(0,6fr)}
+.cols.w64{grid-template-columns:minmax(0,6fr) minmax(0,4fr)}
+.cols.w73{grid-template-columns:minmax(0,7fr) minmax(0,3fr)}
+.cols.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cols.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel.tight{padding:14px 16px;gap:8px}
+.note{border-left:5px solid var(--amber);background:var(--amber-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.fix{border-left:5px solid var(--ok);background:var(--ok-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.warn{border-left:5px solid var(--bad);background:var(--bad-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.fe{font-weight:700;color:var(--ok)}
+.term{background:var(--term-bg);color:var(--term-fg);font-family:var(--f-mono);font-size:17px;line-height:1.5;border-radius:8px;padding:14px 16px;white-space:pre;overflow:hidden;min-width:0;border:1px solid var(--line)}
+.term.sm{font-size:15px;padding:12px 14px}
+.term.xs{font-size:13.5px;padding:10px 12px;line-height:1.42}
+.term .p{color:var(--term-prompt)} .term .h{color:var(--term-hl)} .term .d{color:var(--term-dim)} .term .g{color:#8be0ae} .term .r{color:#ff9d94}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--panel)}
+.seg button{background:transparent;border:0;padding:8px 16px;color:var(--ink);font-size:18px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.ctl{display:flex;flex-direction:column;gap:4px;font-size:17px;color:var(--muted)}
+.ctl select,.ctl input[type=number],.ctl input[type=text]{font:inherit;font-size:18px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+.ctl input[type=range]{width:100%}
+.tog{display:inline-flex;gap:8px;align-items:center;font-size:18px;cursor:pointer}
+.tog input{width:18px;height:18px}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:7px;padding:9px 18px;font-weight:700;font-size:18px}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.btn.danger{background:var(--bad);color:var(--panel)}
+.btn:disabled{opacity:.45;cursor:default}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.badge.ok{background:var(--ok-soft);color:var(--ok)} .badge.bad{background:var(--bad-soft);color:var(--bad)} .badge.blue{background:var(--accent-soft);color:var(--accent)} .badge.amb{background:var(--amber-soft);color:var(--amber)}
+table{border-collapse:collapse;width:100%;font-size:20px}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-display);font-size:14.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td code{white-space:nowrap}
+tr.hit td{background:var(--amber-soft)}
+tr.ok td{background:var(--ok-soft)}
+tr.no td{background:var(--bad-soft)}
+.result{font-family:var(--f-display);font-size:28px;font-weight:800}
+.big{font-family:var(--f-display);font-size:34px;font-weight:800}
+
+/* ---------- SVG ---------- */
+svg{width:100%;height:auto;display:block}
+.dia text{font-family:var(--f-display);font-weight:700;font-size:15px;fill:var(--ink)}
+.dia .lbl{font-family:var(--f-mono);font-weight:400;font-size:12px;fill:var(--muted)}
+.dia .lbl.k{fill:var(--accent);font-weight:600}
+.dia .box{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.dia .box.act{fill:var(--ok-soft);stroke:var(--ok);stroke-width:2.6}
+.dia .box.amb{fill:var(--amber-soft);stroke:var(--amber);stroke-width:2.2}
+.dia .box.bk{fill:var(--panel);stroke:var(--muted)}
+.dia .box.off{fill:var(--bad-soft);stroke:var(--bad);stroke-dasharray:5 3}
+.dia .zone{fill:var(--accent-soft);stroke:var(--line);opacity:.55}
+.dia .zone2{fill:var(--amber-soft);stroke:var(--line);opacity:.6}
+.dia .host{fill:var(--panel);stroke:var(--line);stroke-width:1.4}
+.dia .wire{stroke:var(--muted);stroke-width:2.2;fill:none}
+.dia .wire.down{stroke:var(--bad);stroke-dasharray:6 4}
+.dia .wire.ok{stroke:var(--ok)}
+.dia .wire.acc{stroke:var(--accent);stroke-width:3}
+.dia .wire.dash{stroke-dasharray:6 5}
+.dia .flow{stroke:var(--ok);stroke-width:3.5;fill:none;stroke-dasharray:9 7;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.dia .pkt{fill:var(--amber)}
+.dia .tagr{fill:var(--amber);stroke:none}
+.dia .tagt{font-family:var(--f-mono);font-size:12px;font-weight:600;fill:#1b1206}
+.dia .clk{cursor:pointer}
+.dia .clk:hover{filter:brightness(1.06)}
+.dia .sel{stroke-width:3.4!important;stroke:var(--amber)!important}
+
+/* ---------- componentes ---------- */
+.log{font-family:var(--f-mono);font-size:14px;color:var(--muted);white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;overflow:hidden}
+.agenda{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.agenda button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;color:var(--ink);display:flex;flex-direction:column;gap:6px;font-size:24px}
+.agenda button:hover{border-color:var(--accent)}
+.agenda small{color:var(--muted);font-size:17px}
+.cover{justify-content:center;gap:24px}
+.cover .meta{display:flex;gap:10px;flex-wrap:wrap}
+.cards{display:grid;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.card .ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-family:var(--f-display);font-weight:800;font-size:19px}
+.card h3{font-size:21px}
+.card p{font-size:19px;color:var(--muted)}
+.steps{display:grid;gap:12px}
+.steps>div{border-top:5px solid var(--accent);background:var(--panel);border-radius:0 0 10px 10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;font-size:20px;cursor:pointer}
+.steps>div b{font-family:var(--f-display);font-size:22px}
+.steps>div.on{border-top-color:var(--amber);background:var(--amber-soft)}
+.annot .ln{display:block;padding:0 6px;margin:0 -6px;border-radius:3px}
+.annot .ln.k{color:var(--term-hl);cursor:pointer}
+.annot .ln.k:hover,.annot .ln.sel{background:rgba(255,210,122,.17)}
+.pick{display:flex;flex-direction:column;gap:8px}
+.pick button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:11px 15px;color:var(--ink);font-size:20px}
+.pick button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.quiz .opts{display:flex;flex-direction:column;gap:10px}
+.quiz .opts button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 18px;color:var(--ink);font-size:22px}
+.quiz .opts button.right{border-color:var(--ok);background:var(--ok-soft)}
+.quiz .opts button.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.quiz .q{font-size:28px;font-weight:600}
+.pktrow{display:flex;gap:0;font-family:var(--f-mono);font-size:15px;font-weight:600}
+.pktrow span{padding:12px 10px;border:1px solid var(--line);text-align:center;margin-left:-1px}
+.pktrow .h1{background:var(--accent-soft);color:var(--accent)} .pktrow .h2{background:var(--amber-soft);color:var(--amber)} .pktrow .h3{background:var(--ok-soft);color:var(--ok)} .pktrow .h4{background:var(--bad-soft);color:var(--bad)} .pktrow .h0{background:var(--panel);color:var(--ink)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:16px;color:var(--muted)}
+.legend i{display:inline-block;width:13px;height:13px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* ---------- barra de navegación ---------- */
+nav.bar{flex:none;display:flex;align-items:center;gap:10px;padding:8px max(16px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));border-top:1px solid var(--line);background:var(--panel);font-size:15px}
+nav.bar .prog{flex:1;height:5px;background:var(--line);border-radius:3px;overflow:hidden;min-width:40px}
+nav.bar .prog i{display:block;height:100%;background:var(--accent);transition:width .25s}
+nav.bar button{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px 12px}
+nav.bar button:disabled{opacity:.4}
+nav.bar .count{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px}
+:fullscreen nav.bar{opacity:0;transition:opacity .2s}
+:fullscreen nav.bar:hover{opacity:1}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- impresión: una diapositiva 16:9 por página ---------- */
+@media print{
+  @page{size:1600px 900px;margin:0}
+  html,body{height:auto;overflow:visible;background:#fff}
+  .deck{position:static;display:block}
+  nav.bar{display:none}
+  .viewport{overflow:visible}
+  .canvas{position:static;transform:none;width:auto;height:auto;box-shadow:none;background:transparent}
+  .slide,.slide[hidden]{display:block!important;position:relative;width:1600px;height:900px;break-after:page;background:var(--bg)}
+  .slide.enter .inner{animation:none}
+}
+</style></head><body>
+<div class="deck">
+<div class="viewport"><div class="canvas" id="stage">
+<!-- 1 Portada -->
+<section class="slide" data-title="Portada"><div class="inner cover">
+  <span class="eyebrow">ARY6112 · Troubleshooting · Unidad 3.1.1</span>
+  <h1>Aplicando seguridad a una red corporativa</h1>
+  <p class="lead">Listas de acceso IPv4 e IPv6, protección del plano de control con CoPP y separación de tablas de enrutamiento con VRF-Lite y EVN. Qué hace cada una, cómo se verifica y qué mirar cuando falla.</p>
+  <div class="meta"><span class="badge blue">Routing y Switching Corporativo</span><span class="badge blue">Usa ← → · F pantalla completa</span></div>
+</div></section>
+
+<!-- 2 Agenda -->
+<section class="slide" data-title="Agenda"><div class="inner">
+  <div class="head"><span class="eyebrow">Agenda</span><h2>Lo que veremos</h2></div>
+  <div class="agenda" id="agenda"></div>
+</div></section>
+
+<!-- 3 ¿Qué es una ACL? -->
+<section class="slide" data-title="¿Qué es una ACL?" data-agenda="ACL IPv4" data-sub="Procesamiento, tipos, aplicación y tiempo"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>Una ACL identifica tráfico; el servicio decide qué hacer con él</h2>
+  <p class="lead">Una ACL creada no hace nada hasta que se aplica a una interfaz, un servicio o una función.</p></div>
+  <div class="cols w46 fill">
+    <div class="cards" style="grid-template-columns:1fr 1fr">
+      <div class="card"><div class="ic">1</div><h3>Filtrado de paquetes</h3><p><code>ip access-group</code> en una interfaz, entrada o salida.</p></div>
+      <div class="card"><div class="ic">2</div><h3>NAT / PAT</h3><p>Qué direcciones privadas se traducen a la pública.</p></div>
+      <div class="card"><div class="ic">3</div><h3>Redistribución</h3><p>Qué rutas pasan de un protocolo a otro (con route-map).</p></div>
+      <div class="card"><div class="ic">4</div><h3>PBR y QoS</h3><p>Qué paquetes siguen una política o reciben una marca.</p></div>
+      <div class="card"><div class="ic">5</div><h3>CoPP</h3><p>Qué tráfico hacia la CPU entra en cada clase.</p></div>
+      <div class="card"><div class="ic">6</div><h3>Acceso a gestión</h3><p><code>access-class</code> en las líneas VTY.</p></div>
+    </div>
+    <div class="panel">
+      <svg viewBox="0 0 560 400" class="dia" role="img" aria-label="Tres routers con ACL en distintas interfaces y la política que aplica cada una">
+        <path class="zone" d="M410 30h130v70H410z" rx="10"/><text x="475" y="72" text-anchor="middle">Internet</text>
+        <path class="zone" d="M410 150h130v70H410z"/><text x="475" y="182" text-anchor="middle">Subred HR</text><text class="lbl" x="475" y="200" text-anchor="middle">172.17.0.0/20</text>
+        <line class="wire" x1="280" y1="65" x2="410" y2="65"/><line class="wire" x1="280" y1="65" x2="150" y2="185"/><line class="wire" x1="280" y1="65" x2="310" y2="185"/>
+        <line class="wire" x1="310" y1="185" x2="410" y2="185"/><line class="wire" x1="150" y1="185" x2="90" y2="300"/><line class="wire" x1="150" y1="185" x2="200" y2="300"/><line class="wire" x1="310" y1="185" x2="310" y2="300"/>
+        <rect class="box" x="245" y="45" width="70" height="40" rx="6"/><text x="280" y="70" text-anchor="middle">R2</text>
+        <rect class="box" x="115" y="165" width="70" height="40" rx="6"/><text x="150" y="190" text-anchor="middle">R1</text>
+        <rect class="box" x="275" y="165" width="70" height="40" rx="6"/><text x="310" y="190" text-anchor="middle">R3</text>
+        <rect class="host" x="55" y="300" width="70" height="34" rx="4"/><text x="90" y="322" text-anchor="middle">S1</text>
+        <rect class="host" x="165" y="300" width="70" height="34" rx="4"/><text x="200" y="322" text-anchor="middle">S2</text>
+        <rect class="host" x="275" y="300" width="70" height="34" rx="4"/><text x="310" y="322" text-anchor="middle">S3</text>
+        <rect class="tagr" x="335" y="52" width="46" height="22" rx="4"/><text class="tagt" x="358" y="68" text-anchor="middle">ACL</text>
+        <rect class="tagr" x="350" y="174" width="46" height="22" rx="4"/><text class="tagt" x="373" y="190" text-anchor="middle">ACL</text>
+        <rect class="tagr" x="92" y="225" width="46" height="22" rx="4"/><text class="tagt" x="115" y="241" text-anchor="middle">ACL</text>
+        <rect class="tagr" x="318" y="240" width="46" height="22" rx="4"/><text class="tagt" x="341" y="256" text-anchor="middle">ACL</text>
+        <text class="lbl k" x="280" y="20" text-anchor="middle">permitir correo entrante · denegar Telnet entrante</text>
+        <text class="lbl k" x="10" y="365">R1: denegar video a S1 y el acceso de S1 a S2</text>
+        <text class="lbl k" x="10" y="388">R3: denegar acceso a HR, FTP, web y actualizaciones</text>
+      </svg>
+    </div>
+  </div>
+</div></section>
+
+<!-- 4 Procesamiento -->
+<section class="slide" data-title="Cómo procesa una ACL"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>De arriba hacia abajo, gana la primera coincidencia</h2>
+  <p class="lead">Elige un paquete y evalúalo contra la ACL 100. Mira en qué línea se detiene y qué pasa si ninguna coincide.</p></div>
+  <div class="cols w46 fill">
+    <div class="stack">
+      <div class="steps" style="grid-template-columns:1fr">
+        <div><b>1. Procesamiento descendente</b><span>Las entradas se revisan en orden, desde la de menor número de secuencia.</span></div>
+        <div><b>2. Ejecución inmediata</b><span>La primera entrada que coincide decide: permit o deny. Las demás ya no se miran.</span></div>
+        <div><b>3. Deny implícito</b><span>Al final hay un <code>deny any</code> invisible. Una ACL sin ningún permit lo bloquea todo.</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ctrls">
+        <label class="ctl" style="flex:1">Paquete que entra<select id="aclPkt"></select></label>
+        <button class="btn" id="aclGo" style="align-self:flex-end">Evaluar</button>
+      </div>
+      <div class="term" id="aclTerm"></div>
+      <div class="result" id="aclRes">&nbsp;</div>
+      <p id="aclWhy" class="small muted">&nbsp;</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- 5 Estándar y extendida -->
+<section class="slide" data-title="ACL estándar y extendida"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>Estándar mira solo el origen; extendida mira casi todo</h2></div>
+  <div class="cols st fill">
+    <div class="panel">
+      <table><thead><tr><th></th><th>Estándar</th><th>Extendida</th></tr></thead><tbody>
+        <tr><td>Números</td><td>1–99, 1300–1999</td><td>100–199, 2000–2699</td></tr>
+        <tr><td>Compara</td><td>IP de origen</td><td>Protocolo, origen, destino, puertos, flags, DSCP</td></tr>
+        <tr><td>Ubicación típica</td><td>Cerca del destino</td><td>Cerca del origen</td></tr>
+        <tr><td>Nombrada</td><td><code>ip access-list standard</code></td><td><code>ip access-list extended</code></td></tr>
+      </tbody></table>
+      <div class="note">Ordena de lo más específico a lo más general. Si una entrada general queda primero, las específicas de abajo nunca se usan.</div>
+      <div class="fix"><span class="fe">Precisión.</span> Los IOS recientes no rechazan las entradas más específicas. Rechazan las que ya quedan cubiertas por una entrada anterior: <code>% Access rule can't be configured at higher sequence num as it is part of the existing rule</code>.</div>
+    </div>
+    <div class="term sm"><span class="p">Router#</span> show access-lists
+Standard IP access list 1
+ 5 deny 10.1.1.5
+ 10 permit 10.1.1.0, wildcard bits 0.0.0.63 <span class="h">(1 match)</span>
+ 20 deny 10.1.1.64, wildcard bits 0.0.0.63
+ 30 permit 10.1.1.0, wildcard bits 0.0.0.255
+
+<span class="p">R1#</span> show access-lists 100
+Extended IP access list 100
+ 10 deny tcp host 10.1.1.5 host 192.0.2.1 eq www
+ 20 permit tcp 10.1.1.0 0.0.0.63 host 192.0.2.1 eq telnet
+ 30 deny ip 10.1.1.64 0.0.0.63 host 192.0.2.1
+ 40 permit ip 10.1.1.0 0.0.0.255 any
+
+<span class="d">! Los contadores (matches) indican qué entrada está</span>
+<span class="d">! atrapando el tráfico. Reinícialos antes de probar:</span>
+<span class="p">R1#</span> clear access-list counters 100</div>
+  </div>
+</div></section>
+
+<!-- 6 Aplicación en interfaz -->
+<section class="slide" data-title="Aplicar una ACL a una interfaz"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>La interfaz y el sentido importan tanto como las entradas</h2>
+  <p class="lead">Cambia el sentido y observa qué paquetes revisa cada ACL. <code>in</code> filtra lo que llega al router; <code>out</code>, lo que sale después de enrutarse.</p></div>
+  <div class="cols w46 fill">
+    <div class="panel">
+      <svg viewBox="0 0 520 230" class="dia" role="img" aria-label="LAN, R1 e interfaz Gi0/0 con el sentido de la ACL">
+        <rect class="host" x="10" y="90" width="120" height="50" rx="6"/><text x="70" y="113" text-anchor="middle">LAN</text><text class="lbl" x="70" y="130" text-anchor="middle">10.1.1.0/24</text>
+        <line class="wire" x1="130" y1="115" x2="260" y2="115"/>
+        <rect class="box" x="260" y="85" width="110" height="60" rx="8"/><text x="315" y="120" text-anchor="middle">R1</text>
+        <line class="wire" x1="370" y1="115" x2="510" y2="115"/>
+        <text class="lbl k" x="200" y="104" text-anchor="middle">Gi0/0</text>
+        <path id="dirIn" d="M150 150 L245 150" stroke="var(--ok)" stroke-width="4" marker-end="url(#ar)"/>
+        <path id="dirOut" d="M245 80 L150 80" stroke="var(--accent)" stroke-width="4" marker-end="url(#ar2)"/>
+        <text class="lbl" id="dirInT" x="198" y="175" text-anchor="middle">in: ACL 1</text>
+        <text class="lbl" id="dirOutT" x="198" y="66" text-anchor="middle">out: ACL 100</text>
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--ok)"/></marker>
+        <marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--accent)"/></marker></defs>
+      </svg>
+      <div class="ctrls"><div class="seg" id="dirSeg"><button data-v="ok" aria-pressed="true">Como en la figura</button><button data-v="swap" aria-pressed="false">Sentidos invertidos</button><button data-v="none" aria-pressed="false">ACL 100 no existe</button></div></div>
+      <p id="dirTxt" class="note"></p>
+    </div>
+    <div class="term sm" id="dirTerm"></div>
+  </div>
+</div></section>
+
+<!-- 7 ACL por tiempo -->
+<section class="slide" data-title="ACL basada en tiempo"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>Una entrada que se activa según el reloj del router</h2>
+  <p class="lead">La entrada 10 bloquea la web de 10.1.1.5 solo fuera del horario laboral. Mueve el día y la hora para ver cuándo está <b>active</b>.</p></div>
+  <div class="cols w46 fill">
+    <div class="panel">
+      <div class="ctrls">
+        <div class="seg" id="trDay"><button data-v="lv" aria-pressed="true">Lunes a viernes</button><button data-v="sd" aria-pressed="false">Sábado o domingo</button></div>
+      </div>
+      <label class="ctl">Hora del router: <b id="trH"></b><input type="range" id="trR" min="0" max="23.5" step="0.5" value="10"></label>
+      <div class="result" id="trRes"></div>
+      <p id="trWhy"></p>
+      <div class="warn">El router usa su propio reloj. Si la hora está mal (sin NTP o con zona horaria errada), la ACL se activa en otro momento. Revisa <code>show clock</code> y <code>show ntp status</code>.</div>
+    </div>
+    <div class="term sm" id="trTerm"></div>
+  </div>
+</div></section>
+
+<!-- 8 ACL IPv6 reglas -->
+<section class="slide" data-title="ACL IPv6: reglas implícitas" data-agenda="ACL IPv6" data-sub="Permisos implícitos de ND y aplicación"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv6</span><h2>IPv6 agrega dos permisos implícitos antes del deny final</h2>
+  <p class="lead">Neighbor Discovery (NDP) reemplaza a ARP. Para que no se rompa, cada ACL IPv6 permite NA y NS de forma implícita. Agrega la línea de abajo y mira el efecto.</p></div>
+  <div class="cols w64 fill">
+    <div class="stack">
+      <div class="term sm" id="v6Term"></div>
+      <label class="tog"><input type="checkbox" id="v6Deny"> Agregar <code>deny ipv6 any any log</code> al final, como se hace en IPv4</label>
+      <div class="fix"><span class="fe">Fe de erratas.</span> La presentación original escribe <code>deny ipv6 any aní log</code>; el comando es <code>deny ipv6 any any log</code>.</div>
+    </div>
+    <div class="panel">
+      <svg viewBox="0 0 520 200" class="dia" id="v6Svg" role="img" aria-label="R1 resolviendo la dirección de capa 2 de su vecino con NS y NA">
+        <rect class="box" x="30" y="70" width="120" height="56" rx="8"/><text x="90" y="103" text-anchor="middle">R1</text>
+        <rect class="box" id="v6R2" x="370" y="70" width="120" height="56" rx="8"/><text x="430" y="103" text-anchor="middle">Vecino</text>
+        <line class="wire" id="v6W" x1="150" y1="98" x2="370" y2="98"/>
+        <text class="lbl k" id="v6L1" x="260" y="60" text-anchor="middle">NS: ¿quién tiene 2001:DB8:A:A::20?</text>
+        <text class="lbl k" id="v6L2" x="260" y="150" text-anchor="middle">NA: soy yo, mi MAC es …</text>
+        <circle class="pkt" id="v6P" r="7" cx="-20" cy="0"/>
+      </svg>
+      <div class="ctrls"><button class="btn" id="v6Go">Resolver vecino</button></div>
+      <p id="v6Txt" class="note">Con las reglas implícitas, NS y NA pasan aunque no las escribas.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- 9 Aplicar ACL IPv6 -->
+<section class="slide" data-title="Aplicar y verificar una ACL IPv6"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv6</span><h2>En IPv6 todas son extendidas y nombradas</h2></div>
+  <div class="cols fill">
+    <div class="stack">
+      <div class="panel tight"><table style="font-size:18px"><thead><tr><th>Tarea</th><th>IPv4</th><th>IPv6</th></tr></thead><tbody>
+        <tr><td>Crear</td><td><code>ip access-list extended N</code></td><td><code>ipv6 access-list N</code></td></tr>
+        <tr><td>Aplicar</td><td><code>ip access-group N in</code></td><td><code>ipv6 traffic-filter N in</code></td></tr>
+        <tr><td>Ver en interfaz</td><td><code>show ip interface</code></td><td><code>show ipv6 interface</code></td></tr>
+        <tr><td>Ver entradas</td><td><code>show access-lists</code></td><td><code>show ipv6 access-list</code></td></tr>
+        <tr><td>Máscara</td><td>Wildcard</td><td>Longitud de prefijo (/64)</td></tr>
+      </tbody></table></div>
+      <div class="note">Al revisar, confirma tres cosas: que la ACL existe con ese nombre exacto (distingue mayúsculas), que está en la interfaz correcta y que el sentido es el que pide el diseño.</div>
+    </div>
+    <div class="term xs"><span class="p">R1(config)#</span> interface gigabitEthernet 0/0
+<span class="p">R1(config-if)#</span> ipv6 traffic-filter ENARSI in
+<span class="p">R1#</span> show ipv6 access-list
+IPv6 access list ENARSI
+ permit tcp host 2001:DB8:A:A::20 host 2001:DB8:A:B::7 eq telnet sequence 10
+ deny tcp any host 2001:DB8:A:B::7 eq telnet sequence 20
+ permit tcp host 2001:DB8:A:A::20 host 2001:DB8:D::1 eq www sequence 30
+ deny ipv6 2001:DB8:A:A::/80 any sequence 40
+ permit ipv6 2001:DB8:A:A::/64 any sequence 50
+
+<span class="p">R1#</span> show ipv6 interface gigabitEthernet 0/0
+GigabitEthernet0/0 is up, line protocol is up
+  IPv6 is enabled, link-local address is FE80::C808:3FF:FE78:8
+  Global unicast address(es):
+    2001:DB8:A:A::1, subnet is 2001:DB8:A:A::/64
+  Joined group address(es):
+  MTU is 1500 bytes
+  Input features: Access List
+  <span class="h">Inbound access list ENARSI</span>
+  ND DAD is enabled, number of DAD attempts: 1</div>
+  </div>
+</div></section>
+
+<!-- 10 CoPP concepto -->
+<section class="slide" data-title="Qué es CoPP" data-agenda="CoPP" data-sub="ACL, class-map, policy-map y service-policy"><div class="inner">
+  <div class="head"><span class="eyebrow">Control Plane Policing</span><h2>CoPP limita el tráfico que llega a la CPU del router</h2>
+  <p class="lead">Es una política de QoS aplicada a la interfaz lógica <code>control-plane</code>. Clasifica el tráfico hacia la CPU (gestión, enrutamiento, ICMP…) y le pone un límite de velocidad a cada clase, para que una ráfaga inesperada no desestabilice el equipo.</p></div>
+  <div class="panel">
+    <svg viewBox="0 25 1440 250" class="dia" role="img" aria-label="Tráfico hacia la CPU pasa por ACL, class-map, policy-map y control-plane">
+      <g font-size="15">
+      <rect class="host" x="10" y="40" width="200" height="40" rx="6"/><text x="110" y="66" text-anchor="middle">OSPF · EIGRP · BGP</text>
+      <rect class="host" x="10" y="100" width="200" height="40" rx="6"/><text x="110" y="126" text-anchor="middle">SSH · SNMP · NTP</text>
+      <rect class="host" x="10" y="160" width="200" height="40" rx="6"/><text x="110" y="186" text-anchor="middle">ICMP · traceroute</text>
+      <rect class="host" x="10" y="220" width="200" height="40" rx="6"/><text x="110" y="246" text-anchor="middle">DHCP · IPsec · otro</text>
+      </g>
+      <path class="wire" d="M210 60 C260 60 260 150 300 150 M210 120 C250 120 260 150 300 150 M210 180 C250 180 260 150 300 150 M210 240 C260 240 260 150 300 150"/>
+      <rect class="box" x="300" y="105" width="220" height="90" rx="8"/><text x="410" y="143" text-anchor="middle">1. ACL</text><text class="lbl" x="410" y="165" text-anchor="middle">identifica el tráfico</text>
+      <line class="wire" x1="520" y1="150" x2="560" y2="150"/>
+      <rect class="box" x="560" y="105" width="220" height="90" rx="8"/><text x="670" y="143" text-anchor="middle">2. class-map</text><text class="lbl" x="670" y="165" text-anchor="middle">agrupa en clases</text>
+      <line class="wire" x1="780" y1="150" x2="820" y2="150"/>
+      <rect class="box" x="820" y="105" width="220" height="90" rx="8"/><text x="930" y="143" text-anchor="middle">3. policy-map</text><text class="lbl" x="930" y="165" text-anchor="middle">police por clase</text>
+      <line class="wire" x1="1040" y1="150" x2="1080" y2="150"/>
+      <rect class="box amb" x="1080" y="105" width="220" height="90" rx="8"/><text x="1190" y="143" text-anchor="middle">4. control-plane</text><text class="lbl" x="1190" y="165" text-anchor="middle">service-policy input</text>
+      <line class="wire" x1="1300" y1="150" x2="1340" y2="150"/>
+      <rect class="box act" x="1340" y="115" width="90" height="70" rx="8"/><text x="1385" y="156" text-anchor="middle">CPU</text>
+    </svg>
+  </div>
+  <div class="cols c3">
+    <div class="panel tight"><h3>conform</h3><p class="small">Dentro de la tasa. Normalmente <code>transmit</code>.</p></div>
+    <div class="panel tight"><h3>exceed</h3><p class="small">Sobre la tasa, dentro de la ráfaga extra. Se decide <code>transmit</code> o <code>drop</code>.</p></div>
+    <div class="panel tight"><h3>violate</h3><p class="small">Muy por sobre la tasa. Al principio conviene <code>transmit</code> para medir y ajustar sin cortar nada.</p></div>
+  </div>
+  <div class="fix"><span class="fe">Fe de erratas.</span> El resumen original dice que CoPP se basa en el firewall por zonas (ZBF). En realidad usa MQC, la misma estructura de QoS: class-map, policy-map y service-policy.</div>
+</div></section>
+
+<!-- 11 ACL para CoPP -->
+<section class="slide" data-title="ACL para CoPP"><div class="inner">
+  <div class="head"><span class="eyebrow">CoPP · paso 1</span><h2>Las ACL definen qué protocolos caen en cada clase</h2>
+  <p class="lead">Aquí <code>permit</code> no significa “dejar pasar”: significa “esto pertenece a la clase”. Son ACL abiertas; el control lo hace el policer.</p></div>
+  <div class="cols w64 fill">
+    <div class="cols st" style="gap:14px">
+      <div class="term xs">ip access-list extended ACL-CoPP-ICMP
+ permit icmp any any echo-reply
+ permit icmp any any ttl-exceeded
+ permit icmp any any unreachable
+ permit icmp any any echo
+ permit udp any any range 33434 33463 ttl eq 1
+!
+ip access-list extended ACL-CoPP-IPsec
+ permit esp any any
+ permit gre any any
+ permit udp any eq isakmp any eq isakmp
+ permit udp any any eq non500-isakmp
+ permit udp any eq non500-isakmp any
+!
+ip access-list extended ACL-CoPP-Initialize
+ permit udp any eq bootps any eq bootpc</div>
+      <div class="term xs">ip access-list extended ACL-CoPP-Management
+ permit udp any eq ntp any
+ permit udp any any eq snmp
+ permit tcp any any eq 22
+ permit tcp any eq 22 any established
+!
+ip access-list extended ACL-CoPP-Routing
+ permit tcp any eq bgp any established
+ permit eigrp any host 224.0.0.10
+ permit ospf any host 224.0.0.5
+ permit ospf any host 224.0.0.6
+ permit pim any host 224.0.0.13
+ permit igmp any any</div>
+    </div>
+    <div class="stack">
+      <div class="panel tight"><h3>Qué revisar en estas ACL</h3><ul class="small">
+        <li><b>Agrupamiento:</b> una clase por función (enrutamiento, gestión…). Mezclar protocolos impide darles tasas distintas.</li>
+        <li><b>Protocolo:</b> si es el incorrecto, el tráfico cae en otra clase.</li>
+        <li><b>Origen y destino:</b> si se restringen, deben ser los correctos.</li>
+        <li><b>Operadores y puertos:</b> <code>eq</code>, <code>range</code>, <code>gt</code> con el número correcto.</li>
+      </ul></div>
+      <div class="note">El tráfico se identificó antes con EPC (Embedded Packet Capture), que captura en el propio router lo que llega al plano de control.</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 12 Clasificador interactivo -->
+<section class="slide" data-title="Simulador: ¿en qué clase cae?"><div class="inner">
+  <div class="head"><span class="eyebrow">CoPP en vivo</span><h2>Sigue un paquete por la política</h2>
+  <p class="lead">Elige un paquete dirigido al router. El simulador recorre las clases en orden y muestra cuál lo atrapa, su tasa y qué pasa si se excede.</p></div>
+  <div class="cols w37 fill">
+    <div id="cpList"></div>
+    <div class="stack">
+      <div class="panel tight"><table id="cpTbl"><thead><tr><th>Clase</th><th>ACL</th><th>CIR</th><th>violate</th></tr></thead><tbody></tbody></table></div>
+      <div class="panel tight"><div class="result" id="cpRes"></div><p id="cpWhy"></p></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 13 Class-map -->
+<section class="slide" data-title="Class-map en CoPP"><div class="inner">
+  <div class="head"><span class="eyebrow">CoPP · paso 2</span><h2>El class-map une cada ACL con una clase</h2></div>
+  <div class="cols w46 fill">
+    <div class="stack">
+      <div class="term sm">class-map match-all CLASS-CoPP-IPsec
+ match access-group name ACL-CoPP-IPsec
+class-map match-all CLASS-CoPP-Routing
+ match access-group name ACL-CoPP-Routing
+class-map match-all CLASS-CoPP-Initialize
+ match access-group name ACL-CoPP-Initialize
+class-map match-all CLASS-CoPP-Management
+ match access-group name ACL-CoPP-Management
+class-map match-all CLASS-CoPP-ICMP
+ match access-group name ACL-CoPP-ICMP</div>
+      <div class="panel tight"><h3>match-all o match-any</h3>
+        <div class="ctrls"><div class="seg" id="mmSeg"><button data-v="all" aria-pressed="true">match-all</button><button data-v="any" aria-pressed="false">match-any</button></div></div>
+        <div class="term xs" id="mmCfg"></div><p id="mmTxt" class="small"></p></div>
+    </div>
+    <div class="panel">
+      <h3>Qué revisar en el class-map</h3>
+      <table><tbody>
+        <tr><td><b>Grupo de acceso</b></td><td>La ACL del <code>match</code> define el tráfico interesante. Si está mal, la clase queda vacía.</td></tr>
+        <tr><td><b>Instrucción</b></td><td><code>match-any</code>: basta un <code>match</code>. <code>match-all</code>: deben cumplirse todos.</td></tr>
+        <tr><td><b>Protocolo</b></td><td>Sin ACL se puede usar <code>match protocol</code>; verifica que sea el correcto.</td></tr>
+        <tr><td><b>Prec / DSCP</b></td><td><code>match ip precedence</code> o <code>match ip dscp</code> para clasificar por marca.</td></tr>
+        <tr><td><b>Mayúsculas</b></td><td>El nombre de la ACL debe coincidir exacto: <code>ACL-CoPP-icmp</code> no es <code>ACL-CoPP-ICMP</code>.</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+</div></section>
+
+<!-- 14 Policy-map -->
+<section class="slide" data-title="Policy-map en CoPP"><div class="inner">
+  <div class="head"><span class="eyebrow">CoPP · paso 3</span><h2>El policy-map pone la tasa y la acción de cada clase</h2>
+  <p class="lead">Las clases vitales (IPsec, gestión, enrutamiento) usan <code>violate-action transmit</code> mientras se mide una línea base. ICMP, DHCP y el resto se descartan al violar.</p></div>
+  <div class="cols w46 fill">
+    <div class="term xs">policy-map POLICY-CoPP
+ class CLASS-CoPP-ICMP
+  police 8000 conform-action transmit exceed-action transmit
+        violate-action drop
+ class CLASS-CoPP-IPsec
+  police 64000 conform-action transmit exceed-action transmit
+        violate-action transmit
+ class CLASS-CoPP-Initialize
+  police 8000 conform-action transmit exceed-action transmit
+        violate-action drop
+ class CLASS-CoPP-Management
+  police 32000 conform-action transmit exceed-action transmit
+        violate-action transmit
+ class CLASS-CoPP-Routing
+  police 64000 conform-action transmit exceed-action transmit
+        violate-action transmit
+ class class-default
+  police 8000 conform-action transmit exceed-action transmit
+        violate-action drop</div>
+    <div class="panel">
+      <h3>Qué revisar en el policy-map</h3>
+      <table><tbody>
+        <tr><td><b>Orden</b></td><td>Las clases se evalúan de arriba hacia abajo; un paquete queda en la primera que coincide.</td></tr>
+        <tr><td><b>Class-map</b></td><td>Cada <code>class</code> debe existir y estar bien construido, con su ACL correcta.</td></tr>
+        <tr><td><b>Política</b></td><td>CIR en bits por segundo (<code>police 8000</code>) o tasa en paquetes por segundo (<code>police rate … pps</code>). Confundirlos cambia la tasa por mucho.</td></tr>
+        <tr><td><b>class-default</b></td><td>Todo lo que no calza cae aquí. Si su tasa es baja, protocolos olvidados en las ACL sufren descartes.</td></tr>
+        <tr><td><b>Mayúsculas</b></td><td>El nombre del class-map debe coincidir exacto.</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+</div></section>
+
+<!-- 15 Aplicar y verificar -->
+<section class="slide" data-title="Aplicar y verificar CoPP"><div class="inner">
+  <div class="head"><span class="eyebrow">CoPP · paso 4</span><h2>Se aplica en una sola interfaz: control-plane</h2>
+  <p class="lead">Toca una línea resaltada de la verificación para ver qué significa.</p></div>
+  <div class="cols w46 fill">
+    <div class="stack">
+      <div class="term">control-plane
+ service-policy input POLICY-CoPP</div>
+      <div class="panel tight"><span class="eyebrow">Interpretación</span><p id="cpvX">Selecciona una línea resaltada.</p></div>
+      <div class="panel tight"><h3>Qué revisar en el service-policy</h3><ul class="small">
+        <li><b>Interfaz:</b> solo existe <code>control-plane</code>, así que esa parte es fácil.</li>
+        <li><b>Dirección:</b> <code>input</code> para lo que entra a la CPU y <code>output</code> para lo que sale de ella.</li>
+        <li><b>Nombre:</b> el policy-map debe escribirse exacto.</li></ul></div>
+    </div>
+    <div class="term xs annot" id="cpvT"></div>
+  </div>
+</div></section>
+
+<!-- 16 Síntomas CoPP -->
+<section class="slide" data-title="CoPP: del síntoma a la causa"><div class="inner">
+  <div class="head"><span class="eyebrow">Troubleshooting CoPP</span><h2>Del síntoma a la causa</h2><p class="lead">Toca un síntoma para ver dónde mirar primero.</p></div>
+  <div class="cols w37 fill">
+    <div id="cpsList"></div>
+    <div class="panel"><span class="eyebrow" id="cpsT"></span><div id="cpsX"></div><div class="term sm" id="cpsO"></div></div>
+  </div>
+</div></section>
+
+<!-- 17 VRF-Lite concepto -->
+<section class="slide" data-title="VRF-Lite" data-agenda="VRF-Lite y EVN" data-sub="Tablas de enrutamiento separadas sin MPLS"><div class="inner">
+  <div class="head"><span class="eyebrow">Introducción a Service Provider</span><h2>VRF-Lite: varias tablas de enrutamiento en un mismo router</h2>
+  <p class="lead">Una VRF (Virtual Routing and Forwarding) es una tabla de enrutamiento independiente. En un proveedor se usa con MPLS, una por cliente. VRF-Lite es usar VRF <b>sin MPLS</b>: el router Central separa a VRF A de VRF B aunque compartan el equipo.</p></div>
+  <div class="cols w64 fill">
+    <div class="panel">
+      <svg viewBox="0 0 820 400" class="dia" role="img" aria-label="Router Central con R1 y R2 en VRF A y R3 y R4 en VRF B">
+        <rect class="zone" x="10" y="10" width="395" height="380" rx="24"/><rect class="zone2" x="415" y="10" width="395" height="380" rx="24"/>
+        <text x="40" y="200" font-size="22">VRF A</text><text x="700" y="200" font-size="22">VRF B</text>
+        <line class="wire" x1="140" y1="85" x2="410" y2="200"/><line class="wire" x1="140" y1="315" x2="410" y2="200"/>
+        <line class="wire" x1="680" y1="85" x2="410" y2="200"/><line class="wire" x1="680" y1="315" x2="410" y2="200"/>
+        <rect class="box" x="80" y="60" width="120" height="48" rx="8"/><text x="140" y="90" text-anchor="middle">R1</text><text class="lbl" x="140" y="45" text-anchor="middle">10.10.10.0/24</text>
+        <rect class="box" x="80" y="292" width="120" height="48" rx="8"/><text x="140" y="322" text-anchor="middle">R2</text><text class="lbl" x="140" y="365" text-anchor="middle">10.20.20.0/24</text>
+        <rect class="box" x="620" y="60" width="120" height="48" rx="8"/><text x="680" y="90" text-anchor="middle">R3</text><text class="lbl" x="680" y="45" text-anchor="middle">10.30.30.0/24</text>
+        <rect class="box" x="620" y="292" width="120" height="48" rx="8"/><text x="680" y="322" text-anchor="middle">R4</text><text class="lbl" x="680" y="365" text-anchor="middle">10.40.40.0/24</text>
+        <rect class="box amb" x="345" y="172" width="130" height="56" rx="8"/><text x="410" y="206" text-anchor="middle">Central</text>
+        <text class="lbl" x="250" y="128">S0/0/0 · 10.10.1.0/30</text><text class="lbl" x="230" y="282">S0/0/1 · 10.20.2.0/30</text>
+        <text class="lbl" x="440" y="128">S0/1/0 · 10.30.3.0/30</text><text class="lbl" x="450" y="282">S0/1/1 · 10.40.4.0/30</text>
+      </svg>
+    </div>
+    <div class="stack">
+      <div class="panel tight"><h3>Qué consigue</h3><ul class="small">
+        <li>Cada VRF tiene sus propias rutas, interfaces y vecinos.</li>
+        <li>Pueden repetirse prefijos entre VRF sin conflicto.</li>
+        <li>No hay tráfico entre VRF salvo que se configure a propósito.</li></ul></div>
+      <div class="note">Cada interfaz pertenece a una sola VRF. Para llevar varias VRF por un mismo enlace hacen falta subinterfaces, una por VRF. Ese es el costo que EVN reduce.</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 18 VRF-Lite config y verificación -->
+<section class="slide" data-title="Configurar y verificar VRF-Lite"><div class="inner">
+  <div class="head"><span class="eyebrow">VRF-Lite</span><h2>Crear la VRF, asociar la interfaz y mirar la tabla correcta</h2>
+  <p class="lead">Cambia de tabla. La global de Central no tiene ninguna de estas redes: si buscas con <code>show ip route</code> sin <code>vrf</code>, parece que no existen.</p></div>
+  <div class="cols fill">
+    <div class="stack">
+      <div class="term xs"><span class="p">Central(config)#</span> ip vrf VRF-A
+<span class="p">Central(config)#</span> ip vrf VRF-B
+<span class="p">Central(config)#</span> interface Serial0/0/0
+<span class="p">Central(config-if)#</span> ip vrf forwarding VRF-A
+<span class="p">Central(config-if)#</span> ip address 10.10.1.1 255.255.255.252
+<span class="p">Central(config)#</span> interface Serial0/0/1
+<span class="p">Central(config-if)#</span> ip vrf forwarding VRF-A
+<span class="p">Central(config-if)#</span> ip address 10.20.2.1 255.255.255.252
+<span class="p">Central(config)#</span> interface Serial0/1/0
+<span class="p">Central(config-if)#</span> ip vrf forwarding VRF-B
+<span class="p">Central(config-if)#</span> ip address 10.30.3.1 255.255.255.252
+<span class="d">! … Serial0/1/1 igual, en VRF-B con 10.40.4.1/30</span></div>
+      <div class="warn"><code>ip vrf forwarding</code> borra la IP que ya tenía la interfaz (<code>% Interface … IPv4 disabled and address(es) removed</code>). Por eso se escribe antes de <code>ip address</code>. Si se hace al revés, la interfaz queda sin IP.</div>
+    </div>
+    <div class="stack">
+      <div class="ctrls"><div class="seg" id="vrfSeg"><button data-v="g" aria-pressed="false">show ip route</button><button data-v="a" aria-pressed="true">vrf VRF-A</button><button data-v="b" aria-pressed="false">vrf VRF-B</button></div></div>
+      <div class="term sm" id="vrfOut"></div>
+      <div class="panel tight"><h3>Comandos con contexto de VRF</h3><p class="small"><code>show ip route vrf VRF-A</code> · <code>ping vrf VRF-A 10.10.1.2</code> · <code>show ip vrf interfaces</code> · <code>router ospf 1 vrf VRF-A</code></p></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 19 EVN -->
+<section class="slide" data-title="EVN: Easy Virtual Network"><div class="inner">
+  <div class="head"><span class="eyebrow">EVN</span><h2>EVN: un solo troncal virtual en vez de una subinterfaz por VRF</h2>
+  <p class="lead">Cisco Easy Virtual Network se apoya en VRF-Lite. Entre routers usa un <b>VNET trunk</b> que etiqueta cada VRF con un <i>vnet tag</i>, así la configuración no crece con el número de VRF.</p></div>
+  <div class="ctrls"><div class="seg" id="evnSeg"><button data-v="lite" aria-pressed="true">VRF-Lite tradicional</button><button data-v="evn" aria-pressed="false">Con EVN</button></div><span class="badge amb" id="evnCount"></span></div>
+  <div class="cols w46 fill">
+    <div class="panel">
+      <svg viewBox="0 0 560 250" class="dia" id="evnSvg" role="img" aria-label="R1 y R2 unidos por un enlace que transporta tres VRF">
+        <rect class="box" x="40" y="80" width="120" height="90" rx="10"/><text x="100" y="130" text-anchor="middle">R1</text>
+        <rect class="box" x="400" y="80" width="120" height="90" rx="10"/><text x="460" y="130" text-anchor="middle">R2</text>
+        <g id="evnLines"></g>
+        <text class="lbl k" id="evnLbl" x="280" y="210" text-anchor="middle"></text>
+        <text class="lbl" x="280" y="40" text-anchor="middle">VRF A 172.16.0.0/16 · VRF B 172.17.0.0/16 · VRF C 172.18.0.0/16</text>
+      </svg>
+      <ul class="small">
+        <li><b>Interfaces de borde:</b> hacia los usuarios, 802.1Q normal, una VLAN por VRF.</li>
+        <li><b>Interfaz troncal:</b> entre routers EVN, <code>vnet trunk</code> transporta todas las VRF.</li>
+      </ul>
+    </div>
+    <div class="term sm" id="evnCfg"></div>
+  </div>
+</div></section>
+
+<!-- 20 EVN características -->
+<section class="slide" data-title="EVN: servicios compartidos y contexto"><div class="inner">
+  <div class="head"><span class="eyebrow">EVN</span><h2>Servicios compartidos sin BGP y diagnóstico por contexto</h2></div>
+  <div class="cols w64 fill">
+    <div class="panel">
+      <h3>Replicación de rutas</h3>
+      <p class="small">DHCP, DNS y correo viven en la VRF C. Con <b>route replication</b>, VRF A y VRF B ven las rutas de C sin ver las de la otra. Antes esto exigía importar rutas con BGP, route distinguisher y route targets.</p>
+      <div class="ctrls"><div class="seg" id="rrSeg"><button data-v="A" aria-pressed="true">Tabla VRF A</button><button data-v="B" aria-pressed="false">Tabla VRF B</button><button data-v="C" aria-pressed="false">Tabla VRF C</button></div></div>
+      <div class="term sm" id="rrOut"></div>
+      <div class="term xs">vrf definition A
+ address-family ipv4
+  route-replicate from vrf C unicast connected</div>
+    </div>
+    <div class="stack">
+      <div class="panel"><h3>routing-context</h3><p class="small">Entra al contexto de una VRF y desde ahí los comandos se aplican a esa VRF sin escribir <code>vrf</code> cada vez. El prompt lo muestra.</p>
+      <div class="term"><span class="p">R1#</span> routing-context vrf red
+<span class="p">R1%red#</span> show ip route
+<span class="d">! muestra la tabla de la VRF red</span>
+<span class="p">R1%red#</span> routing-context vrf global
+<span class="p">R1#</span></div></div>
+      <div class="note">EVN existe solo en ciertas plataformas IOS-XE (por ejemplo, Catalyst 4500/6500 y ASR 1000). Si el comando <code>vnet</code> no aparece, el equipo no lo soporta.</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 21 Resumen -->
+<section class="slide" data-title="Resumen"><div class="inner">
+  <div class="head"><span class="eyebrow">Resumen</span><h2>Lo que hay que llevarse</h2></div>
+  <div class="cols c4 st">
+    <div class="panel"><h3>ACL IPv4</h3><ul>
+      <li>De arriba abajo, primera coincidencia, deny implícito.</li>
+      <li>Revisa contadores con <code>show access-lists</code>.</li>
+      <li>Interfaz y sentido: <code>show ip interface</code>.</li>
+      <li>Las de tiempo dependen del reloj.</li></ul></div>
+    <div class="panel"><h3>ACL IPv6</h3><ul>
+      <li>Solo extendidas y nombradas.</li>
+      <li>Permiten NA y NS de forma implícita.</li>
+      <li>Un <code>deny ipv6 any any</code> explícito rompe NDP.</li>
+      <li><code>ipv6 traffic-filter</code>.</li></ul></div>
+    <div class="panel"><h3>CoPP</h3><ul>
+      <li>MQC: ACL → class-map → policy-map → control-plane.</li>
+      <li>Orden de clases y class-default.</li>
+      <li>bps frente a pps.</li>
+      <li>Nombres exactos en cada paso.</li></ul></div>
+    <div class="panel"><h3>VRF-Lite y EVN</h3><ul>
+      <li>Tablas separadas sin MPLS.</li>
+      <li><code>ip vrf forwarding</code> antes de la IP.</li>
+      <li>Busca siempre con <code>vrf</code>.</li>
+      <li>EVN: vnet trunk y route replication.</li></ul></div>
+  </div>
+</div></section>
+
+<!-- 22 Quiz -->
+<section class="slide" data-title="Preguntas" data-agenda="Preguntas" data-sub="Comprueba lo aprendido"><div class="inner">
+  <div class="head"><span class="eyebrow">Preguntas</span><h2>Comprueba lo aprendido</h2></div>
+  <div class="panel quiz fill" id="quiz"></div>
+</div></section>
+
+<!-- 23 Referencias -->
+<section class="slide" data-title="Referencias"><div class="inner">
+  <div class="head"><span class="eyebrow">Referencias</span><h2>Bibliografía</h2></div>
+  <div class="panel"><ul>
+    <li>Raymond Lacoste, Brad Edgeworth. <i>CCNP Enterprise Advanced Routing ENARSI 300-410 Official Cert Guide</i>. Cisco Press. Capítulo 21, Troubleshooting ACLs and Prefix Lists.</li>
+    <li>Misma obra. Capítulo 22, Infrastructure Security (CoPP).</li>
+    <li>Misma obra. Capítulo 18, VRF, MPLS and MPLS Layer 3 VPNs (VRF-Lite).</li>
+    <li>Cisco. <i>Easy Virtual Network Configuration Guide</i>, Cisco IOS XE.</li>
+  </ul></div>
+</div></section>
+
+</div></div>
+<nav class="bar" aria-label="Navegación de diapositivas">
+  <button id="prev" aria-label="Diapositiva anterior">←</button>
+  <span class="count" id="count"></span>
+  <div class="prog"><i id="prog"></i></div>
+  <select id="jump" aria-label="Ir a diapositiva"></select>
+  <button id="fs" aria-label="Pantalla completa" title="Pantalla completa (F)">⛶</button>
+  <button id="next" aria-label="Diapositiva siguiente">→</button>
+</nav>
+</div>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pad=(s,n)=>{s=String(s);return s.length>=n?s+" ":s+" ".repeat(n-s.length)};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+/* Botones segmentados: <div class="seg" id="x"><button data-v="a" aria-pressed="true">…</div> */
+function seg(id,cb){const el=$(id);el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;el.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.v)});}
+/* Mueve un elemento SVG (circle o g) por una lista de puntos */
+function animate(el,pts,ms){return new Promise(res=>{
+  const put=(x,y)=>{if(el.tagName==="circle"){el.setAttribute("cx",x);el.setAttribute("cy",y)}else el.setAttribute("transform",`translate(${x},${y})`)};
+  if(reduce||pts.length<2){put(...pts[pts.length-1]);return res()}
+  const n=pts.length-1,t0=performance.now();
+  (function f(t){const k=Math.max(0,Math.min(1,(t-t0)/ms)),s=Math.min(n-1,Math.floor(k*n)),u=k*n-s,a=pts[s],b=pts[s+1];
+    put(a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u);if(k<1)requestAnimationFrame(f);else res()})(t0);});}
+/* Salida anotada: lines=[[texto, explicación|null], …] */
+function annot(termId,outId,lines){
+  const t=$(termId);
+  t.innerHTML=lines.map((a,i)=>`<span class="ln${a[1]?" k":""}" data-i="${i}"${a[1]?' tabindex="0"':""}>${esc(a[0])||" "}</span>`).join("");
+  t.addEventListener("click",e=>{const l=e.target.closest(".ln");if(!l||!lines[l.dataset.i][1])return;t.querySelectorAll(".ln").forEach(x=>x.classList.toggle("sel",x===l));$(outId).innerHTML=lines[l.dataset.i][1]});
+  t.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.classList.contains("ln"))e.target.click()});
+}
+/* Lista de opciones que muestra un detalle: items=[[etiqueta, html], …] */
+function picker(listId,outId,items,first=0){
+  const l=$(listId);l.classList.add("pick");
+  l.innerHTML=items.map((it,i)=>`<button type="button" data-i="${i}" aria-pressed="false">${it[0]}</button>`).join("");
+  const show=i=>{l.querySelectorAll("button").forEach((b,k)=>b.setAttribute("aria-pressed",k===i));$(outId).innerHTML=items[i][1]};
+  l.addEventListener("click",e=>{const b=e.target.closest("button");if(b)show(+b.dataset.i)});
+  show(first);
+}
+/* Pasos con tarjetas: <div class="steps" id="x"><div data-x="…">…</div></div> */
+function stepsCards(id,outId){const el=$(id);const all=[...el.children];
+  const on=d=>{all.forEach(x=>x.classList.toggle("on",x===d));$(outId).innerHTML=d.dataset.x};
+  all.forEach(d=>{d.tabIndex=0;d.addEventListener("click",()=>on(d));d.addEventListener("mouseenter",()=>on(d));d.addEventListener("keydown",e=>{if(e.key==="Enter")on(d)})});}
+/* Cuestionario de una pregunta a la vez */
+function quiz(id,Q){
+  const el=$(id);let i=0;const ans=Q.map(()=>null);
+  function render(){
+    const q=Q[i],a=ans[i];
+    el.innerHTML=`<div class="ctrls" style="justify-content:space-between"><span class="eyebrow">Pregunta ${i+1} de ${Q.length}</span><span class="badge blue">Puntaje: ${ans.filter((x,k)=>x===Q[k].ok).length} / ${Q.length}</span></div>
+    <p class="q">${q.q}</p>
+    <div class="opts">${q.o.map((o,k)=>`<button type="button" data-k="${k}" class="${a===null?"":(k===q.ok?"right":(k===a?"wrong":""))}" ${a!==null?"disabled":""}>${String.fromCharCode(65+k)}. ${o}</button>`).join("")}</div>
+    <div class="${a===null?"":(a===q.ok?"fix":"warn")}" style="min-height:62px">${a===null?'<span class="muted">Elige una respuesta.</span>':(a===q.ok?"<b>Correcto.</b> ":"<b>No.</b> ")+(a===null?"":q.e)}</div>
+    <div class="ctrls"><button class="btn ghost" data-nav="-1" ${i===0?"disabled":""}>← Anterior</button><button class="btn" data-nav="1" ${i===Q.length-1?"disabled":""}>Siguiente →</button><button class="btn ghost" data-nav="0">Reiniciar</button></div>`;
+  }
+  el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;
+    if(b.dataset.k!==undefined&&ans[i]===null){ans[i]=+b.dataset.k;render()}
+    else if(b.dataset.nav!==undefined){const d=+b.dataset.nav;if(d===0){ans.fill(null);i=0}else i=Math.max(0,Math.min(Q.length-1,i+d));render()}});
+  render();
+}
+/* ---------- navegación y escala ---------- */
+const slides=$$(".slide");let cur=0;
+function fit(){const v=$(".viewport").getBoundingClientRect();const s=Math.min(v.width/1600,v.height/900);$(".canvas").style.setProperty("--s",s);}
+window.addEventListener("resize",fit);
+$("#jump").innerHTML=slides.map((s,i)=>`<option value="${i}">${i+1}. ${esc(s.dataset.title)}</option>`).join("");
+function go(i){
+  i=Math.max(0,Math.min(slides.length-1,i));
+  slides.forEach((s,k)=>{s.hidden=k!==i;s.classList.toggle("enter",k===i)});
+  cur=i;$("#count").textContent=`${i+1} / ${slides.length}`;
+  $("#prog").style.width=((i+1)/slides.length*100)+"%";$("#jump").value=i;
+  $("#prev").disabled=i===0;$("#next").disabled=i===slides.length-1;
+  try{history.replaceState(null,"","#s"+(i+1))}catch(e){}
+  slides[i].dispatchEvent(new CustomEvent("show"));
+}
+$("#prev").onclick=()=>go(cur-1);$("#next").onclick=()=>go(cur+1);
+$("#jump").onchange=e=>go(+e.target.value);
+$("#fs").onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(e){}};
+document.addEventListener("keydown",e=>{
+  if(e.target.closest("input,select,textarea"))return;
+  if(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" "){go(cur+1);e.preventDefault()}
+  else if(e.key==="ArrowLeft"||e.key==="PageUp"){go(cur-1);e.preventDefault()}
+  else if(e.key==="Home")go(0);else if(e.key==="End")go(slides.length-1);
+  else if(e.key==="f"||e.key==="F")$("#fs").click();
+});
+/* toque: deslizar para cambiar */
+let tx=null;$(".viewport").addEventListener("touchstart",e=>{tx=e.touches[0].clientX},{passive:true});
+$(".viewport").addEventListener("touchend",e=>{if(tx===null)return;const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>60&&!e.target.closest("input,button,select,.term"))go(cur+(d<0?1:-1));tx=null});
+/* Agenda automática a partir de data-agenda */
+(function(){const ag=$("#agenda");if(!ag)return;
+  ag.innerHTML=slides.map((s,i)=>s.dataset.agenda?`<button data-go="${i}"><small>Diapositiva ${i+1}</small><b>${esc(s.dataset.agenda)}</b><small>${esc(s.dataset.sub||"")}</small></button>`:"").join("");
+  ag.onclick=e=>{const b=e.target.closest("[data-go]");if(b)go(+b.dataset.go)};})();
+function boot(){fit();const m=location.hash.match(/^#s(\d+)/);go(m?+m[1]-1:0);
+  /* ?check: informa qué diapositivas desbordan el lienzo (uso interno al construir) */
+  if(location.search.includes("check")){const out=[];$(".canvas").style.setProperty("--s",1);
+    slides.forEach((s,k)=>{s.hidden=false;const R=s.getBoundingClientRect();
+      s.querySelectorAll(".inner *").forEach(el=>{const r=el.getBoundingClientRect();if(!r.width)return;
+        const sc=getComputedStyle(el);
+        if(r.bottom>R.bottom-36+1||r.right>R.right-60+1)out.push(`s${k+1} sale del lienzo: <${el.tagName.toLowerCase()} class="${el.className}"> b=${Math.round(r.bottom-R.top)} r=${Math.round(r.right-R.left)}`);
+        if((sc.overflow==="hidden"||sc.overflowY==="hidden")&&el.scrollHeight>el.clientHeight+2)out.push(`s${k+1} recorta: <${el.tagName.toLowerCase()} class="${el.className}" id="${el.id}"> ${el.scrollHeight}>${el.clientHeight}`);
+        if(el.matches(".panel,.card,.stack,.note,.fix,.warn,td,th")&&el.scrollWidth>el.clientWidth+2)out.push(`s${k+1} desborda ancho: <${el.tagName.toLowerCase()} class="${el.className}"> ${el.scrollWidth}>${el.clientWidth}`);
+        if(sc.overflow==="hidden"&&el.scrollWidth>el.clientWidth+2)out.push(`s${k+1} recorta ancho: <${el.tagName.toLowerCase()} class="${el.className}" id="${el.id}"> ${el.scrollWidth}>${el.clientWidth}`);});
+      s.hidden=k!==cur;});
+    const pre=document.createElement("pre");pre.id="__report";pre.textContent=out.length?[...new Set(out)].join("\n"):"OK";document.body.appendChild(pre);}
+}
+
+/* ---------- Evaluador ACL 100 ---------- */
+const inNet=(ip,net,wc)=>{const a=ip.split(".").map(Number),n=net.split(".").map(Number),w=wc.split(".").map(Number);return a.every((o,i)=>((o|w[i])===(n[i]|w[i])))};
+const ACL=[
+  {t:" 10 deny tcp host 10.1.1.5 host 192.0.2.1 eq www",act:"deny",m:p=>p.pr==="tcp"&&p.s==="10.1.1.5"&&p.d==="192.0.2.1"&&p.dp===80},
+  {t:" 20 permit tcp 10.1.1.0 0.0.0.63 host 192.0.2.1 eq telnet",act:"permit",m:p=>p.pr==="tcp"&&inNet(p.s,"10.1.1.0","0.0.0.63")&&p.d==="192.0.2.1"&&p.dp===23},
+  {t:" 30 deny ip 10.1.1.64 0.0.0.63 host 192.0.2.1",act:"deny",m:p=>inNet(p.s,"10.1.1.64","0.0.0.63")&&p.d==="192.0.2.1"},
+  {t:" 40 permit ip 10.1.1.0 0.0.0.255 any",act:"permit",m:p=>inNet(p.s,"10.1.1.0","0.0.0.255")}];
+const PKTS=[
+  {n:"TCP 10.1.1.5 → 192.0.2.1 : 80 (web)",pr:"tcp",s:"10.1.1.5",d:"192.0.2.1",dp:80},
+  {n:"TCP 10.1.1.5 → 192.0.2.1 : 23 (Telnet)",pr:"tcp",s:"10.1.1.5",d:"192.0.2.1",dp:23},
+  {n:"TCP 10.1.1.70 → 192.0.2.1 : 23 (Telnet)",pr:"tcp",s:"10.1.1.70",d:"192.0.2.1",dp:23},
+  {n:"UDP 10.1.1.70 → 8.8.8.8 : 53 (DNS)",pr:"udp",s:"10.1.1.70",d:"8.8.8.8",dp:53},
+  {n:"TCP 10.1.2.5 → 192.0.2.1 : 80 (otra subred)",pr:"tcp",s:"10.1.2.5",d:"192.0.2.1",dp:80}];
+$("#aclPkt").innerHTML=PKTS.map((p,i)=>`<option value="${i}">${esc(p.n)}</option>`).join("");
+function aclDraw(hl,hit){
+  $("#aclTerm").innerHTML=`<span class="p">R1#</span> show access-lists 100\nExtended IP access list 100\n`+ACL.map((a,i)=>{
+    const c=i===hit?(a.act==="permit"?"g":"r"):(i<hl?"d":(i===hl?"h":""));return `<span class="${c}">${esc(a.t)}</span>`}).join("\n")+
+    `\n<span class="${hit===4?"r":(hl>=4?"h":"d")}"> (deny ip any any implícito)</span>`;}
+aclDraw(-1,-1);
+let aclBusy=false;
+$("#aclGo").onclick=async()=>{if(aclBusy)return;aclBusy=true;const p=PKTS[+$("#aclPkt").value];$("#aclRes").innerHTML="&nbsp;";$("#aclWhy").innerHTML="&nbsp;";
+  let hit=4;for(let i=0;i<ACL.length;i++){aclDraw(i,-1);await sleep(reduce?0:420);if(ACL[i].m(p)){hit=i;break}}
+  if(hit===4){aclDraw(4,-1);await sleep(reduce?0:420)}
+  aclDraw(hit,hit);
+  const ok=hit<4&&ACL[hit].act==="permit";
+  $("#aclRes").innerHTML=ok?'<span style="color:var(--ok)">Permitido</span>':'<span style="color:var(--bad)">Descartado</span>';
+  $("#aclWhy").innerHTML=hit===4?"Ninguna entrada coincide. Lo descarta el deny implícito, que no aparece en la salida ni suma contadores.":
+   `Coincide con la entrada ${(hit+1)*10}. ${hit===0?"Es la más específica y está primero.":hit===2?"La entrada 20 no lo atrapa porque 10.1.1.70 está fuera de 10.1.1.0/26.":hit===1&&p.s==="10.1.1.5"?"La entrada 10 solo bloquea web; para Telnet, 10.1.1.5 cae en la 20.":"Las entradas anteriores no coinciden."}`;
+  aclBusy=false;};
+
+/* ---------- Sentido de la ACL ---------- */
+const dirOut={
+ ok:["Outgoing access list is 100","Inbound access list is 1","ACL 1 revisa lo que llega desde la LAN; ACL 100 revisa lo que sale hacia la LAN, después de enrutarse."],
+ swap:["Outgoing access list is 1","Inbound access list is 100","Con los sentidos invertidos, la ACL 100 revisa el tráfico que llega desde la LAN y la ACL 1 el que va hacia ella. La sintaxis es válida y no hay error: solo el resultado es distinto."],
+ none:["Outgoing access list is 100","Inbound access list is 1","La ACL 100 está aplicada pero no existe. IOS no avisa y deja pasar todo en ese sentido. Confírmalo con show access-lists 100, que no devuelve nada."]};
+function dirRender(v){const o=dirOut[v];
+  $("#dirTerm").innerHTML=`<span class="p">R1(config)#</span> interface gigabitEthernet 0/0
+<span class="p">R1(config-if)#</span> ip access-group ${v==="swap"?"1 out":"100 out"}
+<span class="p">R1(config-if)#</span> ip access-group ${v==="swap"?"100 in":"1 in"}
+<span class="p">R1#</span> show ip interface gigabitEthernet 0/0
+GigabitEthernet0/0 is up, line protocol is up
+  Internet address is 10.1.1.1/24
+  Broadcast address is 255.255.255.255
+  MTU is 1500 bytes
+  Helper address is 172.16.1.10
+  Multicast reserved groups joined: 224.0.0.5 224.0.0.6
+  <span class="h">${o[0]}</span>
+  <span class="h">${o[1]}</span>
+  Proxy ARP is enabled
+  Local Proxy ARP is disabled${v==="none"?`\n\n<span class="p">R1#</span> show access-lists 100\n<span class="p">R1#</span>  <span class="d">! sin salida: la ACL no existe</span>`:""}`;
+  $("#dirInT").textContent=v==="swap"?"in: ACL 100":"in: ACL 1";$("#dirOutT").textContent=v==="swap"?"out: ACL 1":(v==="none"?"out: ACL 100 (no existe)":"out: ACL 100");
+  $("#dirTxt").textContent=o[2];$("#dirTxt").className=v==="ok"?"fix":"note";}
+seg("#dirSeg",dirRender);dirRender("ok");
+
+/* ---------- ACL por tiempo ---------- */
+let trDay="lv";
+function trRender(){const h=+$("#trR").value;const hh=`${String(Math.floor(h)).padStart(2,"0")}:${h%1?"30":"00"}`;$("#trH").textContent=hh;
+  const active=trDay==="sd"||h>=17||h<9;
+  $("#trRes").innerHTML=active?'<span style="color:var(--bad)">Entrada 10 active: web bloqueada</span>':'<span style="color:var(--ok)">Entrada 10 inactive: web permitida</span>';
+  $("#trWhy").textContent=active?(trDay==="sd"?"El fin de semana completo está dentro del time-range.":"Fuera del horario laboral (17:00 a 8:59)."):"Dentro del horario laboral: la entrada 10 se ignora y el paquete sigue a las entradas de abajo.";
+  $("#trTerm").innerHTML=`<span class="p">R1#</span> show access-lists 100
+Extended IP access list 100
+ 10 deny tcp host 10.1.1.5 host 192.0.2.1 eq www
+    time-range AFTERHOURS <span class="${active?"r":"g"}">(${active?"active":"inactive"})</span>
+ 20 permit tcp 10.1.1.0 0.0.0.63 host 192.0.2.1 eq telnet
+ 30 deny ip 10.1.1.64 0.0.0.63 host 192.0.2.1
+ 40 permit ip 10.1.1.0 0.0.0.255 any
+
+<span class="p">R1#</span> show time-range AFTERHOURS
+time-range entry: AFTERHOURS <span class="${active?"r":"g"}">(${active?"active":"inactive"})</span>
+   periodic weekdays 17:00 to 23:59
+   periodic weekdays 0:00 to 8:59
+   periodic weekend 0:00 to 23:59
+   used in: IP ACL entry
+
+<span class="p">R1#</span> show clock
+${hh}:00.000 CLT ${trDay==="sd"?"Sat":"Wed"} Nov 5 2026`;}
+seg("#trDay",v=>{trDay=v;trRender()});$("#trR").oninput=trRender;trRender();
+
+/* ---------- IPv6 y NDP ---------- */
+function v6Draw(){const d=$("#v6Deny").checked;
+  $("#v6Term").innerHTML=`<span class="p">R1#</span> show ipv6 access-list
+IPv6 access list ENARSI
+ permit tcp host 2001:DB8:A:A::20 host 2001:DB8:A:B::7 eq telnet sequence 10
+ deny tcp any host 2001:DB8:A:B::7 eq telnet sequence 20
+ permit tcp host 2001:DB8:A:A::20 host 2001:DB8:D::1 eq www sequence 30
+ deny ipv6 2001:DB8:A:A::/80 any sequence 40
+ permit ipv6 2001:DB8:A:A::/64 any sequence 50${d?`\n <span class="r">deny ipv6 any any log sequence 60</span>`:""}
+<span class="d"> ! implícitas, siempre al final:</span>
+<span class="${d?"r":"g"}"> permit icmp any any nd-na${d?"   ← ya no se alcanza":""}</span>
+<span class="${d?"r":"g"}"> permit icmp any any nd-ns${d?"   ← ya no se alcanza":""}</span>
+<span class="d"> deny ipv6 any any</span>`;
+  $("#v6Txt").textContent=d?"El deny explícito está antes de los permisos implícitos. NS y NA coinciden con él y se descartan: R1 no puede resolver la MAC del vecino y el tráfico IPv6 se corta, aunque el resto de la ACL esté bien. Si necesitas un deny con log, agrega antes permit icmp any any nd-na y nd-ns.":"Con las reglas implícitas, NS y NA pasan aunque no las escribas.";
+  $("#v6Txt").className=d?"warn":"note";}
+$("#v6Deny").onchange=v6Draw;v6Draw();
+$("#v6Go").onclick=async()=>{const p=$("#v6P"),d=$("#v6Deny").checked;$("#v6R2").setAttribute("class","box");
+  await animate(p,[[150,98],[370,98]],700);
+  await animate(p,[[370,98],[160,98]],700);
+  if(d){$("#v6W").setAttribute("class","wire down");p.setAttribute("cx",-20);}
+  else{$("#v6W").setAttribute("class","wire ok");$("#v6R2").setAttribute("class","box act");p.setAttribute("cx",-20)}};
+
+/* ---------- Clasificador CoPP ---------- */
+const CL=[["CLASS-CoPP-ICMP","ACL-CoPP-ICMP","8 000","drop"],["CLASS-CoPP-IPsec","ACL-CoPP-IPsec","64 000","transmit"],["CLASS-CoPP-Initialize","ACL-CoPP-Initialize","8 000","drop"],["CLASS-CoPP-Management","ACL-CoPP-Management","32 000","transmit"],["CLASS-CoPP-Routing","ACL-CoPP-Routing","64 000","transmit"],["class-default","(todo lo demás)","8 000","drop"]];
+const CP=[
+ ["OSPF Hello a 224.0.0.5",4,"Coincide con <code>permit ospf any host 224.0.0.5</code>. Clase de enrutamiento: al violar se transmite igual, para no perder adyacencias mientras se ajusta la tasa."],
+ ["BGP desde el vecino (puerto origen 179, ACK)",4,"Coincide con <code>permit tcp any eq bgp any established</code>: la sesión ya existe y el vecino responde desde el puerto 179."],
+ ["BGP: el vecino abre la sesión (SYN al puerto 179)",5,"No coincide con la ACL de enrutamiento: esa entrada exige puerto <b>origen</b> 179 y el bit ACK. Un SYN hacia nuestro puerto 179 cae en class-default (8 kbps, drop). Si el vecino es quien inicia, falta <code>permit tcp any any eq bgp</code>."],
+ ["SSH al router (TCP 22)",3,"Coincide con <code>permit tcp any any eq 22</code>. Gestión: 32 kbps y transmit al violar."],
+ ["Ping al router (echo)",0,"Coincide con <code>permit icmp any any echo</code>. 8 kbps y drop al violar: un ping masivo pierde paquetes y eso es lo esperado."],
+ ["Traceroute (UDP 33434, TTL 1)",0,"Coincide con <code>permit udp any any range 33434 33463 ttl eq 1</code>. Está en la clase ICMP porque el router responde con ICMP time-exceeded."],
+ ["DHCP (UDP 67 → 68)",2,"Coincide con <code>permit udp any eq bootps any eq bootpc</code>."],
+ ["IKE (UDP 500 ↔ 500)",1,"Coincide con <code>permit udp any eq isakmp any eq isakmp</code>."],
+ ["HTTP al router (TCP 80)",5,"Ninguna ACL lo nombra. Cae en class-default: 8 kbps y drop al violar."]];
+function cpShow(i){const c=CP[i][1];
+  $("#cpTbl tbody").innerHTML=CL.map((r,k)=>`<tr class="${k===c?"hit":(k<c?"no":"")}"><td><code>${r[0]}</code></td><td>${r[1]}</td><td>${r[2]} bps</td><td>${r[3]}</td></tr>`).join("");
+  $("#cpRes").innerHTML=`Clase: <code>${CL[c][0]}</code>`;$("#cpWhy").innerHTML=CP[i][2]+(c>0?` <span class="muted">Las filas en rojo son clases revisadas antes, que no coincidieron.</span>`:"");}
+picker("#cpList","#cpWhy",CP.map((p,i)=>[p[0],""]));
+$("#cpList").addEventListener("click",e=>{const b=e.target.closest("button");if(b)cpShow(+b.dataset.i)});cpShow(0);
+
+/* ---------- match-all / match-any ---------- */
+function mmRender(v){$("#mmCfg").textContent=`class-map ${v==="all"?"match-all":"match-any"} CLASS-CoPP-Vital
+ match access-group name ACL-CoPP-Routing
+ match access-group name ACL-CoPP-Management`;
+  $("#mmTxt").innerHTML=v==="all"?"Un paquete tendría que ser a la vez de enrutamiento <b>y</b> de gestión. Ninguno lo es: la clase queda en 0 paquetes y todo cae en class-default.":"Basta con que el paquete coincida con una de las dos ACL. Es lo que se busca al juntar clases.";}
+seg("#mmSeg",mmRender);mmRender("all");
+
+/* ---------- Verificación CoPP anotada ---------- */
+annot("#cpvT","#cpvX",[
+ ["R1# show policy-map control-plane input",null],[" Control Plane",null],[""],
+ ["  Service-policy input: POLICY-CoPP","La política aplicada y su sentido. Si no aparece, falta <code>service-policy input</code> en <code>control-plane</code>."],[""],
+ ["    Class-map: CLASS-CoPP-ICMP (match-all)","Cada clase en el orden del policy-map, con su tipo de coincidencia."],
+ ["      154 packets, 8912 bytes","Paquetes que cayeron en esta clase. Si una clase queda en 0, revisa su ACL y el orden de las clases."],
+ ["      5 minute offered rate 0000 bps, drop rate 0000 bps",null],
+ ["      Match: access-group name ACL-CoPP-ICMP","La ACL que usa. El nombre debe coincidir exacto, con mayúsculas."],
+ ["      police:",null],["          cir 8000 bps, bc 1500 bytes, be 1500 bytes","La tasa comprometida (CIR) y las ráfagas permitidas."],
+ ["        conformed 154 packets, 8912 bytes; actions:","Dentro de la tasa."],["          transmit",null],
+ ["        exceeded 0 packets, 0 bytes; actions:","Sobre la tasa, dentro de la ráfaga extra."],["          transmit",null],
+ ["        violated 0 packets, 0 bytes; actions:","Si este contador sube en una clase con drop, se están perdiendo paquetes hacia la CPU."],["          drop",null],
+ [""],["    Class-map: CLASS-CoPP-IPsec (match-all)",null],["      0 packets, 0 bytes",null],["      Match: access-group name ACL-CoPP-IPsec",null],
+ ["          cir 64000 bps, bc 2000 bytes, be 2000 bytes",null],["        violated 0 packets, 0 bytes; actions:",null],["          transmit","En las clases vitales se transmite al violar mientras se mide la línea base."],
+ [""],["    Class-map: CLASS-CoPP-Routing (match-all)",null],["        exceeded 1180 packets, 98410 bytes; actions:","Valor de ejemplo. Si exceeded o violated suben en la clase de enrutamiento, el tráfico supera la tasa: súbela o usa EPC para ver qué tráfico es."],
+ ["    Class-map: class-default (match-any)","Lo que no coincidió con ninguna clase. Si tiene mucho tráfico, a las ACL les falta algún protocolo."]]);
+
+/* ---------- Síntomas CoPP ---------- */
+const sym=[
+ ["Vecinos OSPF o BGP se caen bajo carga","La clase de enrutamiento tiene una tasa baja y <code>violate-action drop</code>, o el protocolo cae en class-default.","R1# show policy-map control-plane input class CLASS-CoPP-Routing\n  violated 2310 packets, 184800 bytes; actions:\n    drop\n! subir CIR o cambiar violate a transmit mientras se mide"],
+ ["BGP solo levanta si nosotros iniciamos","La ACL solo tiene <code>permit tcp any eq bgp any established</code>. El SYN del vecino al puerto 179 cae en class-default.","ip access-list extended ACL-CoPP-Routing\n permit tcp any any eq bgp\n permit tcp any eq bgp any established"],
+ ["SSH lento o se corta","La clase de gestión tiene poca tasa o SSH no está en la ACL y cae en class-default (8 kbps).","R1# show policy-map control-plane input class CLASS-CoPP-Management\nR1# show access-lists ACL-CoPP-Management"],
+ ["Ping al router pierde paquetes","La clase ICMP es de 8 kbps con drop. Con ráfagas de ping es lo esperado, no una falla.","R1# show policy-map control-plane input class CLASS-CoPP-ICMP\n  violated 37 packets, 2146 bytes; actions:\n    drop"],
+ ["Una clase siempre en 0 paquetes","Nombre de ACL mal escrito (mayúsculas), <code>match-all</code> con dos match, o una clase anterior atrapa ese tráfico.","R1# show class-map CLASS-CoPP-Routing\nR1# show access-lists\nR1# show policy-map POLICY-CoPP"],
+ ["La política no hace nada","No está aplicada, está en <code>output</code> en vez de <code>input</code>, o el nombre no coincide.","R1# show running-config | section control-plane\ncontrol-plane\n service-policy input POLICY-CoPP"]];
+picker("#cpsList","#cpsX",sym.map(s=>[s[0],s[1]]));
+$("#cpsList").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const s=sym[+b.dataset.i];$("#cpsT").textContent=s[0];$("#cpsO").textContent=s[2]});
+$("#cpsT").textContent=sym[0][0];$("#cpsO").textContent=sym[0][2];
+
+/* ---------- VRF ---------- */
+const vrfO={
+ g:`Central# show ip route | begin Gateway
+Gateway of last resort is not set
+
+Central#
+<span class="d">! La tabla global está vacía: todas las interfaces</span>
+<span class="d">! están en una VRF.</span>`,
+ a:`Central# show ip route vrf VRF-A | begin Gateway
+Gateway of last resort is not set
+
+      10.0.0.0/8 is variably subnetted, 4 subnets, 2 masks
+C        10.10.1.0/30 is directly connected, Serial0/0/0
+L        10.10.1.1/32 is directly connected, Serial0/0/0
+C        10.20.2.0/30 is directly connected, Serial0/0/1
+L        10.20.2.1/32 is directly connected, Serial0/0/1`,
+ b:`Central# show ip route vrf VRF-B | begin Gateway
+Gateway of last resort is not set
+
+      10.0.0.0/8 is variably subnetted, 4 subnets, 2 masks
+C        10.30.3.0/30 is directly connected, Serial0/1/0
+L        10.30.3.1/32 is directly connected, Serial0/1/0
+C        10.40.4.0/30 is directly connected, Serial0/1/1
+L        10.40.4.1/32 is directly connected, Serial0/1/1`};
+seg("#vrfSeg",v=>$("#vrfOut").innerHTML=vrfO[v]);$("#vrfOut").innerHTML=vrfO.a;
+
+/* ---------- EVN ---------- */
+const evnC={lite:`<span class="d">! VRF-Lite: una subinterfaz por VRF en cada enlace</span>
+interface Gi0/0.101
+ encapsulation dot1Q 101
+ vrf forwarding A
+ ip address 10.0.101.1 255.255.255.252
+interface Gi0/0.102
+ encapsulation dot1Q 102
+ vrf forwarding B
+ ip address 10.0.102.1 255.255.255.252
+interface Gi0/0.103
+ encapsulation dot1Q 103
+ vrf forwarding C
+ ip address 10.0.103.1 255.255.255.252
+<span class="d">! … y lo mismo en cada enlace entre routers</span>`,
+evn:`<span class="d">! EVN: cada VRF recibe un vnet tag</span>
+vrf definition A
+ vnet tag 101
+ address-family ipv4
+vrf definition B
+ vnet tag 102
+ address-family ipv4
+vrf definition C
+ vnet tag 103
+ address-family ipv4
+!
+interface Gi0/0
+ <span class="h">vnet trunk</span>
+ ip address 10.0.0.1 255.255.255.252
+<span class="d">! las VRF heredan la IP y la config del troncal</span>`};
+function evnRender(v){const L=$("#evnLines");
+  if(v==="lite"){L.innerHTML=[0,1,2].map(k=>`<line class="wire acc" x1="160" y1="${100+k*25}" x2="400" y2="${100+k*25}"/><text class="lbl" x="280" y="${95+k*25}" text-anchor="middle">Gi0/0.${101+k} · VRF ${"ABC"[k]}</text>`).join("");
+    $("#evnLbl").textContent="3 subinterfaces y 3 subredes por enlace";$("#evnCount").textContent="3 VRF × n enlaces = 3n subinterfaces";}
+  else{L.innerHTML=`<rect x="160" y="96" width="240" height="58" rx="29" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>`+[0,1,2].map(k=>`<line class="wire ${k===1?"":"dash"}" x1="170" y1="${110+k*15}" x2="390" y2="${110+k*15}" stroke-width="2"/>`).join("")+`<text class="lbl k" x="280" y="88" text-anchor="middle">VNET trunk · tags 101-103</text>`;
+    $("#evnLbl").textContent="Una interfaz y una subred por enlace";$("#evnCount").textContent="1 vnet trunk por enlace";}
+  $("#evnCfg").innerHTML=evnC[v];}
+seg("#evnSeg",evnRender);evnRender("lite");
+
+/* ---------- Route replication ---------- */
+const rr={A:"Tabla de enrutamiento de VRF A\n 172.16.0.0/16  => Gig0/0/1.A\n <span class=\"h\">192.168.0.0/24 => Gig0/0/2.C</span>   <span class=\"d\">(replicada de C)</span>",
+ B:"Tabla de enrutamiento de VRF B\n 172.17.0.0/16  => Gig0/0/1.B\n <span class=\"h\">192.168.0.0/24 => Gig0/0/2.C</span>   <span class=\"d\">(replicada de C)</span>",
+ C:"Tabla de enrutamiento de VRF C\n <span class=\"h\">172.16.0.0/16  => Gig0/0/1.A</span>   <span class=\"d\">(replicada de A)</span>\n <span class=\"h\">172.17.0.0/16  => Gig0/0/1.B</span>   <span class=\"d\">(replicada de B)</span>\n 192.168.0.0/24 => Gig0/0/2.C\n<span class=\"d\"> ! los servidores pueden responder a A y a B,</span>\n<span class=\"d\"> ! pero A y B no se ven entre sí</span>"};
+seg("#rrSeg",v=>$("#rrOut").innerHTML=rr[v]);$("#rrOut").innerHTML=rr.A;
+
+/* ---------- Quiz ---------- */
+quiz("#quiz",[
+ {q:"Con la ACL 100 del ejemplo, ¿qué pasa con un paquete web de 10.1.1.5 hacia 192.0.2.1?",o:["Lo permite la entrada 40","Lo descarta la entrada 10","Lo permite la entrada 20","Lo descarta el deny implícito"],ok:1,e:"La entrada 10 es la primera que coincide (tcp, host 10.1.1.5, host 192.0.2.1, eq www). Las demás ya no se revisan."},
+ {q:"Una ACL tiene solo entradas deny y se aplica de entrada en una interfaz. ¿Qué ocurre?",o:["Bloquea solo lo que nombran las entradas","No hace nada hasta agregar un permit","Bloquea todo el tráfico de entrada","IOS rechaza la configuración"],ok:2,e:"Lo que no coincide con los deny cae en el deny implícito. Hace falta al menos un permit."},
+ {q:"Agregaste deny ipv6 any any log al final de una ACL IPv6 y se cortó el tráfico hacia el vecino. ¿Por qué?",o:["IPv6 no admite la palabra log","El deny explícito queda antes de los permisos implícitos de NS y NA, y rompe NDP","Las ACL IPv6 no tienen deny implícito","Faltó el número de secuencia"],ok:1,e:"Los permit implícitos de nd-na y nd-ns van al final, después de todo lo que escribas. Un deny any explícito los deja inalcanzables."},
+ {q:"¿Con qué comando se aplica una ACL IPv6 a una interfaz?",o:["ipv6 access-group","ipv6 traffic-filter","ip access-group ipv6","ipv6 access-class"],ok:1,e:"ipv6 traffic-filter NOMBRE in|out. access-class es para las líneas VTY."},
+ {q:"¿Dónde se aplica una política de CoPP?",o:["En cada interfaz física de entrada","En la interfaz control-plane con service-policy input","En las líneas VTY","En la ACL de la interfaz WAN"],ok:1,e:"CoPP tiene una sola interfaz posible: control-plane. Normalmente en sentido input."},
+ {q:"Un protocolo no aparece en ninguna ACL de CoPP. ¿Qué tratamiento recibe?",o:["Se descarta siempre","Pasa sin límite","El de class-default","El de la primera clase del policy-map"],ok:2,e:"Lo que no coincide con ninguna clase queda en class-default, que en el ejemplo tiene 8 kbps y drop al violar."},
+ {q:"En Central, show ip route no muestra 10.10.1.0/30, pero R1 hace ping a 10.10.1.1. ¿Qué pasa?",o:["La ruta está en la VRF A; hay que usar show ip route vrf VRF-A","La interfaz está caída","Falta un protocolo de enrutamiento","Central tiene una ACL"],ok:0,e:"Las interfaces de Central están en VRF. La tabla global queda vacía; cada VRF tiene la suya."},
+ {q:"¿Qué reduce EVN respecto de VRF-Lite?",o:["El número de VRF posibles","La necesidad de MPLS en el núcleo","Las subinterfaces por VRF entre routers, gracias al vnet trunk","El uso de 802.1Q hacia los usuarios"],ok:2,e:"El vnet trunk transporta todas las VRF por una interfaz, etiquetadas con su vnet tag. Hacia los usuarios sigue habiendo 802.1Q."},
+ {q:"Una ACL basada en tiempo bloquea la web a mediodía. ¿Qué revisas primero?",o:["El número de secuencia","El reloj del router: show clock y NTP","El sentido de la ACL","La máscara wildcard"],ok:1,e:"El time-range usa el reloj local. Con la hora o la zona horaria mal, se activa en otro momento."}]);
+
+boot();
+})();
+</script>
+</body></html>
