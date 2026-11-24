@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guía DMVPN</title>
+<meta name="description" content="Laboratorio Guiado H ARY6112 — Guía interactiva paso a paso para implementar DMVPN fases 1, 2 y 3 protegido con IPsec.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --surface-2:#eef0f3; --border:#d9dde3;
+  --text:#1b1f24; --muted:#5d6672; --accent:#1f5fbf; --accent-soft:#e3ecfa;
+  --ok:#1f8a4c; --ok-soft:#e2f4ea; --warn:#a85d00; --warn-soft:#fdf0dc;
+  --bad:#b3261e; --bad-soft:#fbe4e2;
+  --code-bg:#0f1720; --code-text:#e6edf3; --code-cmt:#7d8b99; --code-kw:#7cc4ff;
+  --pe:#6b3fb5; --p:#1f5fbf; --ce:#2f8f5b; --ce2:#c0392b; --host:#5d6672;
+  --reg-l3:#e7f3e2; --reg-l3-b:#8cc27a; --reg-l2:#f8e3e3; --reg-l2-b:#d98080; --reg-bb:#fdf4d6; --reg-bb-b:#e5b94a;
+  --dim:.18;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1216; --surface:#171b21; --surface-2:#1f252d; --border:#2c333d;
+    --text:#e6e9ee; --muted:#9aa4b1; --accent:#6ea8ff; --accent-soft:#1a2a44;
+    --ok:#4cc38a; --ok-soft:#14301f; --warn:#f0a648; --warn-soft:#33240f;
+    --bad:#ff7b72; --bad-soft:#3a1714;
+    --code-bg:#0a0e13; --code-text:#e6edf3; --code-cmt:#6c7a89; --code-kw:#7cc4ff;
+    --pe:#a98bea; --p:#6ea8ff; --ce:#5cc98c; --ce2:#ff8a80; --host:#9aa4b1;
+    --reg-l3:#16261a; --reg-l3-b:#3f7a45; --reg-l2:#2a1617; --reg-l2-b:#8a4444; --reg-bb:#2a2410; --reg-bb-b:#8a7228;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1216; --surface:#171b21; --surface-2:#1f252d; --border:#2c333d;
+  --text:#e6e9ee; --muted:#9aa4b1; --accent:#6ea8ff; --accent-soft:#1a2a44;
+  --ok:#4cc38a; --ok-soft:#14301f; --warn:#f0a648; --warn-soft:#33240f;
+  --bad:#ff7b72; --bad-soft:#3a1714;
+  --code-bg:#0a0e13; --code-text:#e6edf3; --code-cmt:#6c7a89; --code-kw:#7cc4ff;
+  --pe:#a98bea; --p:#6ea8ff; --ce:#5cc98c; --ce2:#ff8a80; --host:#9aa4b1;
+  --reg-l3:#16261a; --reg-l3-b:#3f7a45; --reg-l2:#2a1617; --reg-l2-b:#8a4444; --reg-bb:#2a2410; --reg-bb-b:#8a7228;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif;}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:var(--accent)}
+
+/* ---------- header ---------- */
+header.top{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--border);}
+.top-inner{max-width:1500px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;line-height:1.2;margin-right:auto}
+.brand b{font-size:16px}
+.brand span{font-size:12px;color:var(--muted)}
+.modes{display:flex;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:3px}
+.modes button{border:0;background:transparent;padding:5px 12px;border-radius:6px;font-size:13px;font-weight:500;color:var(--muted)}
+.modes button[aria-pressed="true"]{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.icon-btn{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:6px 10px;font-size:13px}
+.progress{height:4px;background:var(--surface-2)}
+.progress i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
+
+/* ---------- layout ---------- */
+.layout{max-width:1500px;margin:0 auto;padding:16px;display:grid;grid-template-columns:250px minmax(0,1fr) minmax(0,600px);gap:16px;align-items:start}
+nav.steps{position:sticky;top:76px;max-height:calc(100vh - 92px);overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px}
+.phase{margin-bottom:8px}
+.phase-h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 8px 4px;display:flex;gap:6px;align-items:center}
+.phase-h .dot{width:8px;height:8px;border-radius:50%}
+.step-link{display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;border:0;background:transparent;padding:6px 8px;border-radius:7px;font-size:13.5px;color:var(--text)}
+.step-link:hover{background:var(--surface-2)}
+.step-link[aria-current="step"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.step-link .n{flex:none;width:30px;font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--muted);padding-top:2px}
+.step-link .ck{flex:none;margin-left:auto;color:var(--ok);font-size:12px;visibility:hidden}
+.step-link.done .ck{visibility:visible}
+
+main{min-width:0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px}
+.eyebrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:6px}
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted)}
+h1.step-title{font-size:24px;line-height:1.25;margin:0 0 12px}
+h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 10px}
+.lead p{margin:0 0 10px}
+.lead ul{margin:0 0 10px;padding-left:20px}
+.lead code,.callout code,td code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:.9em}
+
+.callout{border-radius:10px;padding:12px 14px;margin:12px 0;font-size:14px;border-left:4px solid}
+.callout b.t{display:block;margin-bottom:3px}
+.callout.why{background:var(--accent-soft);border-color:var(--accent)}
+.callout.warn{background:var(--warn-soft);border-color:var(--warn)}
+.callout.tip{background:var(--ok-soft);border-color:var(--ok)}
+.callout p{margin:0 0 6px}.callout p:last-child{margin:0}
+.callout ul{margin:4px 0 0;padding-left:20px}
+
+/* tabs + code */
+.devtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.devtabs button{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.devtabs button .sw{width:9px;height:9px;border-radius:3px}
+.devtabs button[aria-selected="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.devtabs button.copied-all{opacity:.6}
+.codebox{position:relative;background:var(--code-bg);color:var(--code-text);border-radius:10px;overflow:hidden}
+.codebox .bar{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid #ffffff14;font-size:12px;color:var(--code-cmt)}
+.codebox .bar b{color:var(--code-text);font-weight:600}
+.copy{border:1px solid #ffffff26;background:#ffffff10;color:var(--code-text);border-radius:6px;padding:3px 10px;font-size:12px}
+.copy.ok{background:#1f8a4c;border-color:#1f8a4c}
+pre.code{margin:0;padding:12px 14px;overflow:auto;font-size:13px;line-height:1.6;max-height:520px}
+pre.code .c{color:var(--code-cmt);font-style:italic}
+pre.code .k{color:var(--code-kw)}
+pre.code .hl{background:#f0a64830;border-radius:3px;outline:1px solid #f0a64880}
+.blocknote{font-size:13px;color:var(--muted);margin:8px 2px 0}
+
+.verify{border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden}
+.verify .vh{display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--surface-2);flex-wrap:wrap}
+.verify .vh .dev{font-weight:700;font-size:12px;padding:2px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border)}
+.verify .vh code{font-size:13px;flex:1;min-width:180px}
+.verify .vh .copy{background:var(--surface);border-color:var(--border);color:var(--text)}
+.verify .vb{padding:10px 12px;font-size:13.5px}
+.verify details summary{cursor:pointer;color:var(--accent);font-size:13px;margin-top:4px}
+.verify pre{background:var(--code-bg);color:var(--code-text);padding:10px 12px;border-radius:8px;font-size:12.5px;overflow:auto;margin:8px 0 0}
+
+table.t{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0 12px}
+table.t th,table.t td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:top}
+table.t th{font-size:12px;color:var(--muted);font-weight:600;background:var(--surface-2)}
+.tablewrap{overflow-x:auto}
+
+.navbtns{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-top:22px;padding-top:16px;border-top:1px solid var(--border)}
+.btn{border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:9px 16px;font-weight:600;font-size:14px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.done{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.btn:disabled{opacity:.4;cursor:default}
+.kbd{font-size:12px;color:var(--muted)}
+
+/* ---------- topology panel ---------- */
+aside.topo{position:sticky;top:76px}
+.topo .card{padding:12px}
+.topo-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 4px 6px;flex-wrap:wrap}
+.topo-h b{font-size:13px}
+.topo-h .hint{font-size:12px;color:var(--muted)}
+svg.net{width:100%;height:auto;display:block;user-select:none}
+aside.topo.big{position:fixed;inset:12px;z-index:50;overflow:auto}
+aside.topo.big .card{min-height:100%;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+aside.topo.big svg.net{max-height:calc(100vh - 170px)}
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40}
+svg.net .region rect{stroke-width:1.5;stroke-dasharray:6 4}
+svg.net .region text{font-size:14px;font-weight:700;fill:var(--muted)}
+svg.net .link line,svg.net .link path{stroke:var(--muted);stroke-width:2.2;fill:none}
+svg.net .link text{font-size:12px;fill:var(--muted);font-family:"JetBrains Mono",monospace}
+svg.net .node{cursor:pointer}
+svg.net .node .icon .hi{fill:#fff;opacity:.22}
+svg.net .node .icon .lo{fill:#000;opacity:.25}
+svg.net .node .icon .ar{stroke:#fff;stroke-width:1.6;fill:none;stroke-linecap:round}
+svg.net .node .icon .scr{fill:#dbe8f7}
+svg.net .node .icon .edge{stroke:#00000040;stroke-width:1;fill:none}
+svg.net .node text.name{font-size:15px;font-weight:700;fill:var(--text);text-anchor:middle}
+svg.net .node text.sub{font-size:12px;fill:var(--muted);text-anchor:middle;font-family:"JetBrains Mono",monospace}
+svg.net .node text.ic{font-size:11px;font-weight:700;fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+svg.net .overlay{opacity:0;transition:opacity .35s}
+svg.net .overlay.on{opacity:1}
+svg.net .overlay path{fill:none;stroke-width:3;stroke-dasharray:8 6}
+svg.net .overlay text{font-size:13px;font-weight:700}
+svg.net.focus .node:not(.on),svg.net.focus .link:not(.on){opacity:var(--dim)}
+svg.net .node,svg.net .link{transition:opacity .3s}
+svg.net .link.on line,svg.net .link.on path{stroke:var(--accent);stroke-width:3.2}
+svg.net .node.on .icon{filter:drop-shadow(0 0 5px var(--accent))}
+svg.net .node.sel .ring{opacity:1}
+svg.net .ring{opacity:0;fill:none;stroke:var(--accent);stroke-width:2.5;stroke-dasharray:4 3}
+#pkt{pointer-events:none}
+#pkt rect{fill:var(--warn);}
+#pkt text{font-size:11px;font-weight:700;fill:#1b1f24;font-family:"JetBrains Mono",monospace;text-anchor:middle;dominant-baseline:central}
+.anim-bar[hidden]{display:none}
+.anim-bar{display:flex;gap:8px;align-items:center;margin:8px 4px 0;flex-wrap:wrap}
+.anim-bar .lbl{font-size:12.5px;color:var(--muted);flex:1;min-width:160px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin:8px 4px 0}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+
+/* device view */
+.devpick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.devpick button{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:5px 11px;font-size:13px;font-weight:600}
+.devpick button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.devsec{margin-bottom:18px}
+.devsec h3{font-size:14px;margin:0 0 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.devsec h3 a{font-size:12px;font-weight:500}
+
+@media (max-width:1250px){
+  .layout{grid-template-columns:240px minmax(0,1fr)}
+  aside.topo{grid-column:1 / -1;position:static;order:-1}
+}
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);padding:12px 16px}
+  nav.steps{position:static;max-height:none}
+  nav.steps.collapsed .phase{display:none}
+  .card{padding:16px}
+  h1.step-title{font-size:20px}
+}
+.navtoggle{display:none;width:100%;margin-bottom:6px}
+@media (max-width:820px){.navtoggle{display:block}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand"><b>Lab Guiado H · DMVPN fases 1, 2 y 3 con IPsec</b><span>ARY6112 · Guía interactiva paso a paso</span></div>
+    <div class="modes" role="group" aria-label="Modo de vista">
+      <button id="mStep" aria-pressed="true">Paso a paso</button>
+      <button id="mDev" aria-pressed="false">Por equipo</button>
+    </div>
+    <button class="icon-btn" id="themeBtn" title="Cambiar tema">◐ Tema</button>
+    <button class="icon-btn" id="resetBtn" title="Borrar progreso">↺ Reiniciar</button>
+  </div>
+  <div class="progress"><i id="progBar"></i></div>
+</header>
+
+<div class="layout">
+  <nav class="steps" id="stepsNav" aria-label="Pasos">
+    <button class="btn navtoggle" id="navToggle">☰ Ver lista de pasos</button>
+    <div id="stepsList"></div>
+  </nav>
+
+  <main id="main"></main>
+
+  <aside class="topo">
+    <div class="card">
+      <div class="topo-h"><b>Topología</b><span class="hint">Clic en un equipo para ver toda su configuración</span><button class="icon-btn" id="bigBtn">⤢ Ampliar</button></div>
+      <svg class="net" id="net" viewBox="165 8 750 590" role="img" aria-label="Topología del laboratorio"></svg>
+      <div class="anim-bar" id="animBar" hidden>
+        <button class="btn primary" id="playBtn">▶ Animar paquete</button>
+        <span class="lbl" id="animLbl"></span>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--pe)"></i>HUB (NHS)</span>
+        <span><i style="background:var(--p)"></i>Spoke (NHC)</span>
+        <span><i style="background:var(--host)"></i>ISP (transporte)</span>
+        <span><i style="background:var(--ce)"></i>Túnel mGRE hub–spoke</span>
+        <span><i style="background:var(--warn)"></i>Túnel dinámico spoke–spoke</span>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+/* =====================================================================
+   DATOS DE LA TOPOLOGÍA
+   ===================================================================== */
+const NODES = {
+  "HUB":   {x:520,y:95,  role:"hub",   sub:"Lo0 192.168.10.10", info:"e0/3 3.3.3.3/24 · Tunnel0 10.10.10.1 · Lo0 192.168.10.10/32"},
+  "ISP":   {x:520,y:300, role:"isp",   sub:"transporte", info:"e0/1 1.1.1.4 · e0/2 2.2.2.4 · e0/3 3.3.3.4 (ya configurado)"},
+  "SPOKE1":{x:250,y:490, role:"spoke", sub:"Lo0 192.168.20.20", info:"e0/1 1.1.1.1/24 · Tunnel0 10.10.10.2 · Lo0 192.168.20.20/32"},
+  "SPOKE2":{x:790,y:490, role:"spoke", sub:"Lo0 192.168.30.30", info:"e0/2 2.2.2.2/24 · Tunnel0 10.10.10.3 · Lo0 192.168.30.30/32"}
+};
+const LINKS = [
+  ["HUB","ISP","e0/3 · 3.3.3.0/24"],["ISP","SPOKE1","e0/1 · 1.1.1.0/24"],["ISP","SPOKE2","e0/2 · 2.2.2.0/24"]
+];
+const ROLE_COLOR = {hub:"var(--pe)",spoke:"var(--p)",isp:"var(--host)"};
+const OVERLAYS = ["hubtun","dyn","ipsec"];
+const ALL = ["HUB","SPOKE1","SPOKE2"];
+const BACKBONE = [];
+const linkId = (a,b)=>"L_"+[a,b].sort().join("__");
+
+/* Animaciones de paquetes: [desde, hasta, etiqueta mostrada] */
+const ANIMS = {
+  base: {label:"Ping HUB → SPOKE1 por la red del ISP (sin túnel)", hops:[["HUB","ISP","IP 3.3.3.3→1.1.1.1"],["ISP","SPOKE1","IP"]],
+    explain:"Antes del túnel solo existe la red de transporte: el HUB alcanza la IP pública de cada spoke gracias a su ruta por defecto hacia el ISP."},
+  reg: {label:"Registro NHRP de SPOKE1 en el HUB", hops:[["SPOKE1","ISP","NHRP Registration"],["ISP","HUB","10.10.10.2 = 1.1.1.1"]],
+    explain:"El spoke le dice al HUB (NHS): mi IP de túnel 10.10.10.2 está detrás de la IP pública 1.1.1.1. El HUB lo guarda en su tabla NHRP."},
+  p1: {label:"Lo0 SPOKE1 → Lo0 SPOKE2 con next hop = HUB", hops:[
+    ["SPOKE1","ISP","GRE 1.1.1.1→3.3.3.3"],["ISP","HUB","GRE"],["HUB","ISP","GRE 3.3.3.3→2.2.2.2"],["ISP","SPOKE2","GRE"]],
+    explain:"Todo el tráfico entre spokes entra al HUB, que lo desencapsula, enruta y vuelve a encapsular hacia el otro spoke: comportamiento de fase 1."},
+  p2: {label:"Fase 2: el spoke resuelve al otro spoke y va directo", hops:[
+    ["SPOKE1","ISP","NHRP Resolution"],["ISP","HUB","¿10.10.10.3?"],["HUB","ISP","reenvía"],["ISP","SPOKE2","¿10.10.10.3?"],["SPOKE2","ISP","Reply 2.2.2.2"],["ISP","SPOKE1","Reply"],["SPOKE1","ISP","GRE 1.1.1.1→2.2.2.2"],["ISP","SPOKE2","directo"]],
+    explain:"SPOKE1 ve 192.168.30.30 vía 10.10.10.3, pero no sabe su IP pública. Pregunta por NHRP, recibe 2.2.2.2 y arma un túnel dinámico directo."},
+  p3: {label:"Fase 3: redirect del HUB y atajo NHRP", hops:[
+    ["SPOKE1","ISP","GRE→HUB"],["ISP","HUB","1er paquete"],["HUB","ISP","Redirect a SPOKE1"],["ISP","SPOKE1","Redirect"],["SPOKE1","ISP","Resolution"],["ISP","SPOKE2","vía HUB"],["SPOKE2","ISP","Reply 2.2.2.2"],["ISP","SPOKE1","Reply"],["SPOKE1","ISP","GRE 1.1.1.1→2.2.2.2"],["ISP","SPOKE2","directo"]],
+    explain:"El spoke solo tiene la sumaria vía HUB. El HUB reenvía el primer paquete y avisa con un redirect; el spoke resuelve al otro spoke e instala una ruta H (NHRP) más específica."},
+  ipsec: {label:"Túnel spoke a spoke protegido con IPsec", hops:[["SPOKE1","ISP","ESP 1.1.1.1→2.2.2.2"],["ISP","SPOKE2","ESP"]],
+    explain:"El ISP solo ve paquetes ESP (protocolo 50) entre las IP públicas. El GRE, el EIGRP y los datos van cifrados dentro."}
+};
+
+/* =====================================================================
+   CONTENIDO: FASES Y PASOS
+   ===================================================================== */
+const PHASES = [
+{ id:"f0", title:"Inicio", color:"var(--muted)", steps:[
+ { id:"0.1", title:"Objetivo del laboratorio y plan de trabajo",
+   focus:[], overlays:[],
+   lead:`<p>Una empresa conecta su casa matriz (<b>HUB</b>) y dos sucursales (<b>SPOKE1</b> y <b>SPOKE2</b>) a través de Internet (<b>ISP</b>). Sobre esa red de transporte se construye <b>DMVPN</b>: un túnel GRE multipunto en la red <b>10.10.10.0/24</b>, NHRP para resolver direcciones, EIGRP para anunciar las loopbacks y, al final, IPsec para cifrar.</p>
+<p>El enunciado pide implementar las <b>fases 1, 2 y 3</b> de DMVPN, observar la diferencia entre ellas y proteger los túneles con <b>IPsec</b>.</p>`,
+   table:{head:["Parte","Qué se construye","Depende de"],rows:[
+     ["0 · Base","Comprobar que las IP públicas se alcanzan a través del ISP","Configuración inicial (ya viene)"],
+     ["1 · Túnel y NHRP","Tunnel0 mGRE en los tres routers, NHRP con el HUB como servidor (NHS)","IP públicas alcanzables"],
+     ["2 · EIGRP (DMVPN fase 1)","EIGRP AS 1 sobre el túnel; tráfico entre spokes pasa por el HUB","Spokes registrados en NHRP"],
+     ["3 · DMVPN fase 2","El HUB no cambia el next hop: túneles directos spoke a spoke","EIGRP funcionando"],
+     ["4 · DMVPN fase 3","Sumarización en el HUB + redirect y shortcut de NHRP","Parte 3"],
+     ["5 · IPsec","IKE fase 1, transform set en modo transporte y perfil en el túnel","Todo lo anterior"]]},
+   extraHtml:`<h2 class="sec">Direccionamiento</h2>
+<div class="tablewrap"><table class="t"><tr><th>Equipo</th><th>Interfaz física (NBMA)</th><th>Tunnel0</th><th>Loopback0</th></tr>
+<tr><td><b>HUB</b></td><td><code>e0/3 3.3.3.3/24</code></td><td><code>10.10.10.1/24</code></td><td><code>192.168.10.10/32</code></td></tr>
+<tr><td><b>SPOKE1</b></td><td><code>e0/1 1.1.1.1/24</code></td><td><code>10.10.10.2/24</code></td><td><code>192.168.20.20/32</code></td></tr>
+<tr><td><b>SPOKE2</b></td><td><code>e0/2 2.2.2.2/24</code></td><td><code>10.10.10.3/24</code></td><td><code>192.168.30.30/32</code></td></tr>
+<tr><td><b>ISP</b></td><td colspan="3"><code>e0/1 1.1.1.4</code> · <code>e0/2 2.2.2.4</code> · <code>e0/3 3.3.3.4</code> — no se toca</td></tr></table></div>
+<p class="blocknote">Cada router ya trae su IP pública, su Loopback0 y una ruta por defecto hacia el ISP. Todo lo que se configura en esta guía es nuevo.</p>
+<h2 class="sec">Diagrama original del enunciado</h2>
+<a href="img/topologia.png" target="_blank" rel="noopener"><img src="img/topologia.png" alt="Topología original del laboratorio DMVPN" style="width:100%;max-width:520px;border-radius:8px;border:1px solid var(--border)"></a>
+<h2 class="sec">Términos que vas a ver</h2>
+<div class="tablewrap"><table class="t"><tr><th>Término</th><th>Significado</th></tr>
+<tr><td><b>NBMA</b></td><td>La IP pública (de transporte) de cada router: 1.1.1.1, 2.2.2.2 y 3.3.3.3.</td></tr>
+<tr><td><b>NHS / NHC</b></td><td>Next Hop Server (el HUB) y Next Hop Client (los spokes) de NHRP.</td></tr>
+<tr><td><b>mGRE</b></td><td>GRE multipunto: una sola interfaz túnel sin destino fijo.</td></tr>
+<tr><td><b>Fase 1 / 2 / 3</b></td><td>Cómo viaja el tráfico entre spokes: siempre por el HUB, directo, o directo con sumarización.</td></tr></table></div>`,
+   tip:`Usa ← y → para avanzar. Marca cada paso como completado; el progreso queda guardado en este navegador. El modo <b>Por equipo</b> junta todo lo que se configura en un router.`
+ },
+ { id:"0.2", title:"Comprobar la red de transporte",
+   focus:["HUB","ISP","SPOKE1","SPOKE2"], overlays:[], anim:"base",
+   lead:`<p>El túnel viaja encapsulado entre las IP públicas. Si el HUB no alcanza 1.1.1.1 y 2.2.2.2, nada de lo que sigue va a funcionar. No hay nada que configurar: solo probar.</p>`,
+   why:`El origen y el destino de los paquetes GRE son las interfaces físicas (<code>tunnel source</code>). Un túnel nunca es más confiable que la red que lo transporta.`,
+   blocks:[],
+   verify:[
+     {dev:"HUB",cmd:"ping 1.1.1.1",expect:"!!!!! — el HUB alcanza la IP pública de SPOKE1."},
+     {dev:"HUB",cmd:"ping 2.2.2.2",expect:"!!!!! — el HUB alcanza la IP pública de SPOKE2."},
+     {dev:"SPOKE1",cmd:"ping 2.2.2.2",expect:"!!!!! — los spokes también se alcanzan entre sí; lo necesitarán para los túneles directos."}]
+ }
+]},
+{ id:"f1", title:"Parte 1 · Túnel mGRE y NHRP", color:"var(--pe)", steps:[
+ { id:"1.1", title:"HUB: interfaz túnel mGRE y servidor NHRP",
+   focus:["HUB"], overlays:[],
+   lead:`<p>El HUB tiene una sola interfaz túnel para todos los spokes. No lleva <code>tunnel destination</code>: los destinos los aprende de forma dinámica con NHRP.</p>`,
+   why:`<ul><li><code>tunnel mode gre multipoint</code> convierte el túnel en mGRE: muchos vecinos en una interfaz.</li>
+<li><code>ip nhrp network-id</code>, <code>holdtime</code> y <code>authentication</code> deben coincidir en todos los routers del mismo DMVPN.</li>
+<li><code>ip nhrp map multicast dynamic</code>: el HUB replica el multicast (los Hello de EIGRP) a cada spoke que se registre. Sin esto no habrá vecinos EIGRP.</li></ul>`,
+   blocks:[
+    {dev:"HUB",code:`conf t
+interface Tunnel0
+ ip address 10.10.10.1 255.255.255.0
+ tunnel source Ethernet0/3
+ tunnel mode gre multipoint
+ ip nhrp network-id 1
+ ip nhrp holdtime 45
+ ip nhrp authentication ENARSI
+ ip nhrp map multicast dynamic
+end`,hl:["tunnel mode gre multipoint","ip nhrp map multicast dynamic"]}],
+   verify:[{dev:"HUB",cmd:"show interface tunnel 0",expect:"Tunnel0 is up, line protocol is up. Tunnel protocol/transport multi-GRE/IP, sin destino fijo."}]
+ },
+ { id:"1.2", title:"SPOKES: túnel mGRE y registro en el HUB",
+   focus:["SPOKE1","SPOKE2","HUB"], overlays:["hubtun"], anim:"reg",
+   lead:`<p>Cada spoke conoce de forma <b>estática</b> al HUB: su IP de túnel (10.10.10.1) y su IP pública (3.3.3.3). Con eso se registra y el HUB aprende al spoke de forma dinámica.</p>`,
+   why:`<ul><li><code>ip nhrp map 10.10.10.1 3.3.3.3</code>: IP de túnel del HUB → IP física del HUB.</li>
+<li><code>ip nhrp nhs 10.10.10.1</code>: el servidor NHRP es el HUB (visto desde el túnel).</li>
+<li><code>ip nhrp map multicast 3.3.3.3</code>: el multicast (Hello de EIGRP) se envía al HUB.</li>
+<li>Los spokes también usan <code>gre multipoint</code>: así más adelante podrán abrir túneles directos con otros spokes.</li></ul>`,
+   warn:`El <code>tunnel source</code> cambia en cada spoke: <b>e0/1</b> en SPOKE1 y <b>e0/2</b> en SPOKE2. Si eliges la interfaz equivocada, el túnel sale con una IP que no es la registrada.`,
+   blocks:[
+    {dev:"SPOKE1",code:`conf t
+interface Tunnel0
+ ip address 10.10.10.2 255.255.255.0
+ tunnel source Ethernet0/1
+ tunnel mode gre multipoint
+ ip nhrp network-id 1
+ ip nhrp holdtime 45
+ ip nhrp authentication ENARSI
+ ip nhrp map 10.10.10.1 3.3.3.3
+ ip nhrp nhs 10.10.10.1
+ ip nhrp map multicast 3.3.3.3
+end`,hl:["ip nhrp map 10.10.10.1 3.3.3.3","ip nhrp nhs 10.10.10.1","ip nhrp map multicast 3.3.3.3"]},
+    {dev:"SPOKE2",code:`conf t
+interface Tunnel0
+ ip address 10.10.10.3 255.255.255.0
+ tunnel source Ethernet0/2
+ tunnel mode gre multipoint
+ ip nhrp network-id 1
+ ip nhrp holdtime 45
+ ip nhrp authentication ENARSI
+ ip nhrp map 10.10.10.1 3.3.3.3
+ ip nhrp nhs 10.10.10.1
+ ip nhrp map multicast 3.3.3.3
+end`,hl:["ip nhrp map 10.10.10.1 3.3.3.3","ip nhrp nhs 10.10.10.1","ip nhrp map multicast 3.3.3.3"]}],
+   verify:[
+     {dev:"HUB",cmd:"show dmvpn",expect:"Type:Hub, NHRP Peers:2. Los dos spokes en estado UP con atributo D (aprendidos de forma dinámica).",out:`Interface: Tunnel0, IPv4 NHRP Details
+Type:Hub, NHRP Peers:2,
+
+ # Ent  Peer NBMA Addr Peer Tunnel Add State  UpDn Tm Attrb
+ ----- --------------- --------------- ----- -------- -----
+     1 1.1.1.1              10.10.10.2    UP 00:01:12     D
+     1 2.2.2.2              10.10.10.3    UP 00:00:58     D`},
+     {dev:"SPOKE1",cmd:"show dmvpn",expect:"Type:Spoke, NHRP Peers:1. El HUB (3.3.3.3 / 10.10.10.1) UP con atributo S (estático).",out:`Interface: Tunnel0, IPv4 NHRP Details
+Type:Spoke, NHRP Peers:1,
+
+ # Ent  Peer NBMA Addr Peer Tunnel Add State  UpDn Tm Attrb
+ ----- --------------- --------------- ----- -------- -----
+     1 3.3.3.3              10.10.10.1    UP 00:01:12     S`},
+     {dev:"SPOKE1",cmd:"ping 10.10.10.1",expect:"!!!!! — el túnel hacia el HUB funciona."}]
+ }
+]},
+{ id:"f2", title:"Parte 2 · EIGRP sobre el túnel (DMVPN fase 1)", color:"var(--ok)", steps:[
+ { id:"2.1", title:"EIGRP AS 1 en los tres routers",
+   focus:ALL, overlays:["hubtun"],
+   lead:`<p>Se anuncian la red del túnel y la Loopback0 de cada router. La loopback queda pasiva: se anuncia, pero no se buscan vecinos por ella.</p>`,
+   why:`Los <code>network</code> con wildcard <code>0.0.0.0</code> activan EIGRP solo en esa IP exacta. Así EIGRP nunca corre sobre la interfaz física hacia el ISP, y los vecinos se forman <b>solo por el túnel</b>.`,
+   blocks:[
+    {dev:"HUB",code:`conf t
+router eigrp 1
+ network 192.168.10.10 0.0.0.0
+ network 10.10.10.1 0.0.0.0
+ passive-interface Loopback0
+end`},
+    {dev:"SPOKE1",code:`conf t
+router eigrp 1
+ network 192.168.20.20 0.0.0.0
+ network 10.10.10.2 0.0.0.0
+ passive-interface Loopback0
+end`},
+    {dev:"SPOKE2",code:`conf t
+router eigrp 1
+ network 192.168.30.30 0.0.0.0
+ network 10.10.10.3 0.0.0.0
+ passive-interface Loopback0
+end`}],
+   note:"En el Excel aparece «pasisve interface»; el comando correcto es passive-interface.",
+   verify:[
+     {dev:"HUB",cmd:"show ip eigrp neighbors",expect:"Dos vecinos por Tu0: 10.10.10.2 y 10.10.10.3.",out:`EIGRP-IPv4 Neighbors for AS(1)
+H   Address                 Interface              Hold Uptime   SRTT   RTO  Q  Seq
+                                                   (sec)         (ms)       Cnt Num
+1   10.10.10.3              Tu0                      13 00:00:41   12  1470  0  3
+0   10.10.10.2              Tu0                      12 00:00:52   10  1470  0  3`},
+     {dev:"SPOKE1",cmd:"show ip route eigrp",expect:"Aparece 192.168.10.10 (HUB), pero todavía NO 192.168.30.30 (SPOKE2). Lo resuelve el paso siguiente."}]
+ },
+ { id:"2.2", title:"HUB: desactivar split horizon en el túnel",
+   focus:["HUB","SPOKE1","SPOKE2"], overlays:["hubtun"], anim:"p1",
+   lead:`<p>El HUB aprende la loopback de SPOKE2 por Tunnel0, y SPOKE1 también está detrás de Tunnel0. Split horizon le prohíbe anunciar una ruta por la misma interfaz por la que la aprendió, así que los spokes no se ven entre sí.</p>`,
+   why:`En una red multipunto, “la misma interfaz” no significa “el mismo vecino”. <code>no ip split-horizon eigrp 1</code> permite que el HUB reenvíe las rutas de un spoke a los demás.`,
+   blocks:[
+    {dev:"HUB",code:`conf t
+interface Tunnel0
+ no ip split-horizon eigrp 1
+end`,hl:["no ip split-horizon eigrp 1"]}],
+   verify:[
+     {dev:"SPOKE1",cmd:"show ip route eigrp",expect:"192.168.30.30/32 vía 10.10.10.1 (el HUB). El HUB, por defecto, se pone a sí mismo como next hop.",out:`D     192.168.10.10/32 [90/27008000] via 10.10.10.1, 00:00:21, Tunnel0
+D     192.168.30.30/32 [90/28288000] via 10.10.10.1, 00:00:21, Tunnel0`},
+     {dev:"SPOKE1",cmd:"traceroute 192.168.30.30 source loopback 0",expect:"Primer salto 10.10.10.1 (HUB), luego 10.10.10.3: todo el tráfico entre spokes pasa por el HUB. Este es el comportamiento de DMVPN fase 1."}],
+   tip:`En DMVPN fase 1 “pura” los spokes usan GRE punto a punto (<code>tunnel destination 3.3.3.3</code>) y solo pueden hablar con el HUB. Este laboratorio deja los spokes en mGRE desde el inicio; lo que produce el comportamiento de fase 1 es que el HUB cambia el next hop a sí mismo.`
+ }
+]},
+{ id:"f3", title:"Parte 3 · DMVPN fase 2", color:"var(--p)", steps:[
+ { id:"3.1", title:"HUB: conservar el next hop original",
+   focus:ALL, overlays:["hubtun","dyn"], anim:"p2",
+   lead:`<p>Para que SPOKE1 envíe directo a SPOKE2, la ruta a 192.168.30.30 debe tener como next hop a <b>10.10.10.3</b> (SPOKE2), no al HUB.</p>`,
+   why:`<code>no ip next-hop-self eigrp 1</code> hace que el HUB anuncie las rutas de los spokes conservando el next hop original. SPOKE1 ve “192.168.30.30 vía 10.10.10.3”, pregunta por NHRP qué IP pública tiene 10.10.10.3 y abre un túnel dinámico directo hacia 2.2.2.2.`,
+   blocks:[
+    {dev:"HUB",code:`conf t
+interface Tunnel0
+ no ip next-hop-self eigrp 1
+end`,hl:["no ip next-hop-self eigrp 1"]}],
+   verify:[
+     {dev:"SPOKE1",cmd:"show ip route eigrp",expect:"192.168.30.30/32 ahora vía 10.10.10.3: la vía cambió al otro spoke.",out:`D     192.168.10.10/32 [90/27008000] via 10.10.10.1, 00:04:10, Tunnel0
+D     192.168.30.30/32 [90/28288000] via 10.10.10.3, 00:00:08, Tunnel0`},
+     {dev:"SPOKE1",cmd:"ping 192.168.30.30 source loopback 0",expect:"El primer ping dispara la resolución NHRP; luego el tráfico va directo."},
+     {dev:"SPOKE1",cmd:"show dmvpn",expect:"Aparece una entrada dinámica (D) hacia 2.2.2.2 / 10.10.10.3, además del HUB.",out:` # Ent  Peer NBMA Addr Peer Tunnel Add State  UpDn Tm Attrb
+ ----- --------------- --------------- ----- -------- -----
+     1 2.2.2.2              10.10.10.3    UP 00:00:15     D
+     1 3.3.3.3              10.10.10.1    UP 00:06:02     S`},
+     {dev:"SPOKE1",cmd:"traceroute 192.168.30.30 source loopback 0",expect:"Un solo salto: 10.10.10.3. Ya no pasa por el HUB."}],
+   tip:`Con <code>holdtime 45</code> la entrada dinámica expira rápido si no hay tráfico. Si <code>show dmvpn</code> ya no la muestra, vuelve a hacer ping.`
+ }
+]},
+{ id:"f4", title:"Parte 4 · DMVPN fase 3", color:"var(--warn)", steps:[
+ { id:"4.1", title:"HUB: sumarizar y activar NHRP redirect",
+   focus:["HUB","SPOKE1","SPOKE2"], overlays:["hubtun"],
+   lead:`<p>En fase 2 cada spoke necesita la ruta específica de cada otro spoke: con cientos de sucursales eso no escala, y además <b>no se puede sumarizar</b> (la sumaria tendría al HUB como next hop). La fase 3 lo resuelve.</p>`,
+   why:`<ul><li><code>ip summary-address eigrp 1 192.168.0.0 255.255.0.0</code>: el HUB anuncia una sola sumaria a los spokes en vez de cada /32.</li>
+<li><code>ip nhrp redirect</code>: cuando el HUB recibe por el túnel un paquete que vuelve a salir por el mismo túnel, le envía al spoke de origen un aviso (redirect) con el destino.</li></ul>`,
+   blocks:[
+    {dev:"HUB",code:`conf t
+interface Tunnel0
+ ip summary-address eigrp 1 192.168.0.0 255.255.0.0
+ ip nhrp redirect
+end`,hl:["ip summary-address eigrp 1 192.168.0.0 255.255.0.0","ip nhrp redirect"]}],
+   note:"En el Excel aparece «ip summary-adress»; el comando correcto es ip summary-address. El no ip next-hop-self del paso anterior puede quedar: la sumaria la origina el HUB, así que su next hop siempre es 10.10.10.1.",
+   verify:[{dev:"SPOKE1",cmd:"show ip route eigrp",expect:"Una sola ruta: 192.168.0.0/16 vía 10.10.10.1. Las /32 de los otros routers desaparecieron.",out:`D     192.168.0.0/16 [90/27008000] via 10.10.10.1, 00:00:12, Tunnel0`}]
+ },
+ { id:"4.2", title:"SPOKES: activar NHRP shortcut",
+   focus:ALL, overlays:["hubtun","dyn"], anim:"p3",
+   lead:`<p>El spoke que recibe el redirect resuelve el destino por NHRP e instala una ruta más específica que apunta directo al otro spoke.</p>`,
+   why:`<code>ip nhrp shortcut</code> permite que el spoke instale esas rutas NHRP (código <b>H</b> en la tabla). La sumaria sigue apuntando al HUB, pero la ruta H es más específica y gana.`,
+   blocks:[
+    {dev:"SPOKE1",code:`conf t
+interface Tunnel0
+ ip nhrp shortcut
+end`,hl:["ip nhrp shortcut"]},
+    {dev:"SPOKE2",code:`conf t
+interface Tunnel0
+ ip nhrp shortcut
+end`,hl:["ip nhrp shortcut"]}],
+   note:"En el Excel de SPOKE2 aparece «shorcut»; el comando correcto es ip nhrp shortcut.",
+   verify:[
+     {dev:"SPOKE1",cmd:"ping 192.168.30.30 source loopback 0",expect:"Funciona. El primer paquete pasa por el HUB y dispara el redirect."},
+     {dev:"SPOKE1",cmd:"show dmvpn",expect:"Entrada hacia 2.2.2.2 / 10.10.10.3 con atributos DT: túnel dinámico (D) con ruta instalada (T).",out:` # Ent  Peer NBMA Addr Peer Tunnel Add State  UpDn Tm Attrb
+ ----- --------------- --------------- ----- -------- -----
+     1 2.2.2.2              10.10.10.3    UP 00:00:09   DT1
+     1 3.3.3.3              10.10.10.1    UP 00:14:30     S`},
+     {dev:"SPOKE1",cmd:"show ip route",expect:"Aparece una ruta H (NHRP) hacia 192.168.30.30 vía 10.10.10.3, más específica que la sumaria.",out:`D     192.168.0.0/16 [90/27008000] via 10.10.10.1, 00:02:40, Tunnel0
+H     192.168.30.30/32 [250/1] via 10.10.10.3, 00:00:09, Tunnel0`}]
+ }
+]},
+{ id:"f5", title:"Parte 5 · Proteger los túneles con IPsec", color:"var(--bad)", steps:[
+ { id:"5.1", title:"IKE fase 1: política ISAKMP y clave compartida",
+   focus:ALL, overlays:[],
+   lead:`<p>Se configura lo mismo en los tres routers (fuera de la interfaz túnel). La política define cómo los pares se autentican y protegen el canal de negociación.</p>`,
+   why:`<ul><li>La clave <code>ccnp</code> se asocia a <code>0.0.0.0 0.0.0.0</code> (cualquier dirección): los túneles spoke a spoke se forman con IP que el HUB no conoce de antemano.</li>
+<li>La política (AES, SHA, grupo DH 5, autenticación por clave compartida, 86400 s) debe tener una coincidencia en ambos extremos.</li></ul>`,
+   blocks:["HUB","SPOKE1","SPOKE2"].map(d=>({dev:d,code:`conf t
+crypto isakmp policy 1
+ authentication pre-share
+ hash sha
+ encryption aes
+ group 5
+ lifetime 86400
+exit
+crypto isakmp key ccnp address 0.0.0.0 0.0.0.0
+end`,hl:["crypto isakmp key ccnp address 0.0.0.0 0.0.0.0"]})),
+   note:"En el Excel aparece «authemtication»; el comando correcto es authentication pre-share.",
+   tip:`SHA-1 y el grupo 5 sirven para el laboratorio, pero hoy se consideran débiles. En producción se usa <code>hash sha256</code> y <code>group 14</code> o superior.`
+ },
+ { id:"5.2", title:"IKE fase 2: transform set, perfil y protección del túnel",
+   focus:ALL, overlays:["hubtun","ipsec"],
+   lead:`<p>El transform set define cómo se protegen los datos (ESP con AES y SHA). El perfil IPsec se aplica directamente a la interfaz túnel: en DMVPN no se usa crypto map.</p>`,
+   why:`<code>mode transport</code>: GRE ya agrega una cabecera IP externa con las IP públicas, así que no hace falta otra (modo túnel). Se ahorran 20 bytes por paquete.`,
+   warn:`Mientras un extremo tenga <code>tunnel protection</code> y el otro no, ese túnel deja de pasar tráfico y EIGRP cae. Aplica el bloque en los tres routers uno tras otro.`,
+   blocks:["HUB","SPOKE1","SPOKE2"].map(d=>({dev:d,code:`conf t
+crypto ipsec transform-set T esp-aes esp-sha-hmac
+ mode transport
+exit
+crypto ipsec profile PROTECCION
+ set transform-set T
+exit
+interface Tunnel0
+ tunnel protection ipsec profile PROTECCION
+end`,hl:["mode transport","tunnel protection ipsec profile PROTECCION"]})),
+   tip:`Opcional pero recomendado con IPsec: <code>ip mtu 1400</code> e <code>ip tcp adjust-mss 1360</code> en Tunnel0, para evitar fragmentación por las cabeceras extra.`
+ },
+ { id:"5.3", title:"Comprobar el túnel protegido",
+   focus:ALL, overlays:["hubtun","dyn","ipsec"], anim:"ipsec",
+   lead:`<p>Repite la prueba de fase 3 y confirma que los paquetes se cifran y descifran.</p>`,
+   blocks:[],
+   verify:[
+     {dev:"SPOKE1",cmd:"show dmvpn",expect:"HUB y (tras el ping) SPOKE2 en UP, igual que antes de IPsec."},
+     {dev:"SPOKE1",cmd:"ping 192.168.30.30 source loopback 0",expect:"!!!!! — funciona con los túneles cifrados."},
+     {dev:"SPOKE1",cmd:"show crypto isakmp sa",expect:"Una SA por par (HUB y SPOKE2) en estado QM_IDLE / ACTIVE.",out:`IPv4 Crypto ISAKMP SA
+dst             src             state          conn-id status
+3.3.3.3         1.1.1.1         QM_IDLE           1001 ACTIVE
+2.2.2.2         1.1.1.1         QM_IDLE           1002 ACTIVE`},
+     {dev:"SPOKE1",cmd:"show crypto ipsec sa",expect:"Los contadores #pkts encaps y #pkts decaps aumentan, y la SA está en modo Transport.",out:`interface: Tunnel0
+    Crypto map tag: Tunnel0-head-0, local addr 1.1.1.1
+   local  ident (addr/mask/prot/port): (1.1.1.1/255.255.255.255/47/0)
+   remote ident (addr/mask/prot/port): (2.2.2.2/255.255.255.255/47/0)
+   current_peer 2.2.2.2 port 500
+    #pkts encaps: 24, #pkts encrypt: 24, #pkts digest: 24
+    #pkts decaps: 24, #pkts decrypt: 24, #pkts verify: 24
+     inbound esp sas:
+        transform: esp-aes esp-sha-hmac ,
+        in use settings ={Transport, }`}]
+ }
+]},
+{ id:"f6", title:"Cierre", color:"var(--muted)", steps:[
+ { id:"6.1", title:"Resumen de fases y diagnóstico rápido",
+   focus:ALL, overlays:["hubtun","dyn","ipsec"],
+   lead:`<p>Lo que cambió en cada fase y qué revisar si algo no funciona.</p>`,
+   table:{head:["Fase DMVPN","Ruta en el spoke hacia el otro spoke","Camino del tráfico","Comandos clave"],rows:[
+     ["1","192.168.30.30 vía 10.10.10.1 (HUB)","Siempre por el HUB","<code>no ip split-horizon eigrp 1</code>"],
+     ["2","192.168.30.30 vía 10.10.10.3","Directo (túnel dinámico)","<code>no ip next-hop-self eigrp 1</code>"],
+     ["3","Sumaria vía HUB + ruta H vía 10.10.10.3","Directo tras el redirect","<code>ip nhrp redirect</code> · <code>ip nhrp shortcut</code>"]]},
+   extraHtml:`<h2 class="sec">Del síntoma a la causa</h2>
+<div class="tablewrap"><table class="t"><tr><th>Síntoma</th><th>Causa probable</th><th>Dónde mirar</th></tr>
+<tr><td>El spoke no aparece en <code>show dmvpn</code> del HUB</td><td>network-id o authentication distintos, o <code>ip nhrp map</code>/<code>nhs</code> mal escritos</td><td><code>show ip nhrp nhs detail</code> · <code>debug nhrp</code></td></tr>
+<tr><td>Spokes registrados pero sin vecinos EIGRP</td><td>Falta <code>ip nhrp map multicast dynamic</code> en el HUB o <code>map multicast 3.3.3.3</code> en el spoke</td><td><code>show ip eigrp neighbors</code></td></tr>
+<tr><td>Un spoke no aprende las rutas del otro</td><td>Split horizon activo en el HUB</td><td><code>show run interface tunnel 0</code></td></tr>
+<tr><td>En fase 2 el tráfico sigue pasando por el HUB</td><td>Falta <code>no ip next-hop-self eigrp 1</code></td><td><code>show ip route eigrp</code> en el spoke</td></tr>
+<tr><td>En fase 3 no aparecen rutas H</td><td>Falta <code>ip nhrp redirect</code> (HUB) o <code>ip nhrp shortcut</code> (spokes)</td><td><code>show ip route nhrp</code> · <code>show dmvpn</code></td></tr>
+<tr><td>Tras IPsec, túnel caído y ISAKMP en MM_NO_STATE</td><td>Clave o política ISAKMP distinta en un extremo</td><td><code>show crypto isakmp sa</code> · <code>debug crypto isakmp</code></td></tr>
+<tr><td>encaps sube, decaps queda en 0</td><td>El otro extremo no tiene <code>tunnel protection</code> o el transform set no coincide</td><td><code>show crypto ipsec sa</code> en ambos</td></tr></table></div>
+<h2 class="sec">Para repasar la teoría</h2>
+<p><a href="../Configuraci%C3%B3n%20de%20DMVPN.html">Configuración de DMVPN</a> · <a href="../Seguridad%20de%20T%C3%BAneles%20con%20IPsec.html">Seguridad de túneles con IPsec</a></p>`
+ }
+]}
+];
+
+/* =====================================================================
+   ESTADO
+   ===================================================================== */
+const STEPS = PHASES.flatMap(p=>p.steps.map(s=>({...s,phase:p})));
+const store = {
+  get(k,d){try{const v=localStorage.getItem("labdmvpn:"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem("labdmvpn:"+k,JSON.stringify(v))}catch(e){}}
+};
+let done = new Set(store.get("done",[]));
+let cur = 0, mode = "step", selDev = "HUB";
+const tabSel = {};
+
+/* =====================================================================
+   SVG TOPOLOGÍA
+   ===================================================================== */
+const svg = document.getElementById("net");
+const NS = "http://www.w3.org/2000/svg";
+function el(tag,attrs={},parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
+function buildTopo(){
+  const regions=[[370,215,300,170,"INTERNET · ISP","var(--reg-bb)","var(--reg-bb-b)"]];
+  const defs=el("defs",{},svg);const mk=el("marker",{id:"arw",viewBox:"0 0 6 6",refX:3,refY:3,markerWidth:3.2,markerHeight:3.2,orient:"auto"},defs);
+  el("path",{d:"M0,0 L6,3 L0,6 z",fill:"#fff"},mk);
+  const gR=el("g",{},svg);
+  regions.forEach(([x,y,w,h,t,f,s])=>{const g=el("g",{class:"region"},gR);el("rect",{x,y,width:w,height:h,rx:40,fill:f,stroke:s},g);const tx=el("text",{x:x+w/2,y:y+h-14,"text-anchor":"middle"},g);tx.textContent=t;});
+  // overlays
+  const ovS=el("g",{class:"overlay",id:"ov_ipsec"},svg);
+  ["M490,112 C 300,130 190,300 232,462","M550,112 C 740,130 850,300 808,462","M280,515 C 400,590 640,590 760,515"].forEach(d=>el("path",{d,stroke:"var(--ok)",style:"stroke-dasharray:none;stroke-width:12;opacity:.28"},ovS));
+  const tS=el("text",{x:520,y:30,"text-anchor":"middle",fill:"var(--ok)"},ovS);tS.textContent="IPsec · ESP modo transporte en cada túnel";
+  const ov1=el("g",{class:"overlay",id:"ov_hubtun"},svg);
+  el("path",{d:"M490,112 C 300,130 190,300 232,462",stroke:"var(--ce)"},ov1);
+  el("path",{d:"M550,112 C 740,130 850,300 808,462",stroke:"var(--ce)"},ov1);
+  const t1=el("text",{x:800,y:230,"text-anchor":"start",fill:"var(--ce)"},ov1);t1.textContent="Tunnel0 · mGRE";
+  const t1b=el("text",{x:800,y:248,"text-anchor":"start",fill:"var(--ce)"},ov1);t1b.textContent="10.10.10.0/24";
+  const ov2=el("g",{class:"overlay",id:"ov_dyn"},svg);
+  el("path",{d:"M280,515 C 400,590 640,590 760,515",stroke:"var(--warn)"},ov2);
+  const t2=el("text",{x:520,y:545,"text-anchor":"middle",fill:"var(--warn)"},ov2);t2.textContent="Túnel dinámico spoke–spoke";
+  // links
+  const gL=el("g",{},svg);
+  LINKS.forEach(([a,b,lbl])=>{
+    const A=NODES[a],B=NODES[b];const g=el("g",{class:"link",id:linkId(a,b)},gL);
+    if(a==="R1"&&b==="CE2"){ // multilink: dos seriales
+      el("line",{x1:A.x,y1:A.y-5,x2:B.x,y2:B.y-5},g);el("line",{x1:A.x,y1:A.y+5,x2:B.x,y2:B.y+5},g);
+    } else if(a==="SWA"&&b==="SWB"){
+      el("line",{x1:A.x,y1:A.y-5,x2:B.x,y2:B.y-5,"stroke-dasharray":"5 3"},g);el("line",{x1:A.x,y1:A.y+5,x2:B.x,y2:B.y+5,"stroke-dasharray":"5 3"},g);
+    } else el("line",{x1:A.x,y1:A.y,x2:B.x,y2:B.y},g);
+    let mx=(A.x+B.x)/2,my=(A.y+B.y)/2,dx=0,dy=-8,anchor="middle",text=lbl;
+    const inBB=BACKBONE.includes(a)&&BACKBONE.includes(b);
+    if(A.x===B.x){ // enlaces verticales: etiqueta hacia afuera del backbone
+      anchor=A.x<520?"end":"start";dx=A.x<520?-8:8;dy=4;
+    } else if(A.y!==B.y){ // diagonales: al 35% desde el PE superior, hacia dentro
+      const top=A.y<B.y?A:B,bot=A.y<B.y?B:A;mx=top.x+(bot.x-top.x)*.35;my=top.y+(bot.y-top.y)*.35;
+      anchor=top.x<bot.x?"start":"end";dx=top.x<bot.x?8:-8;dy=4;
+    } else if(!inBB){ dy=-24; }
+    if(a==="R1"&&b==="CE2"){ // multilink: red arriba, nombre abajo
+      text="192.168.12.0/24";
+      const t2=el("text",{x:mx,y:my+20,"text-anchor":"middle"},g);t2.textContent="Multilink 1";
+    }
+    const t=el("text",{x:mx+dx,y:my+dy,"text-anchor":anchor},g);t.textContent=text;
+  });
+  // nodes
+  const gN=el("g",{},svg);
+  for(const [name,n] of Object.entries(NODES)){
+    const g=el("g",{class:"node",id:"N_"+name,tabindex:0,role:"button","aria-label":name},gN);
+    const col=ROLE_COLOR[n.role];
+    el("ellipse",{class:"ring",cx:n.x,cy:n.y,rx:31,ry:25},g);
+    drawIcon(g,n,col);
+    const nm=el("text",{class:"name",x:n.x,y:n.y+33},g);nm.textContent=name.replace("PC-","PC ");
+    const sb=el("text",{class:"sub",x:n.x,y:n.y+47},g);sb.textContent=n.sub;
+    const tt=el("title",{},g);tt.textContent=name+" — "+n.info;
+    const go=()=>{selDev=name;if(aside.classList.contains("big"))setBig(false);setMode("dev")};
+    g.addEventListener("click",go);g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}});
+  }
+  // packet
+  const p=el("g",{id:"pkt",style:"display:none"},svg);
+  el("rect",{x:-38,y:-11,width:76,height:22,rx:6},p);el("text",{x:0,y:0},p);
+}
+/* Íconos estilo diagrama de red: router (cilindro con flechas), switch (caja con flechas), PC (monitor) */
+function drawIcon(parent,n,col){
+  const g=el("g",{class:"icon",transform:`translate(${n.x},${n.y})`},parent);
+  if(n.role==="host"){
+    el("rect",{x:-17,y:-16,width:34,height:23,rx:3,fill:col},g);
+    el("rect",{class:"scr",x:-14,y:-13,width:28,height:17,rx:1.5},g);
+    el("path",{class:"hi",d:"M-14,-13 h28 v6 l-28,6 z"},g);
+    el("rect",{x:-3,y:7,width:6,height:5,fill:col},g);
+    el("rect",{x:-12,y:11,width:24,height:4,rx:1.5,fill:col},g);
+  } else if(n.role==="sw"){
+    el("path",{d:"M-24,-5 L-17,-14 L27,-14 L20,-5 Z",fill:col},g);
+    el("path",{class:"hi",d:"M-24,-5 L-17,-14 L27,-14 L20,-5 Z"},g);
+    el("rect",{x:-24,y:-5,width:44,height:16,fill:col},g);
+    el("path",{d:"M20,-5 L27,-14 L27,2 L20,11 Z",fill:col},g);
+    el("path",{class:"lo",d:"M20,-5 L27,-14 L27,2 L20,11 Z"},g);
+    el("path",{class:"ar","marker-end":"url(#arw)",d:"M-14,-11.5 H8"},g);
+    el("path",{class:"ar","marker-end":"url(#arw)",d:"M12,-7.5 H-10"},g);
+    el("path",{class:"edge",d:"M-24,-5 H20"},g);
+  } else {
+    el("path",{d:"M-22,-6 V7 A22,8 0 0 0 22,7 V-6 Z",fill:col},g);
+    el("path",{class:"lo",d:"M-22,-6 V7 A22,8 0 0 0 22,7 V-6 Z"},g);
+    el("ellipse",{cx:0,cy:-6,rx:22,ry:8,fill:col},g);
+    el("ellipse",{class:"hi",cx:0,cy:-6,rx:22,ry:8},g);
+    // flechas: dos entrando (izq/der) y dos saliendo (arriba/abajo)
+    el("path",{class:"ar","marker-end":"url(#arw)",d:"M-17,-6 H-7"},g);
+    el("path",{class:"ar","marker-end":"url(#arw)",d:"M17,-6 H7"},g);
+    el("path",{class:"ar","marker-end":"url(#arw)",d:"M2,-8 L6,-12.5"},g);
+    el("path",{class:"ar","marker-end":"url(#arw)",d:"M-2,-4 L-6,0.5"},g);
+    const t=el("text",{x:0,y:4.5,"text-anchor":"middle",style:"font-size:8.5px;font-weight:700;fill:#fff;opacity:.9;font-family:'JetBrains Mono',monospace"},g);
+    t.textContent=n.role==="hub"?"HUB":n.role==="spoke"?"S":"ISP";
+  }
+}
+function applyFocus(step){
+  const nodes=step&&step.focus||[];const links=new Set();
+  if(step){
+    (step.links||[]).forEach(([a,b])=>links.add(linkId(a,b)));
+    if(!step.links) LINKS.forEach(([a,b])=>{if(nodes.includes(a)&&nodes.includes(b))links.add(linkId(a,b))});
+  }
+  svg.classList.toggle("focus",nodes.length>0);
+  svg.querySelectorAll(".node").forEach(n=>{const nm=n.id.slice(2);n.classList.toggle("on",nodes.includes(nm));n.classList.toggle("sel",mode==="dev"&&nm===selDev)});
+  svg.querySelectorAll(".link").forEach(l=>l.classList.toggle("on",links.has(l.id)));
+  OVERLAYS.forEach(o=>document.getElementById("ov_"+o).classList.toggle("on",!!(step&&(step.overlays||[]).includes(o))));
+  const bar=document.getElementById("animBar");
+  if(step&&step.anim){bar.hidden=false;document.getElementById("animLbl").textContent=ANIMS[step.anim].label;bar.dataset.anim=step.anim}
+  else bar.hidden=true;
+  stopAnim();
+}
+let animRaf=null;
+function stopAnim(){if(animRaf)cancelAnimationFrame(animRaf);animRaf=null;document.getElementById("pkt").style.display="none"}
+function playAnim(key){
+  stopAnim();const A=ANIMS[key];const pkt=document.getElementById("pkt");const txt=pkt.querySelector("text");const rect=pkt.querySelector("rect");
+  const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;const dur=reduce?10:1300,pause=reduce?900:350;
+  let i=0,t0=null;pkt.style.display="";document.getElementById("animLbl").textContent=A.explain;
+  function frame(ts){
+    if(i>=A.hops.length){animRaf=setTimeout(()=>{pkt.style.display="none"},900);return}
+    const [a,b,lab]=A.hops[i];const P=NODES[a],Q=NODES[b];
+    if(t0===null){t0=ts;txt.textContent=lab;const w=Math.max(40,lab.length*7.2+14);rect.setAttribute("width",w);rect.setAttribute("x",-w/2)}
+    let k=Math.min(1,(ts-t0)/dur);const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    pkt.setAttribute("transform",`translate(${P.x+(Q.x-P.x)*e},${P.y+(Q.y-P.y)*e-26})`);
+    if(ts-t0>=dur+pause){i++;t0=null}
+    animRaf=requestAnimationFrame(frame);
+  }
+  animRaf=requestAnimationFrame(frame);
+}
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const KW=/^(\s*)(conf t|end|exit|exit-address-family|wr|router (ospf|bgp|eigrp) \d+|crypto (isakmp policy \d+|ipsec transform-set [^\n]+|ipsec profile \S+)|interface( range)? [^\n]+|ip vrf \S+|address-family [^\n]+|vlan \d+|ip dhcp pool \S+)$/;
+function hlCode(code,hls=[]){
+  return code.split("\n").map(line=>{
+    if(/^\s*!/.test(line))return `<span class="c">${esc(line)}</span>`;
+    let h=esc(line);
+    if(KW.test(line))h=`<span class="k">${h}</span>`;
+    hls.forEach(s=>{const es=esc(s);if(h.includes(es))h=h.replace(es,`<span class="hl">${es}</span>`)});
+    return h;
+  }).join("\n");
+}
+async function copyText(t,btn){
+  try{await navigator.clipboard.writeText(t)}catch(e){const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand("copy")}catch(_){}ta.remove()}
+  const o=btn.textContent;btn.textContent="✓ Copiado";btn.classList.add("ok");setTimeout(()=>{btn.textContent=o;btn.classList.remove("ok")},1400);
+}
+function devColor(d){return NODES[d]?ROLE_COLOR[NODES[d].role]:"var(--muted)"}
+function codeBox(dev,code,hls,title){
+  const id="cb"+Math.random().toString(36).slice(2,8);
+  return `<div class="codebox"><div class="bar"><span><b>${esc(dev)}</b>${title?" · "+esc(title):""}</span><button class="copy" data-copy="${id}">Copiar</button></div><pre class="code" id="${id}">${hlCode(code,hls)}</pre></div>`;
+}
+function renderNav(){
+  const L=document.getElementById("stepsList");
+  L.innerHTML=PHASES.map(p=>`<div class="phase"><div class="phase-h"><span class="dot" style="background:${p.color}"></span>${esc(p.title)}</div>`+
+    p.steps.map(s=>{const i=STEPS.findIndex(x=>x.id===s.id);return `<button class="step-link ${done.has(s.id)?"done":""}" data-i="${i}" ${mode==="step"&&i===cur?'aria-current="step"':""}><span class="n">${s.id}</span><span>${esc(s.title)}</span><span class="ck">✓</span></button>`}).join("")+`</div>`).join("");
+  L.querySelectorAll(".step-link").forEach(b=>b.onclick=()=>{go(+b.dataset.i);if(innerWidth<=820)document.getElementById("stepsNav").classList.add("collapsed")});
+  const pct=Math.round(100*done.size/STEPS.length);document.getElementById("progBar").style.width=pct+"%";
+}
+function renderStep(){
+  const s=STEPS[cur];const m=document.getElementById("main");
+  let h=`<div class="card"><div class="eyebrow"><span>${esc(s.phase.title)}</span>·<span>Paso ${s.id} de ${STEPS[STEPS.length-1].id}</span></div>
+  <h1 class="step-title">${esc(s.title)}</h1><div class="lead">${s.lead||""}</div>`;
+  if(s.why)h+=`<div class="callout why"><b class="t">¿Por qué?</b>${s.why}</div>`;
+  if(s.warn)h+=`<div class="callout warn"><b class="t">Importante</b>${s.warn}</div>`;
+  if(s.table)h+=`<div class="tablewrap"><table class="t"><tr>${s.table.head.map(x=>`<th>${x}</th>`).join("")}</tr>${s.table.rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</table></div>`;
+  if(s.blocks&&s.blocks.length){
+    const sel=tabSel[s.id]??0;
+    h+=`<h2 class="sec">Configuración (${s.blocks.length} equipo${s.blocks.length>1?"s":""})</h2><div class="devtabs" role="tablist">`+
+      s.blocks.map((b,i)=>`<button role="tab" aria-selected="${i===sel}" data-tab="${i}"><span class="sw" style="background:${devColor(b.dev)}"></span>${esc(b.dev)}</button>`).join("")+`</div>`;
+    const b=s.blocks[sel];h+=codeBox(b.dev,b.code,b.hl);
+    if(s.note)h+=`<p class="blocknote">ℹ ${esc(s.note)}</p>`;
+  }
+  if(s.extraHtml)h+=s.extraHtml;
+  if(s.tip)h+=`<div class="callout tip"><b class="t">Tip</b>${s.tip}</div>`;
+  if(s.verify&&s.verify.length){
+    h+=`<h2 class="sec">Verificación</h2>`+s.verify.map(v=>{const id="v"+Math.random().toString(36).slice(2,8);return `<div class="verify"><div class="vh"><span class="dev">${esc(v.dev)}</span><code id="${id}">${esc(v.cmd)}</code><button class="copy" data-copy="${id}">Copiar</button></div><div class="vb">✔ ${esc(v.expect)}${v.out?`<details><summary>Ver salida de ejemplo</summary><pre>${esc(v.out)}</pre></details>`:""}</div></div>`}).join("");
+  }
+  const isDone=done.has(s.id);
+  h+=`<div class="navbtns"><button class="btn" id="prevB" ${cur===0?"disabled":""}>← Anterior</button>
+  <button class="btn ${isDone?"done":""}" id="doneB">${isDone?"✓ Completado":"Marcar como completado"}</button>
+  <button class="btn primary" id="nextB" ${cur===STEPS.length-1?"disabled":""}>Siguiente →</button></div><p class="kbd">Atajos: ← → para navegar · C para marcar completado</p></div>`;
+  m.innerHTML=h;
+  m.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{tabSel[s.id]=+b.dataset.tab;renderStep()});
+  m.querySelector("#prevB").onclick=()=>go(cur-1);
+  m.querySelector("#nextB").onclick=()=>{if(!done.has(s.id)){done.add(s.id);store.set("done",[...done])}go(cur+1)};
+  m.querySelector("#doneB").onclick=toggleDone;
+  bindCopy(m);applyFocus(s);
+}
+function renderDevice(){
+  const devs=[...new Set(STEPS.flatMap(s=>(s.blocks||[]).map(b=>b.dev)))];
+  if(!devs.includes(selDev))selDev=devs[0];
+  const m=document.getElementById("main");
+  const secs=STEPS.filter(s=>(s.blocks||[]).some(b=>b.dev===selDev));
+  const all=secs.map(s=>`! ===== Paso ${s.id}: ${s.title} =====\n`+s.blocks.filter(b=>b.dev===selDev).map(b=>b.code).join("\n")).join("\n\n");
+  let h=`<div class="card"><div class="eyebrow"><span>Vista por equipo</span>${NODES[selDev]?`· <span class="mono">${esc(NODES[selDev].info)}</span>`:""}</div>
+  <h1 class="step-title">Configuración de ${esc(selDev)}</h1>
+  <div class="devpick">${devs.map(d=>`<button aria-pressed="${d===selDev}" data-dev="${esc(d)}">${esc(d)}</button>`).join("")}</div>`;
+  if(!secs.length)h+=`<p>Este equipo no requiere configuración en esta guía.</p>`;
+  else{
+    h+=`<p class="blocknote" style="margin-bottom:12px">${secs.length} paso(s) involucran a ${esc(selDev)}. Puedes copiar todo de una vez o ir bloque por bloque.</p>`;
+    h+=`<details style="margin-bottom:16px"><summary style="cursor:pointer;color:var(--accent);font-weight:600">Ver / copiar configuración completa en un solo bloque</summary><div style="margin-top:8px">${codeBox(selDev,all,[],"todos los pasos")}</div></details>`;
+    secs.forEach(s=>{const i=STEPS.indexOf(s);s.blocks.filter(b=>b.dev===selDev).forEach(b=>{
+      h+=`<div class="devsec"><h3><span class="chip">${s.id}</span>${esc(s.title)} <a href="#paso-${s.id}" data-goto="${i}">ir al paso →</a></h3>${codeBox(selDev,b.code,b.hl)}</div>`})});
+  }
+  h+=`</div>`;m.innerHTML=h;
+  m.querySelectorAll("[data-dev]").forEach(b=>b.onclick=()=>{selDev=b.dataset.dev;renderDevice()});
+  m.querySelectorAll("[data-goto]").forEach(a=>a.onclick=e=>{e.preventDefault();setMode("step");go(+a.dataset.goto)});
+  bindCopy(m);
+  applyFocus({focus:NODES[selDev]?[selDev]:[],overlays:[]});
+}
+function bindCopy(root){root.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>copyText(document.getElementById(b.dataset.copy).innerText,b))}
+function toggleDone(){const s=STEPS[cur];done.has(s.id)?done.delete(s.id):done.add(s.id);store.set("done",[...done]);renderNav();renderStep()}
+function go(i){if(i<0||i>=STEPS.length)return;cur=i;store.set("cur",cur);if(mode!=="step"){mode="step";syncModeBtns()}history.replaceState(null,"","#paso-"+STEPS[cur].id);renderNav();renderStep();window.scrollTo({top:0,behavior:"smooth"})}
+function syncModeBtns(){document.getElementById("mStep").setAttribute("aria-pressed",mode==="step");document.getElementById("mDev").setAttribute("aria-pressed",mode==="dev")}
+function setMode(md){mode=md;syncModeBtns();renderNav();if(mode==="step")renderStep();else{history.replaceState(null,"","#equipo-"+selDev);renderDevice();window.scrollTo({top:0,behavior:"smooth"})}}
+
+/* =====================================================================
+   INIT
+   ===================================================================== */
+buildTopo();
+document.getElementById("mStep").onclick=()=>setMode("step");
+document.getElementById("mDev").onclick=()=>setMode("dev");
+document.getElementById("playBtn").onclick=()=>playAnim(document.getElementById("animBar").dataset.anim);
+const bigBtn=document.getElementById("bigBtn"),aside=document.querySelector("aside.topo");let bd=null;
+function setBig(on){aside.classList.toggle("big",on);bigBtn.textContent=on?"✕ Cerrar":"⤢ Ampliar";if(on){bd=document.createElement("div");bd.className="backdrop";bd.onclick=()=>setBig(false);document.body.appendChild(bd)}else if(bd){bd.remove();bd=null}}
+bigBtn.onclick=()=>setBig(!aside.classList.contains("big"));
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&aside.classList.contains("big"))setBig(false)});
+document.getElementById("navToggle").onclick=()=>document.getElementById("stepsNav").classList.toggle("collapsed");
+if(innerWidth<=820)document.getElementById("stepsNav").classList.add("collapsed");
+document.getElementById("resetBtn").onclick=()=>{done=new Set();store.set("done",[]);renderNav();if(mode==="step")renderStep()};
+const root=document.documentElement;const savedTheme=store.get("theme",null);if(savedTheme)root.dataset.theme=savedTheme;
+document.getElementById("themeBtn").onclick=()=>{const dark=root.dataset.theme?root.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;root.dataset.theme=dark?"light":"dark";store.set("theme",root.dataset.theme)};
+document.addEventListener("keydown",e=>{
+  if(e.target.closest("input,textarea")||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(mode!=="step")return;
+  if(e.key==="ArrowRight")go(cur+1);else if(e.key==="ArrowLeft")go(cur-1);else if(e.key.toLowerCase()==="c")toggleDone();
+});
+(function start(){
+  const h=decodeURIComponent(location.hash);
+  let m=h.match(/^#paso-(.+)$/);
+  if(m){const i=STEPS.findIndex(s=>s.id===m[1]);if(i>=0)cur=i}
+  else if((m=h.match(/^#equipo-(.+)$/))&&NODES[m[1]]){selDev=m[1];setMode("dev");return}
+  else cur=Math.min(store.get("cur",0),STEPS.length-1);
+  renderNav();renderStep();
+})();
+</script>
+</body>
+</html>
