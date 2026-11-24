@@ -1,0 +1,1262 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guía MPLS VPN</title>
+<meta name="description" content="Laboratorio N°15 ARY6112 — Guía interactiva paso a paso para implementar MPLS VPN de Capa 3 y Capa 2.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --surface-2:#eef0f3; --border:#d9dde3;
+  --text:#1b1f24; --muted:#5d6672; --accent:#1f5fbf; --accent-soft:#e3ecfa;
+  --ok:#1f8a4c; --ok-soft:#e2f4ea; --warn:#a85d00; --warn-soft:#fdf0dc;
+  --bad:#b3261e; --bad-soft:#fbe4e2;
+  --code-bg:#0f1720; --code-text:#e6edf3; --code-cmt:#7d8b99; --code-kw:#7cc4ff;
+  --pe:#6b3fb5; --p:#1f5fbf; --ce:#2f8f5b; --ce2:#c0392b; --host:#5d6672;
+  --reg-l3:#e7f3e2; --reg-l3-b:#8cc27a; --reg-l2:#f8e3e3; --reg-l2-b:#d98080; --reg-bb:#fdf4d6; --reg-bb-b:#e5b94a;
+  --dim:.18;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1216; --surface:#171b21; --surface-2:#1f252d; --border:#2c333d;
+    --text:#e6e9ee; --muted:#9aa4b1; --accent:#6ea8ff; --accent-soft:#1a2a44;
+    --ok:#4cc38a; --ok-soft:#14301f; --warn:#f0a648; --warn-soft:#33240f;
+    --bad:#ff7b72; --bad-soft:#3a1714;
+    --code-bg:#0a0e13; --code-text:#e6edf3; --code-cmt:#6c7a89; --code-kw:#7cc4ff;
+    --pe:#a98bea; --p:#6ea8ff; --ce:#5cc98c; --ce2:#ff8a80; --host:#9aa4b1;
+    --reg-l3:#16261a; --reg-l3-b:#3f7a45; --reg-l2:#2a1617; --reg-l2-b:#8a4444; --reg-bb:#2a2410; --reg-bb-b:#8a7228;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1216; --surface:#171b21; --surface-2:#1f252d; --border:#2c333d;
+  --text:#e6e9ee; --muted:#9aa4b1; --accent:#6ea8ff; --accent-soft:#1a2a44;
+  --ok:#4cc38a; --ok-soft:#14301f; --warn:#f0a648; --warn-soft:#33240f;
+  --bad:#ff7b72; --bad-soft:#3a1714;
+  --code-bg:#0a0e13; --code-text:#e6edf3; --code-cmt:#6c7a89; --code-kw:#7cc4ff;
+  --pe:#a98bea; --p:#6ea8ff; --ce:#5cc98c; --ce2:#ff8a80; --host:#9aa4b1;
+  --reg-l3:#16261a; --reg-l3-b:#3f7a45; --reg-l2:#2a1617; --reg-l2-b:#8a4444; --reg-bb:#2a2410; --reg-bb-b:#8a7228;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif;}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:var(--accent)}
+
+/* ---------- header ---------- */
+header.top{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--border);}
+.top-inner{max-width:1500px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;line-height:1.2;margin-right:auto}
+.brand b{font-size:16px}
+.brand span{font-size:12px;color:var(--muted)}
+.modes{display:flex;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:3px}
+.modes button{border:0;background:transparent;padding:5px 12px;border-radius:6px;font-size:13px;font-weight:500;color:var(--muted)}
+.modes button[aria-pressed="true"]{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.icon-btn{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:6px 10px;font-size:13px}
+.progress{height:4px;background:var(--surface-2)}
+.progress i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
+
+/* ---------- layout ---------- */
+.layout{max-width:1500px;margin:0 auto;padding:16px;display:grid;grid-template-columns:250px minmax(0,1fr) minmax(0,600px);gap:16px;align-items:start}
+nav.steps{position:sticky;top:76px;max-height:calc(100vh - 92px);overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px}
+.phase{margin-bottom:8px}
+.phase-h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 8px 4px;display:flex;gap:6px;align-items:center}
+.phase-h .dot{width:8px;height:8px;border-radius:50%}
+.step-link{display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;border:0;background:transparent;padding:6px 8px;border-radius:7px;font-size:13.5px;color:var(--text)}
+.step-link:hover{background:var(--surface-2)}
+.step-link[aria-current="step"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.step-link .n{flex:none;width:30px;font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--muted);padding-top:2px}
+.step-link .ck{flex:none;margin-left:auto;color:var(--ok);font-size:12px;visibility:hidden}
+.step-link.done .ck{visibility:visible}
+
+main{min-width:0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px}
+.eyebrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:6px}
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted)}
+h1.step-title{font-size:24px;line-height:1.25;margin:0 0 12px}
+h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 10px}
+.lead p{margin:0 0 10px}
+.lead ul{margin:0 0 10px;padding-left:20px}
+.lead code,.callout code,td code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:.9em}
+
+.callout{border-radius:10px;padding:12px 14px;margin:12px 0;font-size:14px;border-left:4px solid}
+.callout b.t{display:block;margin-bottom:3px}
+.callout.why{background:var(--accent-soft);border-color:var(--accent)}
+.callout.warn{background:var(--warn-soft);border-color:var(--warn)}
+.callout.tip{background:var(--ok-soft);border-color:var(--ok)}
+.callout p{margin:0 0 6px}.callout p:last-child{margin:0}
+.callout ul{margin:4px 0 0;padding-left:20px}
+
+/* tabs + code */
+.devtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.devtabs button{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.devtabs button .sw{width:9px;height:9px;border-radius:3px}
+.devtabs button[aria-selected="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.devtabs button.copied-all{opacity:.6}
+.codebox{position:relative;background:var(--code-bg);color:var(--code-text);border-radius:10px;overflow:hidden}
+.codebox .bar{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid #ffffff14;font-size:12px;color:var(--code-cmt)}
+.codebox .bar b{color:var(--code-text);font-weight:600}
+.copy{border:1px solid #ffffff26;background:#ffffff10;color:var(--code-text);border-radius:6px;padding:3px 10px;font-size:12px}
+.copy.ok{background:#1f8a4c;border-color:#1f8a4c}
+pre.code{margin:0;padding:12px 14px;overflow:auto;font-size:13px;line-height:1.6;max-height:520px}
+pre.code .c{color:var(--code-cmt);font-style:italic}
+pre.code .k{color:var(--code-kw)}
+pre.code .hl{background:#f0a64830;border-radius:3px;outline:1px solid #f0a64880}
+.blocknote{font-size:13px;color:var(--muted);margin:8px 2px 0}
+
+.verify{border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden}
+.verify .vh{display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--surface-2);flex-wrap:wrap}
+.verify .vh .dev{font-weight:700;font-size:12px;padding:2px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border)}
+.verify .vh code{font-size:13px;flex:1;min-width:180px}
+.verify .vh .copy{background:var(--surface);border-color:var(--border);color:var(--text)}
+.verify .vb{padding:10px 12px;font-size:13.5px}
+.verify details summary{cursor:pointer;color:var(--accent);font-size:13px;margin-top:4px}
+.verify pre{background:var(--code-bg);color:var(--code-text);padding:10px 12px;border-radius:8px;font-size:12.5px;overflow:auto;margin:8px 0 0}
+
+table.t{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0 12px}
+table.t th,table.t td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:top}
+table.t th{font-size:12px;color:var(--muted);font-weight:600;background:var(--surface-2)}
+.tablewrap{overflow-x:auto}
+
+.navbtns{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-top:22px;padding-top:16px;border-top:1px solid var(--border)}
+.btn{border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:9px 16px;font-weight:600;font-size:14px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.done{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.btn:disabled{opacity:.4;cursor:default}
+.kbd{font-size:12px;color:var(--muted)}
+
+/* ---------- topology panel ---------- */
+aside.topo{position:sticky;top:76px}
+.topo .card{padding:12px}
+.topo-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 4px 6px;flex-wrap:wrap}
+.topo-h b{font-size:13px}
+.topo-h .hint{font-size:12px;color:var(--muted)}
+svg.net{width:100%;height:auto;display:block;user-select:none}
+aside.topo.big{position:fixed;inset:12px;z-index:50;overflow:auto}
+aside.topo.big .card{min-height:100%;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+aside.topo.big svg.net{max-height:calc(100vh - 170px)}
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40}
+svg.net .region rect{stroke-width:1.5;stroke-dasharray:6 4}
+svg.net .region text{font-size:14px;font-weight:700;fill:var(--muted)}
+svg.net .link line,svg.net .link path{stroke:var(--muted);stroke-width:2.2;fill:none}
+svg.net .link text{font-size:12px;fill:var(--muted);font-family:"JetBrains Mono",monospace}
+svg.net .node{cursor:pointer}
+svg.net .node .icon .hi{fill:#fff;opacity:.22}
+svg.net .node .icon .lo{fill:#000;opacity:.25}
+svg.net .node .icon .ar{stroke:#fff;stroke-width:1.6;fill:none;stroke-linecap:round}
+svg.net .node .icon .scr{fill:#dbe8f7}
+svg.net .node .icon .edge{stroke:#00000040;stroke-width:1;fill:none}
+svg.net .node text.name{font-size:15px;font-weight:700;fill:var(--text);text-anchor:middle}
+svg.net .node text.sub{font-size:12px;fill:var(--muted);text-anchor:middle;font-family:"JetBrains Mono",monospace}
+svg.net .node text.ic{font-size:11px;font-weight:700;fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+svg.net .overlay{opacity:0;transition:opacity .35s}
+svg.net .overlay.on{opacity:1}
+svg.net .overlay path{fill:none;stroke-width:3;stroke-dasharray:8 6}
+svg.net .overlay text{font-size:13px;font-weight:700}
+svg.net.focus .node:not(.on),svg.net.focus .link:not(.on){opacity:var(--dim)}
+svg.net .node,svg.net .link{transition:opacity .3s}
+svg.net .link.on line,svg.net .link.on path{stroke:var(--accent);stroke-width:3.2}
+svg.net .node.on .icon{filter:drop-shadow(0 0 5px var(--accent))}
+svg.net .node.sel .ring{opacity:1}
+svg.net .ring{opacity:0;fill:none;stroke:var(--accent);stroke-width:2.5;stroke-dasharray:4 3}
+#pkt{pointer-events:none}
+#pkt rect{fill:var(--warn);}
+#pkt text{font-size:11px;font-weight:700;fill:#1b1f24;font-family:"JetBrains Mono",monospace;text-anchor:middle;dominant-baseline:central}
+.anim-bar[hidden]{display:none}
+.anim-bar{display:flex;gap:8px;align-items:center;margin:8px 4px 0;flex-wrap:wrap}
+.anim-bar .lbl{font-size:12.5px;color:var(--muted);flex:1;min-width:160px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin:8px 4px 0}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+
+/* device view */
+.devpick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.devpick button{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:5px 11px;font-size:13px;font-weight:600}
+.devpick button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.devsec{margin-bottom:18px}
+.devsec h3{font-size:14px;margin:0 0 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.devsec h3 a{font-size:12px;font-weight:500}
+
+@media (max-width:1250px){
+  .layout{grid-template-columns:240px minmax(0,1fr)}
+  aside.topo{grid-column:1 / -1;position:static;order:-1}
+}
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);padding:12px 16px}
+  nav.steps{position:static;max-height:none}
+  nav.steps.collapsed .phase{display:none}
+  .card{padding:16px}
+  h1.step-title{font-size:20px}
+}
+.navtoggle{display:none;width:100%;margin-bottom:6px}
+@media (max-width:820px){.navtoggle{display:block}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand"><b>Lab N°15 · MPLS VPN Capa 3 y Capa 2</b><span>ARY6112 · Guía interactiva paso a paso</span></div>
+    <div class="modes" role="group" aria-label="Modo de vista">
+      <button id="mStep" aria-pressed="true">Paso a paso</button>
+      <button id="mDev" aria-pressed="false">Por equipo</button>
+    </div>
+    <button class="icon-btn" id="themeBtn" title="Cambiar tema">◐ Tema</button>
+    <button class="icon-btn" id="resetBtn" title="Borrar progreso">↺ Reiniciar</button>
+  </div>
+  <div class="progress"><i id="progBar"></i></div>
+</header>
+
+<div class="layout">
+  <nav class="steps" id="stepsNav" aria-label="Pasos">
+    <button class="btn navtoggle" id="navToggle">☰ Ver lista de pasos</button>
+    <div id="stepsList"></div>
+  </nav>
+
+  <main id="main"></main>
+
+  <aside class="topo">
+    <div class="card">
+      <div class="topo-h"><b>Topología</b><span class="hint">Clic en un equipo para ver toda su configuración</span><button class="icon-btn" id="bigBtn">⤢ Ampliar</button></div>
+      <svg class="net" id="net" viewBox="0 0 1040 610" role="img" aria-label="Topología del laboratorio"></svg>
+      <div class="anim-bar" id="animBar" hidden>
+        <button class="btn primary" id="playBtn">▶ Animar paquete</button>
+        <span class="lbl" id="animLbl"></span>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--p)"></i>Router P (core)</span>
+        <span><i style="background:var(--pe)"></i>Router PE (borde)</span>
+        <span><i style="background:var(--ce)"></i>Router CE ENARSI (L3)</span>
+        <span><i style="background:var(--ce2)"></i>Router ENCOR (L2)</span>
+        <span><i style="background:var(--host)"></i>PC / Switch</span>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+/* =====================================================================
+   DATOS DE LA TOPOLOGÍA
+   ===================================================================== */
+const NODES = {
+  "PC-ENARSI1":{x:50, y:130, role:"host", sub:".7", info:"172.16.10.7/28 · gw 172.16.10.1"},
+  "CE1":{x:180,y:130, role:"ce", sub:"AS 65100", info:"e0/0 172.16.10.1/28 · e0/3 172.16.11.1/24"},
+  "PE1":{x:345,y:130, role:"pe", sub:"Lo0 11.11.11.11", info:"e0/0→PE2 · e0/1→P2 · e0/2→P1 · e0/3→CE1"},
+  "P1": {x:520,y:130, role:"p",  sub:"Lo0 1.1.1.1", info:"e0/1→PE3 · e0/2→PE1"},
+  "PE3":{x:695,y:130, role:"pe", sub:"Lo0 33.33.33.33", info:"e0/0→CE4 · e0/1→P1 · e0/2→P2 · e0/3→PE4"},
+  "CE4":{x:860,y:130, role:"ce", sub:"AS 65200", info:"e0/0 172.16.34.4/24 · e0/1 172.16.40.4/28"},
+  "PC-ENARSI2":{x:990,y:130, role:"host", sub:".9", info:"172.16.40.9/28 · gw 172.16.40.4"},
+  "PE2":{x:345,y:330, role:"pe", sub:"Lo0 22.22.22.22", info:"e0/0→PE1 · e0/2→CE2 (AC) · e0/3→P2"},
+  "P2": {x:520,y:330, role:"p",  sub:"Lo0 2.2.2.2", info:"e0/0→PE4 · e0/1→PE1 · e0/2→PE3 · e0/3→PE2"},
+  "PE4":{x:695,y:330, role:"pe", sub:"Lo0 44.44.44.44", info:"e0/0→P2 · e0/2→CE3 (AC) · e0/3→PE3"},
+  "PC-ENCOR1":{x:55, y:515, role:"host", sub:"DHCP", info:"e0/3 · cliente DHCP"},
+  "R1": {x:190,y:515, role:"ce2", sub:"Área 10", info:"e0/3 192.168.10.1/29 · Multilink1 .1"},
+  "CE2":{x:345,y:515, role:"ce2", sub:"DHCP srv", info:"Multilink1 192.168.12.2 · e0/2 192.168.23.2"},
+  "CE3":{x:695,y:515, role:"ce2", sub:"DHCP srv", info:"e0/2 192.168.23.3 · e0/0 192.168.33.3/29"},
+  "SWA":{x:800,y:515, role:"sw", sub:"VLAN 33", info:"e0/0→CE3 · e0/1-2 Po6 PAgP"},
+  "SWB":{x:900,y:515, role:"sw", sub:"VLAN 33", info:"e0/1-2 Po6 PAgP · e0/3→PC"},
+  "PC-ENCOR2":{x:990,y:515, role:"host", sub:"DHCP", info:"e0/3 · cliente DHCP (VLAN 33)"}
+};
+const LINKS = [
+  ["PC-ENARSI1","CE1","172.16.10.0/28"],["CE1","PE1","172.16.11.0/24"],["PE1","P1","10.10.11.0/24"],
+  ["P1","PE3","10.10.13.0/24"],["PE3","CE4","172.16.34.0/24"],["CE4","PC-ENARSI2","172.16.40.0/28"],
+  ["PE1","PE2","10.10.21.0/24"],["PE1","P2","10.10.12.0/24"],["P2","PE3","10.10.23.0/24"],["PE3","PE4","10.10.34.0/24"],
+  ["PE2","P2","10.10.22.0/24"],["P2","PE4","10.10.24.0/24"],
+  ["PE2","CE2","AC e0/2"],["PE4","CE3","AC e0/2"],
+  ["PC-ENCOR1","R1","192.168.10.0/29"],["R1","CE2","Multilink1 · 192.168.12.0/24"],
+  ["CE3","SWA","192.168.33.0/29"],["SWA","SWB","Po6 PAgP"],["SWB","PC-ENCOR2","VLAN 33"]
+];
+const ROLE_COLOR = {p:"var(--p)",pe:"var(--pe)",ce:"var(--ce)",ce2:"var(--ce2)",host:"var(--host)",sw:"var(--host)"};
+const BACKBONE = ["PE1","PE2","PE3","PE4","P1","P2"];
+const linkId = (a,b)=>"L_"+[a,b].sort().join("__");
+
+/* Animaciones de paquetes: [desde, hasta, etiqueta mostrada] */
+const ANIMS = {
+  trace: {label:"Traceroute PE1 → 33.33.33.33 (una de las rutas ECMP)", hops:[
+    ["PE1","P1","[2xx] IP"],["P1","PE3","IP · PHP"]],
+    explain:"P1 asignó la etiqueta 2xx para 33.33.33.33. PE3 anunció implicit-null, por eso P1 quita la etiqueta (PHP) antes de entregar."},
+  l3: {label:"PC-ENARSI1 → PC-ENARSI2 por MPLS VPN L3", hops:[
+    ["PC-ENARSI1","CE1","IP"],["CE1","PE1","IP"],["PE1","P1","[2xx|3xx] IP"],["P1","PE3","[3xx] IP"],["PE3","CE4","IP"],["CE4","PC-ENARSI2","IP"]],
+    explain:"Dos etiquetas: la externa (2xx de P1) lleva el paquete hasta PE3; la interna (3xx, etiqueta VPN asignada por PE3 vía MP-BGP) le dice a PE3 en qué VRF entregarlo."},
+  l2: {label:"Trama de CE2 → CE3 por el pseudowire (VC 111)", hops:[
+    ["CE2","PE2","Trama Eth"],["PE2","P2","[5xx|6xx] Eth"],["P2","PE4","[6xx] Eth"],["PE4","CE3","Trama Eth"]],
+    explain:"La trama Ethernet completa viaja encapsulada. Externa 5xx (de P2) hacia PE4; interna 6xx = etiqueta del VC 111 asignada por PE4 mediante LDP dirigido."},
+  e2e: {label:"PC-ENCOR1 → PC-ENCOR2 (OSPF área 10 sobre el túnel L2)", hops:[
+    ["PC-ENCOR1","R1","IP"],["R1","CE2","IP (PPP)"],["CE2","PE2","Eth"],["PE2","P2","[5xx|6xx]"],["P2","PE4","[6xx]"],["PE4","CE3","Eth"],["CE3","SWA","VLAN 33"],["SWA","SWB","Po6"],["SWB","PC-ENCOR2","IP"]],
+    explain:"Para R1, CE2 y CE3 el backbone MPLS es transparente: CE2 y CE3 se ven como vecinos OSPF directos en 192.168.23.0/24."}
+};
+
+/* =====================================================================
+   CONTENIDO: FASES Y PASOS
+   ===================================================================== */
+const PHASES = [
+{ id:"f0", title:"Inicio", color:"var(--muted)", steps:[
+ { id:"0.1", title:"Objetivo del laboratorio y plan de trabajo",
+   focus:[], overlays:[],
+   lead:`<p>Un proveedor (AS <b>64000</b>) ofrece dos servicios sobre el mismo backbone MPLS:</p>
+<ul>
+<li><b>MPLS VPN de Capa 3</b> entre las sucursales <b>ENARSI 1</b> (AS 65100) y <b>ENARSI 2</b> (AS 65200), usando VRF + MP-BGP (VPNv4).</li>
+<li><b>MPLS VPN de Capa 2</b> (pseudowire / AToM) entre <b>ENCOR 1</b> y <b>ENCOR 2</b>, con túnel 192.168.23.0/24 y OSPF área 10 extremo a extremo.</li>
+</ul>
+<p>El orden importa: cada capa se apoya en la anterior.</p>`,
+   table:{head:["Fase","Qué se construye","Depende de"],rows:[
+     ["1 · IGP","OSPF área 0 en P/PE, incluyendo las Loopback0","Direccionamiento"],
+     ["2 · MPLS/LDP","CEF, rango de etiquetas, LDP con router-id Loopback0","OSPF (alcanzar loopbacks)"],
+     ["3 · VPN L3","VRF ENARSI, iBGP VPNv4 PE1↔PE3, eBGP con CE1/CE4","LSP entre PE1 y PE3"],
+     ["4 · VPN L2","xconnect PE2↔PE4 (VC 111) + sucursales ENCOR","LSP entre PE2 y PE4"]]},
+   extraHtml:`<h2 class="sec">Rango de etiquetas por router</h2>
+<div class="tablewrap"><table class="t"><tr><th>Router</th><th>PE1</th><th>P1</th><th>PE3</th><th>PE2</th><th>P2</th><th>PE4</th></tr>
+<tr><td>Rango</td><td><code>100-199</code></td><td><code>200-299</code></td><td><code>300-399</code></td><td><code>400-499</code></td><td><code>500-599</code></td><td><code>600-699</code></td></tr></table></div>
+<p class="blocknote">Así, al ver una etiqueta en un traceroute o en la LFIB sabes de inmediato qué router la asignó (ej. 2xx ⇒ P1).</p>
+<h2 class="sec">Diagrama original del enunciado</h2>
+<a href="img/topologia.png" target="_blank" rel="noopener"><img src="img/topologia.png" alt="Topología original del laboratorio 15" style="width:100%;border-radius:8px;border:1px solid var(--border)"></a>`,
+   tip:`Usa ← y → para avanzar. Marca cada paso como completado; el progreso queda guardado en este navegador. El modo <b>Por equipo</b> junta todo lo que se configura en un router.`
+ }
+]},
+{ id:"f1", title:"Fase 1 · IGP del backbone (OSPF área 0)", color:"var(--p)", steps:[
+ { id:"1.1", title:"Direccionamiento y Loopback0 del backbone",
+   focus:BACKBONE, overlays:[],
+   lead:`<p>Normalmente el laboratorio trae las interfaces ya direccionadas. Antes de empezar revisa con <code>show ip interface brief</code>; si alguna interfaz o la Loopback0 falta, configúrala con estos bloques.</p>`,
+   why:`La <b>Loopback0</b> (/32) es la identidad del router: es el <b>router-id de LDP</b>, el origen de las sesiones <b>iBGP</b> y el destino del <b>xconnect</b>. Nunca se cae mientras el router esté vivo.`,
+   blocks:[
+    {dev:"PE1",code:`conf t
+hostname PE1
+interface Loopback0
+ ip address 11.11.11.11 255.255.255.255
+interface e0/0
+ description PE2
+ ip address 10.10.21.1 255.255.255.0
+ no shutdown
+interface e0/1
+ description P2
+ ip address 10.10.12.1 255.255.255.0
+ no shutdown
+interface e0/2
+ description P1
+ ip address 10.10.11.1 255.255.255.0
+ no shutdown
+end`},
+    {dev:"PE2",code:`conf t
+hostname PE2
+interface Loopback0
+ ip address 22.22.22.22 255.255.255.255
+interface e0/0
+ description PE1
+ ip address 10.10.21.2 255.255.255.0
+ no shutdown
+interface e0/3
+ description P2
+ ip address 10.10.22.2 255.255.255.0
+ no shutdown
+end`},
+    {dev:"PE3",code:`conf t
+hostname PE3
+interface Loopback0
+ ip address 33.33.33.33 255.255.255.255
+interface e0/1
+ description P1
+ ip address 10.10.13.3 255.255.255.0
+ no shutdown
+interface e0/2
+ description P2
+ ip address 10.10.23.3 255.255.255.0
+ no shutdown
+interface e0/3
+ description PE4
+ ip address 10.10.34.3 255.255.255.0
+ no shutdown
+end`},
+    {dev:"PE4",code:`conf t
+hostname PE4
+interface Loopback0
+ ip address 44.44.44.44 255.255.255.255
+interface e0/0
+ description P2
+ ip address 10.10.24.4 255.255.255.0
+ no shutdown
+interface e0/3
+ description PE3
+ ip address 10.10.34.4 255.255.255.0
+ no shutdown
+end`},
+    {dev:"P1",code:`conf t
+hostname P1
+interface Loopback0
+ ip address 1.1.1.1 255.255.255.255
+interface e0/1
+ description PE3
+ ip address 10.10.13.2 255.255.255.0
+ no shutdown
+interface e0/2
+ description PE1
+ ip address 10.10.11.2 255.255.255.0
+ no shutdown
+end`},
+    {dev:"P2",code:`conf t
+hostname P2
+interface Loopback0
+ ip address 2.2.2.2 255.255.255.255
+interface e0/0
+ description PE4
+ ip address 10.10.24.2 255.255.255.0
+ no shutdown
+interface e0/1
+ description PE1
+ ip address 10.10.12.3 255.255.255.0
+ no shutdown
+interface e0/2
+ description PE3
+ ip address 10.10.23.2 255.255.255.0
+ no shutdown
+interface e0/3
+ description PE2
+ ip address 10.10.22.3 255.255.255.0
+ no shutdown
+end`}],
+   verify:[{dev:"Todos",cmd:"show ip interface brief",expect:"Todas las interfaces del backbone y Loopback0 en up/up con su IP."}]
+ },
+ { id:"1.2", title:"OSPF proceso 1, área 0 (interfaces + loopbacks)",
+   focus:BACKBONE, overlays:[],
+   lead:`<p>La Loopback0 será la interfaz desde la que se distribuyen las etiquetas con LDP, por eso se deben enrutar <b>tanto las IP de los enlaces como las loopbacks</b>. Cada <code>network</code> usa wildcard <code>0.0.0.0</code>, es decir, activa OSPF exactamente en esa IP.</p>`,
+   why:`LDP y BGP establecen sesiones TCP entre <b>loopbacks</b>. Si una loopback no está en OSPF, el vecino no la alcanza y no habrá LSP, ni VPNv4, ni pseudowire. El <code>router-id</code> manual (agregado aquí) evita sorpresas.`,
+   blocks:[
+    {dev:"PE1",code:`conf t
+router ospf 1
+ router-id 11.11.11.11
+ network 10.10.11.1 0.0.0.0 area 0
+ network 11.11.11.11 0.0.0.0 area 0
+ network 10.10.21.1 0.0.0.0 area 0
+ network 10.10.12.1 0.0.0.0 area 0
+end`},
+    {dev:"PE2",code:`conf t
+router ospf 1
+ router-id 22.22.22.22
+ network 10.10.22.2 0.0.0.0 area 0
+ network 22.22.22.22 0.0.0.0 area 0
+ network 10.10.21.2 0.0.0.0 area 0
+end`},
+    {dev:"PE3",code:`conf t
+router ospf 1
+ router-id 33.33.33.33
+ network 33.33.33.33 0.0.0.0 area 0
+ network 10.10.13.3 0.0.0.0 area 0
+ network 10.10.23.3 0.0.0.0 area 0
+ network 10.10.34.3 0.0.0.0 area 0
+end`},
+    {dev:"PE4",code:`conf t
+router ospf 1
+ router-id 44.44.44.44
+ network 44.44.44.44 0.0.0.0 area 0
+ network 10.10.24.4 0.0.0.0 area 0
+ network 10.10.34.4 0.0.0.0 area 0
+end`},
+    {dev:"P1",code:`conf t
+router ospf 1
+ router-id 1.1.1.1
+ network 1.1.1.1 0.0.0.0 area 0
+ network 10.10.13.2 0.0.0.0 area 0
+ network 10.10.11.2 0.0.0.0 area 0
+end`},
+    {dev:"P2",code:`conf t
+router ospf 1
+ router-id 2.2.2.2
+ network 2.2.2.2 0.0.0.0 area 0
+ network 10.10.22.3 0.0.0.0 area 0
+ network 10.10.23.2 0.0.0.0 area 0
+ network 10.10.24.2 0.0.0.0 area 0
+ network 10.10.12.3 0.0.0.0 area 0
+end`}],
+   verify:[
+    {dev:"P2",cmd:"show ip ospf neighbor",expect:"P2 es el router más conectado: debe ver 4 vecinos FULL (PE1, PE2, PE3, PE4).",out:`Neighbor ID     Pri   State           Dead Time   Address         Interface
+44.44.44.44       1   FULL/DR         00:00:35    10.10.24.4      Ethernet0/0
+11.11.11.11       1   FULL/BDR        00:00:33    10.10.12.1      Ethernet0/1
+33.33.33.33       1   FULL/DR         00:00:36    10.10.23.3      Ethernet0/2
+22.22.22.22       1   FULL/DR         00:00:39    10.10.22.2      Ethernet0/3`},
+    {dev:"PE1",cmd:"show ip route ospf | include /32",expect:"Deben aparecer las 5 loopbacks remotas: 1.1.1.1, 2.2.2.2, 22.22.22.22, 33.33.33.33, 44.44.44.44."},
+    {dev:"PE2",cmd:"ping 44.44.44.44 source loopback 0",expect:"!!!!! — sin esto el xconnect de la fase 4 nunca subirá."}]
+ }
+]},
+{ id:"f2", title:"Fase 2 · Backbone MPLS con LDP", color:"var(--pe)", steps:[
+ { id:"2.1", title:"CEF y rango de etiquetas por router",
+   focus:BACKBONE, overlays:[],
+   lead:`<p>MPLS necesita <b>CEF</b> (Cisco Express Forwarding) activo: la LFIB se construye sobre él. Luego se fija el rango de etiquetas dinámicas para identificar a cada router.</p>`,
+   why:`Con rangos distintos, al leer una etiqueta sabes quién la generó. En MPLS cada router asigna etiquetas <b>localmente</b> y las anuncia a sus vecinos LDP: la etiqueta que ves en un enlace la eligió el <b>router de aguas abajo</b>.`,
+   warn:`<b>Orden:</b> configura <code>mpls label range</code> <u>antes</u> de activar LDP. Si lo haces después, IOS solo lo aplica tras <code>do wr</code> + <code>reload</code>.`,
+   blocks:[
+    {dev:"PE1",code:`conf t
+ip cef
+mpls label range 100 199
+end`},
+    {dev:"PE2",code:`conf t
+ip cef
+mpls label range 400 499
+end`},
+    {dev:"PE3",code:`conf t
+ip cef
+mpls label range 300 399
+end`},
+    {dev:"PE4",code:`conf t
+ip cef
+mpls label range 600 699
+end`},
+    {dev:"P1",code:`conf t
+ip cef
+mpls label range 200 299
+end`},
+    {dev:"P2",code:`conf t
+ip cef
+mpls label range 500 599
+end`}],
+   verify:[{dev:"Cualquiera",cmd:"show mpls label range",expect:"Downstream Generic label region: Min/Max label: 100/199 (en PE1), etc. Si muestra un rango ‘pending’, falta wr + reload."}]
+ },
+ { id:"2.2", title:"LDP con Loopback0 y autoconfiguración por OSPF",
+   focus:BACKBONE, overlays:[],
+   lead:`<p>Usaremos el método más eficiente: <code>mpls ldp autoconfig</code> dentro de OSPF habilita LDP en todas las interfaces donde corre OSPF, sin ir interfaz por interfaz.</p>`,
+   why:`<code>mpls ldp router-id loopback 0</code> hace que LDP se identifique con la loopback (requisito del enunciado: <i>“utilizar loopback 0 como fuente originadora de etiquetas”</i>). La palabra <code>force</code> lo aplica de inmediato aunque ya exista una sesión.`,
+   tip:`<b>Alternativa:</b> habilitar MPLS interfaz por interfaz:<br><code>interface range e0/1-2</code> → <code>mpls ip</code>. Funciona igual, pero si agregas un enlace nuevo debes acordarte de él; con autoconfig no.`,
+   blocks:[
+    {dev:"PE1",code:`conf t
+mpls ldp router-id loopback 0 force
+router ospf 1
+ mpls ldp autoconfig
+end`},
+    {dev:"PE2",code:`conf t
+mpls ldp router-id loopback 0 force
+router ospf 1
+ mpls ldp autoconfig
+end`},
+    {dev:"PE3",code:`conf t
+mpls ldp router-id loopback 0 force
+router ospf 1
+ mpls ldp autoconfig
+end`},
+    {dev:"PE4",code:`conf t
+mpls ldp router-id loopback 0 force
+router ospf 1
+ mpls ldp autoconfig
+end`},
+    {dev:"P1",code:`conf t
+mpls ldp router-id loopback 0 force
+router ospf 1
+ mpls ldp autoconfig
+! --- alternativa equivalente, interfaz por interfaz: ---
+! interface range e0/1-2
+!  mpls ip
+end
+wr`},
+    {dev:"P2",code:`conf t
+mpls ldp router-id loopback 0 force
+router ospf 1
+ mpls ldp autoconfig
+end`}],
+   verify:[
+    {dev:"P2",cmd:"show mpls ldp neighbor | include Peer",expect:"4 sesiones LDP (Peer LDP Ident: 11.11.11.11:0, 22.22.22.22:0, 33.33.33.33:0, 44.44.44.44:0). El ‘:0’ indica espacio de etiquetas por plataforma."},
+    {dev:"PE1",cmd:"show mpls interfaces",expect:"e0/0, e0/1 y e0/2 con IP=Yes y Operational=Yes. e0/3 (hacia CE1) NO debe aparecer."}]
+ },
+ { id:"2.3", title:"Pruebas del backbone: LFIB y traceroute con etiquetas",
+   focus:["PE1","P1","PE3"], links:[["PE1","P1"],["P1","PE3"]], overlays:[], anim:"trace",
+   lead:`<p>Comprueba que el backbone conmuta etiquetas. Pulsa <b>▶ Animar paquete</b> en la topología para ver cómo cambia la etiqueta en cada salto.</p>`,
+   why:`<b>PHP (Penultimate Hop Popping):</b> el último router (PE3) anuncia la etiqueta <code>implicit-null</code> (3) para su loopback. Así el penúltimo (P1) quita la etiqueta y PE3 hace una sola búsqueda IP. Por eso en la LFIB de P1 verás <code>Pop Label</code> hacia 33.33.33.33.`,
+   blocks:[], verify:[
+    {dev:"PE1",cmd:"traceroute 33.33.33.33 source loopback 0 numeric",expect:"El primer salto muestra [MPLS: Label 2xx] si va por P1 (o 5xx si va por P2: hay dos caminos de igual costo).",out:`Type escape sequence to abort.
+Tracing the route to 33.33.33.33
+VRF info: (vrf in name/id, vrf out name/id)
+  1 10.10.11.2 [MPLS: Label 203 Exp 0] 1 msec 1 msec 1 msec
+  2 10.10.13.3 1 msec *  1 msec`},
+    {dev:"PE1",cmd:"show mpls forwarding-table",expect:"Columna Local Label en 100-199 (las que PE1 asigna) y Outgoing Label con valores del vecino (2xx de P1, 5xx de P2, 4xx de PE2) o ‘Pop Label’ hacia vecinos directos.",out:`Local      Outgoing   Prefix           Bytes Label   Outgoing   Next Hop
+Label      Label      or Tunnel Id     Switched      interface
+100        Pop Label  1.1.1.1/32       0             Et0/2      10.10.11.2
+101        Pop Label  2.2.2.2/32       0             Et0/1      10.10.12.3
+102        Pop Label  22.22.22.22/32   0             Et0/0      10.10.21.2
+103        203        33.33.33.33/32   0             Et0/2      10.10.11.2
+           505        33.33.33.33/32   0             Et0/1      10.10.12.3
+104        506        44.44.44.44/32   0             Et0/1      10.10.12.3
+(ejemplo: los números exactos varían)`}]
+ }
+]},
+{ id:"f3", title:"Fase 3 · MPLS VPN Capa 3 (ENARSI)", color:"var(--ce)", steps:[
+ { id:"3.1", title:"Crear la VRF ENARSI en PE1 y PE3 (RD y RT)",
+   focus:["PE1","PE3"], overlays:[],
+   lead:`<p>Una <b>VRF</b> es una tabla de rutas independiente dentro del PE para un cliente.</p>
+<div class="tablewrap"><table class="t"><tr><th>PE</th><th>RD</th><th>RT export</th><th>RT import</th></tr>
+<tr><td>PE1 (ENARSI 1)</td><td><code>65100:1</code></td><td><code>65100:1</code></td><td><code>65200:3</code></td></tr>
+<tr><td>PE3 (ENARSI 2)</td><td><code>65200:3</code></td><td><code>65200:3</code></td><td><code>65100:1</code></td></tr></table></div>`,
+   why:`<ul><li><b>RD (Route Distinguisher):</b> se antepone al prefijo para hacerlo único en BGP VPNv4 (172.16.10.0 → 65100:1:172.16.10.0). No decide nada sobre importación.</li>
+<li><b>RT (Route Target):</b> comunidad extendida que decide <b>quién importa qué</b>. Lo que un PE exporta debe coincidir con lo que el otro importa: <b>cruzados</b>.</li></ul>`,
+   warn:`<b>Error común:</b> si el RT que importa un PE no es exactamente el que exporta el otro, las rutas viajan por VPNv4 pero <u>nunca entran</u> a la VRF remota. Revisa siempre que queden cruzados.`,
+   blocks:[
+    {dev:"PE1",code:`conf t
+ip vrf ENARSI
+ rd 65100:1
+ route-target export 65100:1
+ route-target import 65200:3
+end`},
+    {dev:"PE3",code:`conf t
+ip vrf ENARSI
+ rd 65200:3
+ route-target export 65200:3
+ route-target import 65100:1
+end`}],
+   verify:[{dev:"PE1/PE3",cmd:"show ip vrf detail ENARSI",expect:"Muestra el RD y los Export/Import VPN route-target communities. Verifica que estén cruzados."}]
+ },
+ { id:"3.2", title:"Asociar la VRF a la interfaz hacia el CE",
+   focus:["PE1","PE3","CE1","CE4"], links:[["CE1","PE1"],["PE3","CE4"]], overlays:[],
+   lead:`<p>La interfaz que mira al cliente se mete en la VRF. Desde ese momento su red ya no está en la tabla global, sino en la tabla de ENARSI.</p>`,
+   warn:`<code>ip vrf forwarding</code> <b>borra la IP</b> de la interfaz. Siempre se configura primero la VRF y <u>después</u> la dirección IP.`,
+   tip:`La IP de la interfaz del PE debe coincidir con la que el CE usa en su <code>neighbor</code> BGP (CE4 apunta a <code>172.16.34.3</code>, CE1 a <code>172.16.11.2</code>).`,
+   blocks:[
+    {dev:"PE1",code:`conf t
+interface e0/3
+ description CE1 - ENARSI 1
+ ip vrf forwarding ENARSI
+ ip address 172.16.11.2 255.255.255.0
+ no shutdown
+end`},
+    {dev:"PE3",code:`conf t
+interface e0/0
+ description CE4 - ENARSI 2
+ ip vrf forwarding ENARSI
+ ip address 172.16.34.3 255.255.255.0
+ no shutdown
+end`}],
+   verify:[
+    {dev:"PE1",cmd:"show ip route vrf ENARSI",expect:"C 172.16.11.0/24 is directly connected, Ethernet0/3. (En ‘show ip route’ global ya no aparece.)"},
+    {dev:"PE1",cmd:"ping vrf ENARSI 172.16.11.1",expect:"Responde CE1 (si su interfaz ya tiene IP). Un ping normal sin ‘vrf’ falla: es esperado."}]
+ },
+ { id:"3.3", title:"Sesión iBGP entre PE1 y PE3 (AS 64000)",
+   focus:["PE1","PE3","P1","P2"], overlays:["ibgp"],
+   lead:`<p>Los PE intercambian las rutas de los clientes por <b>iBGP</b>. Los P no ejecutan BGP: solo conmutan etiquetas (“core sin BGP”).</p>`,
+   why:`<code>update-source loopback 0</code>: la sesión sale desde la loopback, que es el destino del LSP. Así el next-hop de las rutas VPN es 11.11.11.11 / 33.33.33.33, que tiene etiqueta LDP en todo el backbone.`,
+   blocks:[
+    {dev:"PE1",code:`conf t
+router bgp 64000
+ bgp router-id 11.11.11.11
+ neighbor 33.33.33.33 remote-as 64000
+ neighbor 33.33.33.33 update-source loopback 0
+end`},
+    {dev:"PE3",code:`conf t
+router bgp 64000
+ bgp router-id 33.33.33.33
+ neighbor 11.11.11.11 remote-as 64000
+ neighbor 11.11.11.11 update-source loopback 0
+end`}],
+   verify:[{dev:"PE1",cmd:"show ip bgp summary",expect:"Vecino 33.33.33.33 con State/PfxRcd = 0 (número = sesión establecida). Si dice Active/Idle revisa OSPF de la loopback y update-source."}]
+ },
+ { id:"3.4", title:"Activar la familia VPNv4 (MP-BGP)",
+   focus:["PE1","PE3"], overlays:["ibgp"],
+   lead:`<p>La sesión iBGP por defecto solo transporta IPv4 global. Para llevar rutas de clientes (con RD, RT y etiqueta VPN) se activa la familia <b>VPNv4</b>.</p>`,
+   why:`Los RT viajan como <b>comunidades extendidas</b>. IOS agrega automáticamente <code>send-community extended</code> al activar el vecino en VPNv4; se incluye explícito para que lo veas.`,
+   blocks:[
+    {dev:"PE1",code:`conf t
+router bgp 64000
+ address-family vpnv4
+  neighbor 33.33.33.33 activate
+  neighbor 33.33.33.33 send-community extended
+ exit-address-family
+end`},
+    {dev:"PE3",code:`conf t
+router bgp 64000
+ address-family vpnv4
+  neighbor 11.11.11.11 activate
+  neighbor 11.11.11.11 send-community extended
+ exit-address-family
+end`}],
+   verify:[{dev:"PE1",cmd:"show bgp vpnv4 unicast all summary",expect:"Aparece el vecino 33.33.33.33 bajo la familia VPNv4 Unicast y en estado establecido."}]
+ },
+ { id:"3.5", title:"eBGP PE–CE dentro de la VRF",
+   focus:["PE1","PE3","CE1","CE4"], links:[["CE1","PE1"],["PE3","CE4"]], overlays:[],
+   lead:`<p>Cada PE forma una sesión <b>eBGP</b> con su CE, pero <u>dentro</u> de la VRF: <code>address-family ipv4 vrf ENARSI</code>.</p>`,
+   why:`Lo aprendido del CE entra en la VRF, se exporta con el RT a VPNv4, viaja al otro PE y se importa en su VRF. Luego se anuncia al CE remoto. Ese es todo el ciclo de la VPN L3.`,
+   blocks:[
+    {dev:"PE1",code:`conf t
+router bgp 64000
+ address-family ipv4 vrf ENARSI
+  neighbor 172.16.11.1 remote-as 65100
+  neighbor 172.16.11.1 activate
+ exit-address-family
+end`},
+    {dev:"PE3",code:`conf t
+router bgp 64000
+ address-family ipv4 vrf ENARSI
+  neighbor 172.16.34.4 remote-as 65200
+  neighbor 172.16.34.4 activate
+ exit-address-family
+end`}],
+   verify:[{dev:"PE1",cmd:"show bgp vpnv4 unicast vrf ENARSI summary",expect:"Vecino 172.16.11.1 (AS 65100). Estará en Active hasta que configures CE1 en el paso siguiente."}]
+ },
+ { id:"3.6", title:"Configurar BGP en CE1 (AS 65100) y CE4 (AS 65200)",
+   focus:["CE1","CE4","PE1","PE3","PC-ENARSI1","PC-ENARSI2"], links:[["CE1","PE1"],["PE3","CE4"],["PC-ENARSI1","CE1"],["CE4","PC-ENARSI2"]], overlays:[],
+   lead:`<p>Los CE no saben nada de MPLS: solo hablan BGP con su PE y anuncian su LAN con <code>network … mask …</code> (la máscara debe coincidir exactamente con la de la interfaz: /28).</p>`,
+   blocks:[
+    {dev:"CE1",code:`conf t
+hostname CE1
+interface e0/0
+ description LAN ENARSI 1
+ ip address 172.16.10.1 255.255.255.240
+ no shutdown
+interface e0/3
+ description PE1
+ ip address 172.16.11.1 255.255.255.0
+ no shutdown
+!
+router bgp 65100
+ network 172.16.10.0 mask 255.255.255.240
+ neighbor 172.16.11.2 remote-as 64000
+end
+wr`},
+    {dev:"CE4",code:`conf t
+hostname CE4
+interface e0/0
+ description PE3
+ ip address 172.16.34.4 255.255.255.0
+ no shutdown
+interface e0/1
+ description LAN ENARSI 2
+ ip address 172.16.40.4 255.255.255.240
+ no shutdown
+!
+router bgp 65200
+ network 172.16.40.0 mask 255.255.255.240
+ neighbor 172.16.34.3 remote-as 64000
+end
+wr`}],
+   note:"Las PC ENARSI ya vienen configuradas en el lab (172.16.10.7 y 172.16.40.9 con ruta por defecto a su CE).",
+   verify:[{dev:"CE1",cmd:"show ip bgp summary",expect:"Vecino 172.16.11.2 (AS 64000) establecido con PfxRcd = 1."}]
+ },
+ { id:"3.7", title:"Verificación extremo a extremo de la VPN L3",
+   focus:["PC-ENARSI1","CE1","PE1","P1","PE3","CE4","PC-ENARSI2"], links:[["PC-ENARSI1","CE1"],["CE1","PE1"],["PE1","P1"],["P1","PE3"],["PE3","CE4"],["CE4","PC-ENARSI2"]], overlays:["ibgp"], anim:"l3",
+   lead:`<p>Comprueba en orden, de adentro hacia afuera. Anima el paquete para ver la <b>pila de dos etiquetas</b>.</p>`,
+   blocks:[], verify:[
+    {dev:"PE3",cmd:"show ip bgp vpnv4 all",expect:"Bajo ‘Route Distinguisher: 65100:1’ y ‘65200:3’ deben aparecer 172.16.10.0/28 (next hop 11.11.11.11) y 172.16.40.0/28 (next hop 172.16.34.4).",out:`Route Distinguisher: 65100:1
+ *>i 172.16.10.0/28   11.11.11.11        0    100      0 65100 i
+Route Distinguisher: 65200:3 (default for vrf ENARSI)
+ *>i 172.16.10.0/28   11.11.11.11        0    100      0 65100 i
+ *>  172.16.40.0/28   172.16.34.4        0             0 65200 i`},
+    {dev:"PE1",cmd:"show ip route vrf ENARSI",expect:"B 172.16.10.0/28 vía 172.16.11.1 y B 172.16.40.0/28 vía 33.33.33.33."},
+    {dev:"PE1",cmd:"show bgp vpnv4 unicast all labels",expect:"Muestra la etiqueta VPN (In/Out label). La ‘Out label’ para 172.16.40.0 la asignó PE3: rango 3xx."},
+    {dev:"CE1",cmd:"show ip route bgp",expect:"B 172.16.40.0/28 [20/0] via 172.16.11.2."},
+    {dev:"PC-ENARSI1",cmd:"ping 172.16.40.9",expect:"!!!!! — conectividad entre sucursales ENARSI por la VPN L3."}]
+ }
+]},
+{ id:"f4", title:"Fase 4 · MPLS VPN Capa 2 (ENCOR)", color:"var(--ce2)", steps:[
+ { id:"4.1", title:"Pseudowire con xconnect en PE2 y PE4",
+   focus:["PE2","PE4","P2","CE2","CE3"], links:[["PE2","CE2"],["PE4","CE3"]], overlays:["pw"],
+   lead:`<p>La VPN de capa 2 (<b>AToM / EoMPLS</b>) une dos interfaces Ethernet remotas como si fueran un cable. La interfaz e0/2 de PE2 y PE4 (<i>attachment circuit</i>) <b>no lleva IP</b>.</p>
+<p>Sintaxis: <code>xconnect &lt;Loopback0 del PE remoto&gt; &lt;VC-ID&gt; encapsulation mpls</code></p>`,
+   why:`Los PE abren una sesión <b>LDP dirigida</b> (targeted) entre sus loopbacks (22.22.22.22 ↔ 44.44.44.44) para intercambiar la etiqueta del circuito virtual. El <b>VC-ID 111</b> debe ser idéntico en ambos extremos.`,
+   blocks:[
+    {dev:"PE2",code:`conf t
+interface e0/2
+ description CE2 - ENCOR 1 (attachment circuit L2)
+ no ip address
+ no shutdown
+ xconnect 44.44.44.44 111 encapsulation mpls
+ exit
+end
+wr`},
+    {dev:"PE4",code:`conf t
+interface e0/2
+ description CE3 - ENCOR 2 (attachment circuit L2)
+ no ip address
+ no shutdown
+ xconnect 22.22.22.22 111 encapsulation mpls
+ exit
+end
+wr`}],
+   verify:[
+    {dev:"PE2",cmd:"show mpls l2transport vc",expect:"VC ID 111 · Dest address 44.44.44.44 · Status UP.",out:`Local intf     Local circuit              Dest address    VC ID      Status
+-------------  -------------------------- --------------- ---------- ----------
+Et0/2          Ethernet                   44.44.44.44     111        UP`},
+    {dev:"PE2",cmd:"show mpls ldp neighbor 44.44.44.44",expect:"Sesión con ‘Targeted Hello 22.22.22.22 -> 44.44.44.44, active’: es la sesión LDP dirigida del pseudowire."}]
+ },
+ { id:"4.2", title:"Probar el pseudowire con etiquetas",
+   focus:["CE2","PE2","P2","PE4","CE3"], links:[["CE2","PE2"],["PE2","P2"],["P2","PE4"],["PE4","CE3"]], overlays:["pw"], anim:"l2",
+   lead:`<p>Detalle del circuito virtual. Anima la trama para ver la etiqueta de transporte (5xx) y la del VC (6xx).</p>`,
+   tip:`Si el VC queda <b>DOWN</b>: revisa que la loopback remota esté en OSPF (paso 1.2), que exista etiqueta LDP hacia ella (<code>show mpls forwarding-table 44.44.44.44</code>) y que el VC-ID sea igual en ambos lados.`,
+   blocks:[], verify:[
+    {dev:"PE2",cmd:"show mpls l2transport vc 111 detail",expect:"‘Output interface: Et0/3, imposed label stack {5xx 6xx}’ — 5xx: etiqueta de P2 hacia 44.44.44.44; 6xx: etiqueta del VC asignada por PE4.",out:`Local interface: Et0/2 up, line protocol up, Ethernet up
+  Destination address: 44.44.44.44, VC ID: 111, VC status: up
+    Output interface: Et0/3, imposed label stack {506 600}
+  ...
+    Local label: 400, remote label: 600
+(ejemplo)`}]
+ },
+ { id:"4.3", title:"Sucursal ENCOR 1: Multilink PPP entre R1 y CE2",
+   focus:["R1","CE2"], links:[["R1","CE2"]], overlays:[],
+   lead:`<p>Con el túnel listo, falta configurar las sucursales ENCOR con <b>Multilink</b>, <b>Port-Channel</b>, <b>DHCP</b> y <b>OSPF área 10</b>.</p>
+<p>Los dos enlaces seriales S1/0 y S1/1 se agrupan en una sola interfaz lógica <b>Multilink1</b> (192.168.12.0/24).</p>`,
+   why:`La IP va en la interfaz <b>Multilink</b>, no en los seriales. Los seriales solo llevan <code>encapsulation ppp</code> y el grupo. Si un serial cae, el enlace lógico sigue arriba con la mitad del ancho de banda.`,
+   blocks:[
+    {dev:"R1",code:`conf t
+hostname R1
+interface Multilink1
+ ip address 192.168.12.1 255.255.255.0
+ ppp multilink
+ ppp multilink group 1
+ no shutdown
+!
+interface range s1/0 - 1
+ description CE2 - Multilink 1
+ no ip address
+ encapsulation ppp
+ ppp multilink
+ ppp multilink group 1
+ no shutdown
+!
+interface e0/3
+ description LAN ENCOR 1
+ ip address 192.168.10.1 255.255.255.248
+ no shutdown
+end`},
+    {dev:"CE2",code:`conf t
+hostname CE2
+interface Multilink1
+ ip address 192.168.12.2 255.255.255.0
+ ppp multilink
+ ppp multilink group 1
+ no shutdown
+!
+interface range s1/0 - 1
+ description R1 - Multilink 1
+ no ip address
+ encapsulation ppp
+ ppp multilink
+ ppp multilink group 1
+ no shutdown
+end`}],
+   verify:[{dev:"R1",cmd:"show ppp multilink",expect:"Multilink1 con ‘Member links: 2 active (Serial1/0, Serial1/1)’. Luego: ping 192.168.12.2."}]
+ },
+ { id:"4.4", title:"Sucursal ENCOR 2: VLAN 33 y Port-Channel 6 (PAgP)",
+   focus:["CE3","SWA","SWB","PC-ENCOR2"], links:[["CE3","SWA"],["SWA","SWB"],["SWB","PC-ENCOR2"]], overlays:[],
+   lead:`<p>SWA y SWB se unen con dos enlaces agrupados en <b>Port-Channel 6</b> usando <b>PAgP</b> (protocolo de Cisco, modo <code>desirable</code>). El troncal solo permite la VLAN 33.</p>`,
+   why:`PAgP: <code>desirable</code> negocia activamente; <code>auto</code> solo responde. desirable↔desirable o desirable↔auto forman el canal; auto↔auto no. (LACP usaría active/passive.)`,
+   blocks:[
+    {dev:"SWA",code:`conf t
+hostname SWA
+vlan 33
+ name ENCOR2
+!
+interface range e0/1 - 2
+ description SWB - Po6
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ channel-group 6 mode desirable
+ no shutdown
+!
+interface port-channel 6
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk allowed vlan 33
+!
+interface e0/0
+ description CE3
+ switchport mode access
+ switchport access vlan 33
+ spanning-tree portfast edge
+ no shutdown
+end
+wr`},
+    {dev:"SWB",code:`conf t
+hostname SWB
+vlan 33
+ name ENCOR2
+!
+interface range e0/1 - 2
+ description SWA - Po6
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ channel-group 6 mode desirable
+ no shutdown
+!
+interface port-channel 6
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk allowed vlan 33
+!
+interface e0/3
+ description PC-ENCOR2
+ switchport mode access
+ switchport access vlan 33
+ spanning-tree portfast edge
+ no shutdown
+end
+wr`}],
+   verify:[
+    {dev:"SWA",cmd:"show etherchannel summary",expect:"6  Po6(SU)  PAgP  Et0/1(P) Et0/2(P) — S = capa 2, U = en uso, P = agrupado."},
+    {dev:"SWA",cmd:"show interfaces trunk",expect:"Po6 en modo trunk, ‘Vlans allowed on trunk: 33’."}]
+ },
+ { id:"4.5", title:"Extremos del túnel L2 y OSPF área 10",
+   focus:["R1","CE2","CE3"], links:[["R1","CE2"]], overlays:["pw"],
+   lead:`<p>CE2 y CE3 usan la red del túnel propuesta: <b>192.168.23.0/24</b> (CE2 = .2, CE3 = .3). Gracias al pseudowire quedan en el mismo segmento Ethernet y forman vecindad OSPF directa.</p>`,
+   why:`OSPF del cliente (proceso 10, área 10) es <b>totalmente independiente</b> del OSPF del proveedor (proceso 1, área 0): ni siquiera se ven. Las interfaces LAN van como <code>passive-interface</code> para no enviar hellos a las PC.`,
+   blocks:[
+    {dev:"R1",code:`conf t
+router ospf 10
+ router-id 10.10.10.1
+ network 192.168.10.0 0.0.0.7 area 10
+ network 192.168.12.0 0.0.0.255 area 10
+ passive-interface e0/3
+end
+wr`},
+    {dev:"CE2",code:`conf t
+interface e0/2
+ description PE2 - Tunel MPLS VPN L2
+ ip address 192.168.23.2 255.255.255.0
+ no shutdown
+!
+router ospf 10
+ router-id 10.10.10.2
+ network 192.168.12.0 0.0.0.255 area 10
+ network 192.168.23.0 0.0.0.255 area 10
+end`},
+    {dev:"CE3",code:`conf t
+hostname CE3
+interface e0/2
+ description PE4 - Tunel MPLS VPN L2
+ ip address 192.168.23.3 255.255.255.0
+ no shutdown
+!
+interface e0/0
+ description SWA - LAN ENCOR 2 (VLAN 33)
+ ip address 192.168.33.3 255.255.255.248
+ no shutdown
+!
+router ospf 10
+ router-id 10.10.10.3
+ network 192.168.23.0 0.0.0.255 area 10
+ network 192.168.33.0 0.0.0.7 area 10
+ passive-interface e0/0
+end`}],
+   verify:[
+    {dev:"CE2",cmd:"ping 192.168.23.3",expect:"!!!!! — el pseudowire transporta tráfico."},
+    {dev:"CE2",cmd:"show ip ospf neighbor",expect:"Dos vecinos FULL: 10.10.10.1 (R1, por Multilink1) y 10.10.10.3 (CE3, por Ethernet0/2)."},
+    {dev:"R1",cmd:"show ip route ospf",expect:"O 192.168.23.0/24 y O 192.168.33.0/29 aprendidas vía 192.168.12.2."}]
+ },
+ { id:"4.6", title:"DHCP: servidores en CE2 / CE3 y relay en R1",
+   focus:["CE2","CE3","R1","PC-ENCOR1","PC-ENCOR2"], links:[["PC-ENCOR1","R1"],["R1","CE2"]], overlays:[],
+   lead:`<p>El diagrama marca a <b>CE2</b> y <b>CE3</b> como DHCPv4. CE3 atiende directamente su LAN (VLAN 33). La LAN de ENCOR 1 está detrás de R1, así que R1 reenvía las solicitudes al servidor con <code>ip helper-address</code>.</p>`,
+   why:`Un DHCPDISCOVER es broadcast y no cruza routers. El <b>helper-address</b> lo convierte en unicast hacia el servidor e incluye el campo <i>giaddr</i> (192.168.10.1), con el que CE2 elige el pool correcto.`,
+   blocks:[
+    {dev:"R1",code:`conf t
+interface e0/3
+ ip helper-address 192.168.12.2
+end
+wr`},
+    {dev:"CE2",code:`conf t
+ip dhcp excluded-address 192.168.10.1
+ip dhcp pool ENCOR1
+ network 192.168.10.0 255.255.255.248
+ default-router 192.168.10.1
+end
+wr`},
+    {dev:"CE3",code:`conf t
+ip dhcp excluded-address 192.168.33.1 192.168.33.3
+ip dhcp pool ENCOR2
+ network 192.168.33.0 255.255.255.248
+ default-router 192.168.33.3
+end
+wr`},
+    {dev:"PC-ENCOR1",code:`! Ya vienen con "ip address dhcp" en e0/3.
+! Si no obtienen IP, rebota la interfaz:
+conf t
+interface e0/3
+ shutdown
+ no shutdown
+end`}],
+   note:"El mismo rebote aplica a PC-ENCOR2.",
+   verify:[{dev:"CE2/CE3",cmd:"show ip dhcp binding",expect:"Cada servidor muestra la IP entregada a su PC (192.168.10.x y 192.168.33.x)."}]
+ },
+ { id:"4.7", title:"Verificación extremo a extremo ENCOR 1 ↔ ENCOR 2",
+   focus:["PC-ENCOR1","R1","CE2","PE2","P2","PE4","CE3","SWA","SWB","PC-ENCOR2"],
+   links:[["PC-ENCOR1","R1"],["R1","CE2"],["CE2","PE2"],["PE2","P2"],["P2","PE4"],["PE4","CE3"],["CE3","SWA"],["SWA","SWB"],["SWB","PC-ENCOR2"]], overlays:["pw"], anim:"e2e",
+   lead:`<p>Prueba final de la VPN L2.</p>`,
+   blocks:[], verify:[
+    {dev:"PC-ENCOR1",cmd:"show ip interface brief",expect:"e0/3 con IP 192.168.10.x obtenida por DHCP."},
+    {dev:"PC-ENCOR1",cmd:"ping <IP de PC-ENCOR2>",expect:"!!!!!"},
+    {dev:"PC-ENCOR1",cmd:"traceroute <IP de PC-ENCOR2>",expect:"Saltos: 192.168.10.1 (R1) → 192.168.12.2 (CE2) → 192.168.23.3 (CE3) → PC. Ningún router del proveedor aparece: el backbone MPLS es transparente en capa 2."}]
+ }
+]},
+{ id:"f5", title:"Cierre", color:"var(--muted)", steps:[
+ { id:"5.1", title:"Resumen de correcciones y errores frecuentes",
+   focus:[], overlays:[],
+   lead:`<p>Lista de chequeo rápida antes de entregar.</p>`,
+   table:{head:["Síntoma","Causa probable","Comando para confirmar"],rows:[
+    ["OSPF no acepta la línea network","Error de sintaxis, p. ej. <code>area0</code> sin espacio","—"],
+    ["Etiquetas fuera del rango esperado","<code>mpls label range</code> después de LDP sin reload","<code>show mpls label range</code>"],
+    ["Sin vecino LDP","Falta <code>ip cef</code> / autoconfig, o loopback no alcanzable","<code>show mpls ldp discovery</code>"],
+    ["iBGP en Active","Loopback no en OSPF o falta <code>update-source</code>","<code>show ip bgp summary</code>"],
+    ["CE1 no recibe 172.16.40.0/28","RT import de PE1 distinto al RT export de PE3","<code>show ip vrf detail ENARSI</code>"],
+    ["CE4 no levanta BGP","IP de PE3 en e0/0 distinta de la que CE4 usa como neighbor (.3)","<code>show ip int brief</code> en PE3"],
+    ["VC 111 DOWN","VC-ID distinto, loopback remota sin etiqueta","<code>show mpls l2transport vc detail</code>"],
+    ["CE2 no es vecino OSPF de CE3","Falta IP 192.168.23.x o network área 10","<code>show ip ospf interface brief</code>"],
+    ["Po6 en (SD) o puertos (I)","Modos PAgP auto↔auto o trunk distinto","<code>show etherchannel summary</code>"],
+    ["PC-ENCOR1 sin IP","Falta <code>ip helper-address</code> en R1","<code>debug ip dhcp server packet</code> en CE2"]]},
+   tip:`Al terminar cada equipo: <code>copy running-config startup-config</code> (o <code>wr</code>).`
+ }
+]}
+];
+
+/* =====================================================================
+   ESTADO
+   ===================================================================== */
+const STEPS = PHASES.flatMap(p=>p.steps.map(s=>({...s,phase:p})));
+const store = {
+  get(k,d){try{const v=localStorage.getItem("lab15:"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem("lab15:"+k,JSON.stringify(v))}catch(e){}}
+};
+let done = new Set(store.get("done",[]));
+let cur = 0, mode = "step", selDev = "PE1";
+const tabSel = {};
+
+/* =====================================================================
+   SVG TOPOLOGÍA
+   ===================================================================== */
+const svg = document.getElementById("net");
+const NS = "http://www.w3.org/2000/svg";
+function el(tag,attrs={},parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
+function buildTopo(){
+  const regions=[
+    [10,52,270,160,"SUCURSAL ENARSI 1 · AS 65100","var(--reg-l3)","var(--reg-l3-b)"],
+    [760,52,272,160,"SUCURSAL ENARSI 2 · AS 65200","var(--reg-l3)","var(--reg-l3-b)"],
+    [292,60,456,345,"BACKBONE MPLS · OSPF área 0 · AS 64000","var(--reg-bb)","var(--reg-bb-b)"],
+    [10,430,400,165,"SUCURSAL ENCOR 1 · OSPF área 10","var(--reg-l2)","var(--reg-l2-b)"],
+    [640,430,392,165,"SUCURSAL ENCOR 2 · OSPF área 10","var(--reg-l2)","var(--reg-l2-b)"]];
+  const defs=el("defs",{},svg);const mk=el("marker",{id:"arw",viewBox:"0 0 6 6",refX:3,refY:3,markerWidth:3.2,markerHeight:3.2,orient:"auto"},defs);
+  el("path",{d:"M0,0 L6,3 L0,6 z",fill:"#fff"},mk);
+  const gR=el("g",{},svg);
+  regions.forEach(([x,y,w,h,t,f,s])=>{const g=el("g",{class:"region"},gR);el("rect",{x,y,width:w,height:h,rx:12,fill:f,stroke:s},g);if(t.startsWith("BACKBONE")){const [a,...b]=t.split(" · ");const t1=el("text",{x:520,y:232,"text-anchor":"middle"},g);t1.textContent=a;const t2=el("text",{x:520,y:250,"text-anchor":"middle",style:"font-weight:500;font-size:12px"},g);t2.textContent=b.join(" · ");}else{const tx=el("text",{x:x+10,y:y+20},g);tx.textContent=t;}});
+  // overlays
+  const ov1=el("g",{class:"overlay",id:"ov_ibgp"},svg);
+  el("path",{d:"M345,114 C 420,36 620,36 695,114",stroke:"var(--ce)"},ov1);
+  const t1=el("text",{x:520,y:50,"text-anchor":"middle",fill:"var(--ce)"},ov1);t1.textContent="iBGP VPNv4 · Lo0 11.11.11.11 ↔ 33.33.33.33";
+  const ov2=el("g",{class:"overlay",id:"ov_pw"},svg);
+  el("path",{d:"M345,346 C 420,420 620,420 695,346",stroke:"var(--ce2)"},ov2);
+  const t2=el("text",{x:520,y:422,"text-anchor":"middle",fill:"var(--ce2)"},ov2);t2.textContent="Pseudowire VC 111 · túnel 192.168.23.0/24";
+  // links
+  const gL=el("g",{},svg);
+  LINKS.forEach(([a,b,lbl])=>{
+    const A=NODES[a],B=NODES[b];const g=el("g",{class:"link",id:linkId(a,b)},gL);
+    if(a==="R1"&&b==="CE2"){ // multilink: dos seriales
+      el("line",{x1:A.x,y1:A.y-5,x2:B.x,y2:B.y-5},g);el("line",{x1:A.x,y1:A.y+5,x2:B.x,y2:B.y+5},g);
+    } else if(a==="SWA"&&b==="SWB"){
+      el("line",{x1:A.x,y1:A.y-5,x2:B.x,y2:B.y-5,"stroke-dasharray":"5 3"},g);el("line",{x1:A.x,y1:A.y+5,x2:B.x,y2:B.y+5,"stroke-dasharray":"5 3"},g);
+    } else el("line",{x1:A.x,y1:A.y,x2:B.x,y2:B.y},g);
+    let mx=(A.x+B.x)/2,my=(A.y+B.y)/2,dx=0,dy=-8,anchor="middle",text=lbl;
+    const inBB=BACKBONE.includes(a)&&BACKBONE.includes(b);
+    if(A.x===B.x){ // enlaces verticales: etiqueta hacia afuera del backbone
+      anchor=A.x<520?"end":"start";dx=A.x<520?-8:8;dy=4;
+    } else if(A.y!==B.y){ // diagonales: al 35% desde el PE superior, hacia dentro
+      const top=A.y<B.y?A:B,bot=A.y<B.y?B:A;mx=top.x+(bot.x-top.x)*.35;my=top.y+(bot.y-top.y)*.35;
+      anchor=top.x<bot.x?"start":"end";dx=top.x<bot.x?8:-8;dy=4;
+    } else if(!inBB){ dy=-24; }
+    if(a==="R1"&&b==="CE2"){ // multilink: red arriba, nombre abajo
+      text="192.168.12.0/24";
+      const t2=el("text",{x:mx,y:my+20,"text-anchor":"middle"},g);t2.textContent="Multilink 1";
+    }
+    const t=el("text",{x:mx+dx,y:my+dy,"text-anchor":anchor},g);t.textContent=text;
+  });
+  // nodes
+  const gN=el("g",{},svg);
+  for(const [name,n] of Object.entries(NODES)){
+    const g=el("g",{class:"node",id:"N_"+name,tabindex:0,role:"button","aria-label":name},gN);
+    const col=ROLE_COLOR[n.role];
+    el("ellipse",{class:"ring",cx:n.x,cy:n.y,rx:31,ry:25},g);
+    drawIcon(g,n,col);
+    const nm=el("text",{class:"name",x:n.x,y:n.y+33},g);nm.textContent=name.replace("PC-","PC ");
+    const sb=el("text",{class:"sub",x:n.x,y:n.y+47},g);sb.textContent=n.sub;
+    const tt=el("title",{},g);tt.textContent=name+" — "+n.info;
+    const go=()=>{selDev=name;if(aside.classList.contains("big"))setBig(false);setMode("dev")};
+    g.addEventListener("click",go);g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}});
+  }
+  // packet
+  const p=el("g",{id:"pkt",style:"display:none"},svg);
+  el("rect",{x:-38,y:-11,width:76,height:22,rx:6},p);el("text",{x:0,y:0},p);
+}
+/* Íconos estilo diagrama de red: router (cilindro con flechas), switch (caja con flechas), PC (monitor) */
+function drawIcon(parent,n,col){
+  const g=el("g",{class:"icon",transform:`translate(${n.x},${n.y})`},parent);
+  if(n.role==="host"){
+    el("rect",{x:-17,y:-16,width:34,height:23,rx:3,fill:col},g);
+    el("rect",{class:"scr",x:-14,y:-13,width:28,height:17,rx:1.5},g);
+    el("path",{class:"hi",d:"M-14,-13 h28 v6 l-28,6 z"},g);
+    el("rect",{x:-3,y:7,width:6,height:5,fill:col},g);
+    el("rect",{x:-12,y:11,width:24,height:4,rx:1.5,fill:col},g);
+  } else if(n.role==="sw"){
+    el("path",{d:"M-24,-5 L-17,-14 L27,-14 L20,-5 Z",fill:col},g);
+    el("path",{class:"hi",d:"M-24,-5 L-17,-14 L27,-14 L20,-5 Z"},g);
+    el("rect",{x:-24,y:-5,width:44,height:16,fill:col},g);
+    el("path",{d:"M20,-5 L27,-14 L27,2 L20,11 Z",fill:col},g);
+    el("path",{class:"lo",d:"M20,-5 L27,-14 L27,2 L20,11 Z"},g);
+    el("path",{class:"ar","marker-end":"url(#arw)",d:"M-14,-11.5 H8"},g);
+    el("path",{class:"ar","marker-end":"url(#arw)",d:"M12,-7.5 H-10"},g);
+    el("path",{class:"edge",d:"M-24,-5 H20"},g);
+  } else {
+    el("path",{d:"M-22,-6 V7 A22,8 0 0 0 22,7 V-6 Z",fill:col},g);
+    el("path",{class:"lo",d:"M-22,-6 V7 A22,8 0 0 0 22,7 V-6 Z"},g);
+    el("ellipse",{cx:0,cy:-6,rx:22,ry:8,fill:col},g);
+    el("ellipse",{class:"hi",cx:0,cy:-6,rx:22,ry:8},g);
+    // flechas: dos entrando (izq/der) y dos saliendo (arriba/abajo)
+    el("path",{class:"ar","marker-end":"url(#arw)",d:"M-17,-6 H-7"},g);
+    el("path",{class:"ar","marker-end":"url(#arw)",d:"M17,-6 H7"},g);
+    el("path",{class:"ar","marker-end":"url(#arw)",d:"M2,-8 L6,-12.5"},g);
+    el("path",{class:"ar","marker-end":"url(#arw)",d:"M-2,-4 L-6,0.5"},g);
+    const t=el("text",{x:0,y:4.5,"text-anchor":"middle",style:"font-size:8.5px;font-weight:700;fill:#fff;opacity:.9;font-family:'JetBrains Mono',monospace"},g);
+    t.textContent=n.role==="p"?"P":n.role==="pe"?"PE":"CE";
+  }
+}
+function applyFocus(step){
+  const nodes=step&&step.focus||[];const links=new Set();
+  if(step){
+    (step.links||[]).forEach(([a,b])=>links.add(linkId(a,b)));
+    if(!step.links) LINKS.forEach(([a,b])=>{if(nodes.includes(a)&&nodes.includes(b))links.add(linkId(a,b))});
+  }
+  svg.classList.toggle("focus",nodes.length>0);
+  svg.querySelectorAll(".node").forEach(n=>{const nm=n.id.slice(2);n.classList.toggle("on",nodes.includes(nm));n.classList.toggle("sel",mode==="dev"&&nm===selDev)});
+  svg.querySelectorAll(".link").forEach(l=>l.classList.toggle("on",links.has(l.id)));
+  ["ibgp","pw"].forEach(o=>document.getElementById("ov_"+o).classList.toggle("on",!!(step&&(step.overlays||[]).includes(o))));
+  const bar=document.getElementById("animBar");
+  if(step&&step.anim){bar.hidden=false;document.getElementById("animLbl").textContent=ANIMS[step.anim].label;bar.dataset.anim=step.anim}
+  else bar.hidden=true;
+  stopAnim();
+}
+let animRaf=null;
+function stopAnim(){if(animRaf)cancelAnimationFrame(animRaf);animRaf=null;document.getElementById("pkt").style.display="none"}
+function playAnim(key){
+  stopAnim();const A=ANIMS[key];const pkt=document.getElementById("pkt");const txt=pkt.querySelector("text");const rect=pkt.querySelector("rect");
+  const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;const dur=reduce?10:1300,pause=reduce?900:350;
+  let i=0,t0=null;pkt.style.display="";document.getElementById("animLbl").textContent=A.explain;
+  function frame(ts){
+    if(i>=A.hops.length){animRaf=setTimeout(()=>{pkt.style.display="none"},900);return}
+    const [a,b,lab]=A.hops[i];const P=NODES[a],Q=NODES[b];
+    if(t0===null){t0=ts;txt.textContent=lab;const w=Math.max(40,lab.length*7.2+14);rect.setAttribute("width",w);rect.setAttribute("x",-w/2)}
+    let k=Math.min(1,(ts-t0)/dur);const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    pkt.setAttribute("transform",`translate(${P.x+(Q.x-P.x)*e},${P.y+(Q.y-P.y)*e-26})`);
+    if(ts-t0>=dur+pause){i++;t0=null}
+    animRaf=requestAnimationFrame(frame);
+  }
+  animRaf=requestAnimationFrame(frame);
+}
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const KW=/^(\s*)(conf t|end|exit|exit-address-family|wr|router (ospf|bgp) \d+|interface( range)? [^\n]+|ip vrf \S+|address-family [^\n]+|vlan \d+|ip dhcp pool \S+)$/;
+function hlCode(code,hls=[]){
+  return code.split("\n").map(line=>{
+    if(/^\s*!/.test(line))return `<span class="c">${esc(line)}</span>`;
+    let h=esc(line);
+    if(KW.test(line))h=`<span class="k">${h}</span>`;
+    hls.forEach(s=>{const es=esc(s);if(h.includes(es))h=h.replace(es,`<span class="hl">${es}</span>`)});
+    return h;
+  }).join("\n");
+}
+async function copyText(t,btn){
+  try{await navigator.clipboard.writeText(t)}catch(e){const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand("copy")}catch(_){}ta.remove()}
+  const o=btn.textContent;btn.textContent="✓ Copiado";btn.classList.add("ok");setTimeout(()=>{btn.textContent=o;btn.classList.remove("ok")},1400);
+}
+function devColor(d){return NODES[d]?ROLE_COLOR[NODES[d].role]:"var(--muted)"}
+function codeBox(dev,code,hls,title){
+  const id="cb"+Math.random().toString(36).slice(2,8);
+  return `<div class="codebox"><div class="bar"><span><b>${esc(dev)}</b>${title?" · "+esc(title):""}</span><button class="copy" data-copy="${id}">Copiar</button></div><pre class="code" id="${id}">${hlCode(code,hls)}</pre></div>`;
+}
+function renderNav(){
+  const L=document.getElementById("stepsList");
+  L.innerHTML=PHASES.map(p=>`<div class="phase"><div class="phase-h"><span class="dot" style="background:${p.color}"></span>${esc(p.title)}</div>`+
+    p.steps.map(s=>{const i=STEPS.findIndex(x=>x.id===s.id);return `<button class="step-link ${done.has(s.id)?"done":""}" data-i="${i}" ${mode==="step"&&i===cur?'aria-current="step"':""}><span class="n">${s.id}</span><span>${esc(s.title)}</span><span class="ck">✓</span></button>`}).join("")+`</div>`).join("");
+  L.querySelectorAll(".step-link").forEach(b=>b.onclick=()=>{go(+b.dataset.i);if(innerWidth<=820)document.getElementById("stepsNav").classList.add("collapsed")});
+  const pct=Math.round(100*done.size/STEPS.length);document.getElementById("progBar").style.width=pct+"%";
+}
+function renderStep(){
+  const s=STEPS[cur];const m=document.getElementById("main");
+  let h=`<div class="card"><div class="eyebrow"><span>${esc(s.phase.title)}</span>·<span>Paso ${s.id} de ${STEPS[STEPS.length-1].id}</span></div>
+  <h1 class="step-title">${esc(s.title)}</h1><div class="lead">${s.lead||""}</div>`;
+  if(s.why)h+=`<div class="callout why"><b class="t">¿Por qué?</b>${s.why}</div>`;
+  if(s.warn)h+=`<div class="callout warn"><b class="t">Importante</b>${s.warn}</div>`;
+  if(s.table)h+=`<div class="tablewrap"><table class="t"><tr>${s.table.head.map(x=>`<th>${x}</th>`).join("")}</tr>${s.table.rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</table></div>`;
+  if(s.blocks&&s.blocks.length){
+    const sel=tabSel[s.id]??0;
+    h+=`<h2 class="sec">Configuración (${s.blocks.length} equipo${s.blocks.length>1?"s":""})</h2><div class="devtabs" role="tablist">`+
+      s.blocks.map((b,i)=>`<button role="tab" aria-selected="${i===sel}" data-tab="${i}"><span class="sw" style="background:${devColor(b.dev)}"></span>${esc(b.dev)}</button>`).join("")+`</div>`;
+    const b=s.blocks[sel];h+=codeBox(b.dev,b.code,b.hl);
+    if(s.note)h+=`<p class="blocknote">ℹ ${esc(s.note)}</p>`;
+  }
+  if(s.extraHtml)h+=s.extraHtml;
+  if(s.tip)h+=`<div class="callout tip"><b class="t">Tip</b>${s.tip}</div>`;
+  if(s.verify&&s.verify.length){
+    h+=`<h2 class="sec">Verificación</h2>`+s.verify.map(v=>{const id="v"+Math.random().toString(36).slice(2,8);return `<div class="verify"><div class="vh"><span class="dev">${esc(v.dev)}</span><code id="${id}">${esc(v.cmd)}</code><button class="copy" data-copy="${id}">Copiar</button></div><div class="vb">✔ ${esc(v.expect)}${v.out?`<details><summary>Ver salida de ejemplo</summary><pre>${esc(v.out)}</pre></details>`:""}</div></div>`}).join("");
+  }
+  const isDone=done.has(s.id);
+  h+=`<div class="navbtns"><button class="btn" id="prevB" ${cur===0?"disabled":""}>← Anterior</button>
+  <button class="btn ${isDone?"done":""}" id="doneB">${isDone?"✓ Completado":"Marcar como completado"}</button>
+  <button class="btn primary" id="nextB" ${cur===STEPS.length-1?"disabled":""}>Siguiente →</button></div><p class="kbd">Atajos: ← → para navegar · C para marcar completado</p></div>`;
+  m.innerHTML=h;
+  m.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{tabSel[s.id]=+b.dataset.tab;renderStep()});
+  m.querySelector("#prevB").onclick=()=>go(cur-1);
+  m.querySelector("#nextB").onclick=()=>{if(!done.has(s.id)){done.add(s.id);store.set("done",[...done])}go(cur+1)};
+  m.querySelector("#doneB").onclick=toggleDone;
+  bindCopy(m);applyFocus(s);
+}
+function renderDevice(){
+  const devs=[...new Set(STEPS.flatMap(s=>(s.blocks||[]).map(b=>b.dev)))];
+  if(!devs.includes(selDev))selDev=devs[0];
+  const m=document.getElementById("main");
+  const secs=STEPS.filter(s=>(s.blocks||[]).some(b=>b.dev===selDev));
+  const all=secs.map(s=>`! ===== Paso ${s.id}: ${s.title} =====\n`+s.blocks.filter(b=>b.dev===selDev).map(b=>b.code).join("\n")).join("\n\n");
+  let h=`<div class="card"><div class="eyebrow"><span>Vista por equipo</span>${NODES[selDev]?`· <span class="mono">${esc(NODES[selDev].info)}</span>`:""}</div>
+  <h1 class="step-title">Configuración de ${esc(selDev)}</h1>
+  <div class="devpick">${devs.map(d=>`<button aria-pressed="${d===selDev}" data-dev="${esc(d)}">${esc(d)}</button>`).join("")}</div>`;
+  if(!secs.length)h+=`<p>Este equipo no requiere configuración en esta guía.</p>`;
+  else{
+    h+=`<p class="blocknote" style="margin-bottom:12px">${secs.length} paso(s) involucran a ${esc(selDev)}. Puedes copiar todo de una vez o ir bloque por bloque.</p>`;
+    h+=`<details style="margin-bottom:16px"><summary style="cursor:pointer;color:var(--accent);font-weight:600">Ver / copiar configuración completa en un solo bloque</summary><div style="margin-top:8px">${codeBox(selDev,all,[],"todos los pasos")}</div></details>`;
+    secs.forEach(s=>{const i=STEPS.indexOf(s);s.blocks.filter(b=>b.dev===selDev).forEach(b=>{
+      h+=`<div class="devsec"><h3><span class="chip">${s.id}</span>${esc(s.title)} <a href="#paso-${s.id}" data-goto="${i}">ir al paso →</a></h3>${codeBox(selDev,b.code,b.hl)}</div>`})});
+  }
+  h+=`</div>`;m.innerHTML=h;
+  m.querySelectorAll("[data-dev]").forEach(b=>b.onclick=()=>{selDev=b.dataset.dev;renderDevice()});
+  m.querySelectorAll("[data-goto]").forEach(a=>a.onclick=e=>{e.preventDefault();setMode("step");go(+a.dataset.goto)});
+  bindCopy(m);
+  applyFocus({focus:NODES[selDev]?[selDev]:[],overlays:[]});
+}
+function bindCopy(root){root.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>copyText(document.getElementById(b.dataset.copy).innerText,b))}
+function toggleDone(){const s=STEPS[cur];done.has(s.id)?done.delete(s.id):done.add(s.id);store.set("done",[...done]);renderNav();renderStep()}
+function go(i){if(i<0||i>=STEPS.length)return;cur=i;store.set("cur",cur);if(mode!=="step"){mode="step";syncModeBtns()}history.replaceState(null,"","#paso-"+STEPS[cur].id);renderNav();renderStep();window.scrollTo({top:0,behavior:"smooth"})}
+function syncModeBtns(){document.getElementById("mStep").setAttribute("aria-pressed",mode==="step");document.getElementById("mDev").setAttribute("aria-pressed",mode==="dev")}
+function setMode(md){mode=md;syncModeBtns();renderNav();if(mode==="step")renderStep();else{history.replaceState(null,"","#equipo-"+selDev);renderDevice();window.scrollTo({top:0,behavior:"smooth"})}}
+
+/* =====================================================================
+   INIT
+   ===================================================================== */
+buildTopo();
+document.getElementById("mStep").onclick=()=>setMode("step");
+document.getElementById("mDev").onclick=()=>setMode("dev");
+document.getElementById("playBtn").onclick=()=>playAnim(document.getElementById("animBar").dataset.anim);
+const bigBtn=document.getElementById("bigBtn"),aside=document.querySelector("aside.topo");let bd=null;
+function setBig(on){aside.classList.toggle("big",on);bigBtn.textContent=on?"✕ Cerrar":"⤢ Ampliar";if(on){bd=document.createElement("div");bd.className="backdrop";bd.onclick=()=>setBig(false);document.body.appendChild(bd)}else if(bd){bd.remove();bd=null}}
+bigBtn.onclick=()=>setBig(!aside.classList.contains("big"));
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&aside.classList.contains("big"))setBig(false)});
+document.getElementById("navToggle").onclick=()=>document.getElementById("stepsNav").classList.toggle("collapsed");
+if(innerWidth<=820)document.getElementById("stepsNav").classList.add("collapsed");
+document.getElementById("resetBtn").onclick=()=>{done=new Set();store.set("done",[]);renderNav();if(mode==="step")renderStep()};
+const root=document.documentElement;const savedTheme=store.get("theme",null);if(savedTheme)root.dataset.theme=savedTheme;
+document.getElementById("themeBtn").onclick=()=>{const dark=root.dataset.theme?root.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;root.dataset.theme=dark?"light":"dark";store.set("theme",root.dataset.theme)};
+document.addEventListener("keydown",e=>{
+  if(e.target.closest("input,textarea")||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(mode!=="step")return;
+  if(e.key==="ArrowRight")go(cur+1);else if(e.key==="ArrowLeft")go(cur-1);else if(e.key.toLowerCase()==="c")toggleDone();
+});
+(function start(){
+  const h=decodeURIComponent(location.hash);
+  let m=h.match(/^#paso-(.+)$/);
+  if(m){const i=STEPS.findIndex(s=>s.id===m[1]);if(i>=0)cur=i}
+  else if((m=h.match(/^#equipo-(.+)$/))&&NODES[m[1]]){selDev=m[1];setMode("dev");return}
+  else cur=Math.min(store.get("cur",0),STEPS.length-1);
+  renderNav();renderStep();
+})();
+</script>
+</body>
+</html>
