@@ -193,23 +193,36 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
 </style></head><body>
 <div class="deck">
 <div class="viewport"><div class="canvas" id="stage">
-<!-- 1 Portada -->
 <section class="slide" data-title="Portada"><div class="inner cover">
-  <span class="eyebrow">ARY6112 · Troubleshooting · Unidad 3.2.1</span>
+  <span class="eyebrow">ARY6112 · Troubleshooting · MPLS</span>
   <h1>Configuración de MPLS en redes de Service Provider</h1>
-  <p class="lead">Cómo MPLS reenvía por etiquetas, cómo LDP las distribuye y cómo una VPN de capa 3 separa a los clientes con VRF, MP-BGP y una pila de dos etiquetas.</p>
+  <p class="lead">Qué es MPLS, cómo reenvía por etiquetas, cómo LDP las distribuye y cómo se verifica paso a paso en el núcleo del proveedor.</p>
   <div class="meta"><span class="badge blue">Routing y Switching Corporativo</span><span class="badge blue">Usa ← → · F pantalla completa</span></div>
 </div></section>
 
-<!-- 2 Agenda -->
 <section class="slide" data-title="Agenda"><div class="inner">
   <div class="head"><span class="eyebrow">Agenda</span><h2>Lo que veremos</h2></div>
   <div class="agenda" id="agenda"></div>
 </div></section>
 
-<!-- 3 Qué es MPLS -->
-<section class="slide" data-title="Qué es MPLS" data-agenda="Operación de MPLS" data-sub="Etiquetas, LIB, LFIB, LSR y LSP"><div class="inner">
-  <div class="head"><span class="eyebrow">Introducción a MPLS</span><h2>Reenviar por etiqueta en vez de por dirección IP</h2>
+<section class="slide" data-title="Qué es MPLS y qué resuelve" data-agenda="Qué es MPLS" data-sub="Problema, idea central y funcionamiento"><div class="inner">
+  <div class="head"><span class="eyebrow">Para empezar</span><h2>Qué es MPLS y qué problema resuelve</h2>
+  <p class="lead"><b>MPLS</b> (Multiprotocol Label Switching) es una técnica de reenvío que usan los proveedores de servicio en su núcleo. En lugar de que cada router decida mirando la IP de destino, el paquete recibe una <b>etiqueta</b> al entrar a la red y los routers siguientes deciden solo con esa etiqueta.</p></div>
+  <div class="cols st">
+    <div class="panel"><span class="eyebrow" style="color:var(--muted)">Enrutamiento IP tradicional</span><h3>Cada router decide desde cero</h3><ul class="small">
+      <li>Cada salto busca la IP de destino en su tabla con <b>coincidencia más larga</b> (longest match).</li>
+      <li>La decisión depende solo del destino: es difícil separar clientes o forzar un camino distinto.</li>
+      <li>Todos los routers del núcleo deben conocer todas las rutas, incluidas las de los clientes.</li></ul></div>
+    <div class="panel"><span class="eyebrow">Con MPLS</span><h3>Se clasifica una vez, se conmuta muchas</h3><ul class="small">
+      <li>El router de borde mira la IP <b>una sola vez</b>, decide a qué grupo pertenece el paquete (FEC) y le pone una etiqueta.</li>
+      <li>El núcleo solo lee la etiqueta: busca una coincidencia exacta y la cambia por otra.</li>
+      <li>El núcleo no necesita conocer las rutas de los clientes. Encima se construyen VPN de capa 3, de capa 2 e ingeniería de tráfico.</li></ul></div>
+  </div>
+  <div class="note"><b>Analogía:</b> en un aeropuerto, el mostrador lee tu pasaje una vez y pega una etiqueta en la maleta. Las cintas y los operarios ya no leen el pasaje: solo miran la etiqueta para saber a qué cinta va. El router de borde es el mostrador; el núcleo MPLS son las cintas.</div>
+</div></section>
+
+<section class="slide" data-title="Qué es MPLS"><div class="inner">
+  <div class="head"><span class="eyebrow">La idea en movimiento</span><h2>Reenviar por etiqueta en vez de por dirección IP</h2>
   <p class="lead">MPLS (Multiprotocol Label Switching) decide el reenvío con una etiqueta corta. Solo los routers de borde miran la IP; el núcleo cambia una etiqueta por otra.</p></div>
   <div class="cols w64 fill">
     <div class="panel">
@@ -238,8 +251,53 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 4 Planos LIB LFIB -->
-<section class="slide" data-title="Plano de control y de datos"><div class="inner">
+<section class="slide" data-title="Cómo funciona MPLS"><div class="inner">
+  <div class="head"><span class="eyebrow">Funcionamiento general</span><h2>Cómo funciona MPLS en cinco pasos</h2>
+  <p class="lead">Los dos primeros pasos preparan la red (plano de control); los tres últimos ocurren con cada paquete (plano de datos). Toca un paso para ver el detalle.</p></div>
+  <div class="cols w46 fill">
+    <div class="steps" id="howSteps" style="grid-template-columns:1fr">
+      <div data-x="Antes de usar etiquetas, los routers del proveedor necesitan rutas. Un <b>IGP</b> (OSPF o IS-IS, normalmente) llena la tabla de enrutamiento de cada router, incluidas las loopbacks /32 de los routers de borde. <b>Sin ruta IP no hay etiqueta.</b>"><b>1. El IGP calcula las rutas</b><span>Plano de control</span></div>
+      <div data-x="Cada router asigna una etiqueta local a cada prefijo de su tabla y la anuncia a sus vecinos con <b>LDP</b>. Así cada router sabe qué etiqueta espera su vecino para cada destino. Se guardan en la LIB y la mejor (la del siguiente salto del IGP) pasa a la LFIB."><b>2. LDP reparte etiquetas</b><span>Plano de control</span></div>
+      <div data-x="Llega un paquete IP normal al router de borde de entrada. Este busca el destino en su FIB, ve qué etiqueta le corresponde y la <b>impone</b> (<i>push</i>): inserta una cabecera de 32 bits entre la capa 2 y la IP."><b>3. Push en el borde de entrada</b><span>Plano de datos</span></div>
+      <div data-x="Cada router del núcleo recibe el paquete etiquetado, busca la etiqueta de entrada en su LFIB y la <b>cambia</b> (<i>swap</i>) por la etiqueta que espera el siguiente salto. No mira la IP de destino."><b>4. Swap en el núcleo</b><span>Plano de datos</span></div>
+      <div data-x="La etiqueta se <b>quita</b> (<i>pop</i>) al final del camino, normalmente en el penúltimo salto (PHP). El router de salida recibe el paquete IP limpio y lo entrega por enrutamiento IP normal fuera del dominio MPLS."><b>5. Pop al salir</b><span>Plano de datos</span></div>
+    </div>
+    <div class="stack">
+      <div class="panel">
+        <svg viewBox="0 0 760 210" class="dia" role="img" aria-label="Paquete IP entra a PE1, recibe etiqueta 25, P la cambia a 23, la etiqueta se quita y sale como IP por PE2">
+          <rect class="zone" x="110" y="40" width="540" height="140" rx="14"/><text class="lbl" x="125" y="60">Dominio MPLS</text>
+          <line class="wire" x1="20" y1="120" x2="740" y2="120"/>
+          <rect class="box" x="140" y="96" width="110" height="48" rx="8"/><text x="195" y="126" text-anchor="middle">Borde</text>
+          <rect class="box" x="325" y="96" width="110" height="48" rx="8"/><text x="380" y="126" text-anchor="middle">Núcleo</text>
+          <rect class="box" x="510" y="96" width="110" height="48" rx="8"/><text x="565" y="126" text-anchor="middle">Borde</text>
+          <rect x="40" y="76" width="46" height="26" rx="4" fill="var(--panel)" stroke="var(--muted)"/><text class="tagt" x="63" y="94" text-anchor="middle" style="fill:var(--ink)">IP</text>
+          <rect x="262" y="76" width="30" height="26" rx="4" class="tagr"/><text class="tagt" x="277" y="94" text-anchor="middle">25</text><rect x="292" y="76" width="30" height="26" rx="4" fill="var(--panel)" stroke="var(--muted)"/><text class="tagt" x="307" y="94" text-anchor="middle" style="fill:var(--ink)">IP</text>
+          <rect x="447" y="76" width="30" height="26" rx="4" class="tagr"/><text class="tagt" x="462" y="94" text-anchor="middle">23</text><rect x="477" y="76" width="30" height="26" rx="4" fill="var(--panel)" stroke="var(--muted)"/><text class="tagt" x="492" y="94" text-anchor="middle" style="fill:var(--ink)">IP</text>
+          <rect x="670" y="76" width="46" height="26" rx="4" fill="var(--panel)" stroke="var(--muted)"/><text class="tagt" x="693" y="94" text-anchor="middle" style="fill:var(--ink)">IP</text>
+          <text class="lbl k" x="195" y="166" text-anchor="middle">push 25</text><text class="lbl k" x="380" y="166" text-anchor="middle">swap 25 → 23</text><text class="lbl k" x="565" y="166" text-anchor="middle">pop</text>
+        </svg>
+      </div>
+      <div class="panel tight"><p id="howX">Pasa el cursor o toca un paso.</p></div>
+    </div>
+  </div>
+</div></section>
+
+<section class="slide" data-title="Vocabulario MPLS"><div class="inner">
+  <div class="head"><span class="eyebrow">Vocabulario</span><h2>Los términos que vas a ver en toda la unidad</h2>
+  <p class="lead">Cada uno se desarrolla en las diapositivas siguientes. Este es el mapa para no perderse.</p></div>
+  <div class="panel fill"><table><thead><tr><th>Término</th><th>Qué es</th></tr></thead><tbody>
+    <tr><td><b>Etiqueta</b> (label)</td><td>Número de 20 bits con significado local entre dos routers vecinos. Va dentro de una cabecera de 32 bits.</td></tr>
+    <tr><td><b>FEC</b></td><td>Forwarding Equivalence Class: grupo de paquetes que se tratan igual (normalmente, los que van al mismo prefijo). Cada FEC recibe una etiqueta.</td></tr>
+    <tr><td><b>LSR</b></td><td>Label Switching Router: cualquier router que entiende etiquetas MPLS.</td></tr>
+    <tr><td><b>LSR de borde / PE</b></td><td>Router en el límite del dominio MPLS. Pone la etiqueta al entrar y la quita al salir. En un proveedor se llama Provider Edge.</td></tr>
+    <tr><td><b>LSR intermedio / P</b></td><td>Router del núcleo (Provider). Solo cambia etiquetas.</td></tr>
+    <tr><td><b>LSP</b></td><td>Label Switched Path: el camino etiquetado de entrada a salida. Es de un solo sentido.</td></tr>
+    <tr><td><b>LDP</b></td><td>Label Distribution Protocol: protocolo con el que los LSR se anuncian las etiquetas.</td></tr>
+    <tr><td><b>LIB / LFIB</b></td><td>LIB guarda todas las etiquetas conocidas; LFIB solo las que se usan para reenviar.</td></tr>
+  </tbody></table></div>
+</div></section>
+
+<section class="slide" data-title="Plano de control y de datos" data-agenda="Operación de MPLS" data-sub="LIB, LFIB, LSR, LSP, etiqueta, LDP y PHP"><div class="inner">
   <div class="head"><span class="eyebrow">MPLS LIB y LFIB</span><h2>Cuatro tablas en cada LSR</h2>
   <p class="lead">Toca cada tabla para ver qué guarda y con qué comando se revisa.</p></div>
   <div class="cols w64 fill">
@@ -265,7 +323,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 5 LSR -->
 <section class="slide" data-title="LSR de borde e intermedios"><div class="inner">
   <div class="head"><span class="eyebrow">LSR</span><h2>Cada router del dominio cumple un rol</h2>
   <p class="lead">Un LSR (Label Switching Router) entiende etiquetas MPLS. Toca un router para ver qué hace con un paquete que va de 192.168.0.0/24 hacia 10.0.0.0/24.</p></div>
@@ -279,7 +336,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 6 LSP -->
 <section class="slide" data-title="LSP"><div class="inner">
   <div class="head"><span class="eyebrow">LSP</span><h2>El camino etiquetado es de un solo sentido</h2>
   <p class="lead">Un LSP (Label Switched Path) es la secuencia de LSR que sigue un paquete etiquetado hacia un prefijo. El retorno usa otro LSP, con otras etiquetas, aunque normalmente pase por los mismos routers porque el IGP es simétrico.</p></div>
@@ -288,7 +344,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   <div class="note" id="lspTxt"></div>
 </div></section>
 
-<!-- 7 Etiqueta -->
 <section class="slide" data-title="La etiqueta MPLS"><div class="inner">
   <div class="head"><span class="eyebrow">Etiquetas</span><h2>Una cabecera de 32 bits entre la capa 2 y la capa 3</h2>
   <p class="lead">Por ir entre las dos cabeceras se le llama <i>shim header</i>. Mueve los valores y mira cómo quedan los 32 bits.</p></div>
@@ -309,7 +364,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 8 LDP -->
 <section class="slide" data-title="LDP"><div class="inner">
   <div class="head"><span class="eyebrow">Label Distribution Protocol</span><h2>LDP descubre vecinos y les reparte etiquetas</h2>
   <p class="lead">Recorre las etapas de una sesión LDP entre dos LSR directamente conectados.</p></div>
@@ -336,7 +390,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 9 Simulador de conmutación -->
 <section class="slide" data-title="Simulador: conmutación de etiquetas"><div class="inner">
   <div class="head"><span class="eyebrow">Label switching en vivo</span><h2>Sigue el paquete de R1 a R5</h2>
   <p class="lead">Cada salto consulta una tabla. Activa PHP para ver cómo R4 quita la etiqueta y R5 hace una sola búsqueda.</p></div>
@@ -345,7 +398,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   <div class="note" id="swTxt">Pulsa enviar o avanza paso a paso.</div>
 </div></section>
 
-<!-- 10 PHP -->
 <section class="slide" data-title="Penultimate Hop Popping"><div class="inner">
   <div class="head"><span class="eyebrow">PHP</span><h2>El penúltimo salto quita la etiqueta</h2>
   <p class="lead">Sin PHP, R5 busca en la LFIB, ve que no hay etiqueta de salida, la quita y vuelve a buscar en la FIB. Con PHP, R5 anuncia la etiqueta especial <b>3 (implicit-null)</b>: R4 entiende que debe quitarla y enviar el paquete IP limpio.</p></div>
@@ -375,8 +427,7 @@ Label      Label      or Tunnel Id    Switched interface
   </div>
 </div></section>
 
-<!-- 11 Verificación MPLS -->
-<section class="slide" data-title="Verificación de MPLS"><div class="inner">
+<section class="slide" data-title="Verificación de MPLS" data-agenda="Troubleshooting MPLS" data-sub="Qué revisar y en qué orden"><div class="inner">
   <div class="head"><span class="eyebrow">Troubleshooting MPLS</span><h2>Del enlace a la etiqueta: qué revisar y en qué orden</h2>
   <p class="lead">Toca un paso para ver el comando y cómo se ve cuando falla.</p></div>
   <div class="cols w37 fill">
@@ -385,103 +436,39 @@ Label      Label      or Tunnel Id    Switched interface
   </div>
 </div></section>
 
-<!-- 12 MPLS L3 VPN -->
-<section class="slide" data-title="MPLS VPN de capa 3" data-agenda="MPLS VPN de capa 3" data-sub="VRF, MP-BGP, VPNv4 y pila de etiquetas"><div class="inner">
-  <div class="head"><span class="eyebrow">MPLS VPN de capa 3</span><h2>Un mismo núcleo, clientes que no se ven entre sí</h2>
-  <p class="lead">El dominio MPLS del proveedor es la <b>red P</b>; los sitios de los clientes son la <b>red C</b>. Toca un router para ver su rol y qué sabe de los clientes.</p></div>
-  <div class="cols w64 fill">
-    <div class="panel"><svg viewBox="0 0 900 400" class="dia" id="vpnSvg" role="img" aria-label="Clientes A y B conectados por PE_R1, P_R2 a P_R4 y PE_R5"></svg></div>
-    <div class="panel"><span class="eyebrow" id="vpT"></span><p id="vpX"></p></div>
-  </div>
-</div></section>
-
-<!-- 13 Propagación de rutas -->
-<section class="slide" data-title="VRF en el PE y MP-BGP"><div class="inner">
-  <div class="head"><span class="eyebrow">Implementación de MPLS VPN de capa 3</span><h2>Cómo viaja una ruta del cliente de un sitio al otro</h2>
-  <p class="lead">Avanza paso a paso con la ruta 10.0.2.0/24 del cliente B, desde CE_RB hasta CE_RA.</p></div>
-  <div class="ctrls"><button class="btn ghost" id="rpPrev">← Paso</button><button class="btn" id="rpNext">Paso →</button><span class="badge blue" id="rpN"></span></div>
-  <div class="panel"><svg viewBox="0 0 1440 250" class="dia" id="rpSvg" role="img" aria-label="Propagación de la ruta del cliente B"></svg></div>
-  <div class="cols w64">
-    <div class="panel tight"><h3 id="rpH"></h3><p id="rpX"></p></div>
-    <div class="term sm" id="rpO"></div>
-  </div>
-</div></section>
-
-<!-- 14 VPNv4 -->
-<section class="slide" data-title="Dirección VPNv4"><div class="inner">
-  <div class="head"><span class="eyebrow">Dirección VPNv4</span><h2>El RD hace único un prefijo repetido</h2>
-  <p class="lead">Los clientes A y B pueden usar las mismas redes. El PE antepone a cada prefijo el <b>Route Distinguisher</b> (8 bytes) de la VRF y obtiene una dirección VPNv4 de 12 bytes. Elige cliente y prefijo.</p></div>
-  <div class="cols w46 fill">
-    <div class="panel">
-      <div class="ctrls"><div class="seg" id="rdC"><button data-v="A" aria-pressed="true">Cliente A · RD 1:100</button><button data-v="B" aria-pressed="false">Cliente B · RD 1:110</button></div></div>
-      <div class="ctrls"><div class="seg" id="rdP"><button data-v="192.168.0.0/24" aria-pressed="true">192.168.0.0/24</button><button data-v="10.0.0.0/24" aria-pressed="false">10.0.0.0/24</button></div></div>
-      <div class="pktrow" style="font-size:18px"><span class="h2" style="flex:2" id="rdRD"></span><span class="h1" style="flex:1" id="rdIP"></span></div>
-      <div class="legend"><span><i style="background:var(--amber-soft);outline:1px solid var(--amber)"></i>RD: 8 bytes (ASN:número o IP:número)</span><span><i style="background:var(--accent-soft);outline:1px solid var(--accent)"></i>IPv4: 4 bytes</span></div>
-      <div class="result" id="rdRes"></div>
-    </div>
-    <div class="stack">
-      <div class="term sm" id="rdTbl"></div>
-      <div class="fix"><span class="fe">Lo que falta en el original.</span> El RD solo hace única la ruta. Lo que decide en qué VRF se instala es el <b>Route Target</b> (RT): el PE exporta con <code>route-target export</code> y el PE remoto importa con <code>route-target import</code>. Si el RT no calza, la ruta llega por MP-BGP pero no aparece en la VRF.</div>
-    </div>
-  </div>
-</div></section>
-
-<!-- 15 Pila de etiquetas -->
-<section class="slide" data-title="Simulador: pila de dos etiquetas"><div class="inner">
-  <div class="head"><span class="eyebrow">Pila de etiquetas</span><h2>Etiqueta VPN para el cliente, etiqueta LDP para el camino</h2>
-  <p class="lead">PE_R5 asigna la etiqueta VPN 35 a 1:110:10.0.2.0/24 y la anuncia por MP-iBGP. LDP arma el LSP hacia PE_R5. Avanza y mira la pila en cada salto.</p></div>
-  <div class="ctrls"><button class="btn ghost" id="stPrev">← Paso</button><button class="btn" id="stNext">Paso →</button><span class="badge blue" id="stN"></span></div>
-  <div class="panel"><svg viewBox="0 0 1440 300" class="dia" id="stSvg" role="img" aria-label="Paquete del cliente B con etiquetas VPN y LDP recorriendo el núcleo"></svg></div>
-  <div class="cols w64">
-    <div class="panel tight"><h3 id="stH"></h3><p id="stX"></p></div>
-    <div class="term sm" id="stO"></div>
-  </div>
-</div></section>
-
-<!-- 16 Síntomas L3VPN -->
-<section class="slide" data-title="L3VPN: del síntoma a la causa"><div class="inner">
-  <div class="head"><span class="eyebrow">Troubleshooting MPLS VPN</span><h2>Del síntoma a la causa</h2><p class="lead">Toca un síntoma para ver dónde mirar primero.</p></div>
-  <div class="cols w37 fill">
-    <div id="l3List"></div>
-    <div class="panel"><span class="eyebrow" id="l3T"></span><div id="l3X"></div><div class="term sm" id="l3O"></div></div>
-  </div>
-</div></section>
-
-<!-- 17 Resumen -->
 <section class="slide" data-title="Resumen"><div class="inner">
   <div class="head"><span class="eyebrow">Resumen</span><h2>Lo que hay que llevarse</h2></div>
   <div class="cols c3 st">
-    <div class="panel"><h3>Operación de MPLS</h3><ul>
-      <li>Los PE (LSR de borde) ponen y quitan etiquetas; los P las cambian.</li>
-      <li>LDP: Hello UDP 646, sesión TCP 646 hacia el LDP ID.</li>
+    <div class="panel"><h3>La idea</h3><ul>
+      <li>Se clasifica en el borde una vez; el núcleo reenvía solo por etiqueta.</li>
+      <li>Push en la entrada, swap en el núcleo, pop a la salida.</li>
       <li>El LSP es unidireccional.</li>
-      <li>PHP: el penúltimo salto quita la etiqueta (imp-null).</li></ul></div>
-    <div class="panel"><h3>VPN de capa 3</h3><ul>
-      <li>Una VRF por cliente en cada PE.</li>
-      <li>Los CE no saben nada de MPLS.</li>
-      <li>RD + IPv4 = VPNv4, intercambiada por MP-BGP entre PE.</li>
-      <li>El RT decide en qué VRF se importa.</li></ul></div>
+      <li>MPLS es la base de VPN de capa 3, capa 2 y TE.</li></ul></div>
+    <div class="panel"><h3>Etiquetas y LDP</h3><ul>
+      <li>Cabecera de 32 bits: Label 20, EXP/TC 3, S 1, TTL 8.</li>
+      <li>LDP: Hello UDP 646 a 224.0.0.2, sesión TCP 646 hacia el LDP ID.</li>
+      <li>LIB guarda todas; LFIB, la del siguiente salto del IGP.</li>
+      <li>PHP: el egreso anuncia imp-null (3) y el penúltimo salto quita la etiqueta.</li></ul></div>
     <div class="panel"><h3>Diagnóstico</h3><ul>
-      <li>Abajo hacia arriba: IGP, LDP, LFIB, MP-BGP, VRF.</li>
-      <li>Loopbacks /32 de los PE en el IGP.</li>
-      <li>Pila: etiqueta VPN adentro, LDP afuera.</li>
-      <li>Prueba con <code>ping vrf</code> y <code>traceroute vrf</code>.</li></ul></div>
+      <li>De abajo hacia arriba: IGP, CEF, interfaces, LDP, LFIB.</li>
+      <li>Loopbacks /32 de los routers de borde en el IGP, sin resumir.</li>
+      <li>Hellos sin sesión: LDP ID inalcanzable o TCP 646 bloqueado.</li>
+      <li><code>traceroute</code> muestra la etiqueta en cada salto.</li></ul></div>
   </div>
+  <div class="fix"><span class="fe">Sigue con:</span> <a href="MPLS%20VPN%20de%20Capa%203.html">MPLS VPN de capa 3</a>, que usa este núcleo MPLS para separar a varios clientes con VRF y MP-BGP.</div>
 </div></section>
 
-<!-- 18 Quiz -->
 <section class="slide" data-title="Preguntas" data-agenda="Preguntas" data-sub="Comprueba lo aprendido"><div class="inner">
   <div class="head"><span class="eyebrow">Preguntas</span><h2>Comprueba lo aprendido</h2></div>
   <div class="panel quiz fill" id="quiz"></div>
 </div></section>
 
-<!-- 19 Referencias -->
 <section class="slide" data-title="Referencias"><div class="inner">
   <div class="head"><span class="eyebrow">Referencias</span><h2>Bibliografía</h2></div>
   <div class="panel"><ul>
     <li>Raymond Lacoste, Brad Edgeworth. <i>CCNP Enterprise Advanced Routing ENARSI 300-410 Official Cert Guide</i>. Cisco Press. Capítulo 18, VRF, MPLS and MPLS Layer 3 VPNs.</li>
-    <li>IETF <a href="https://www.rfc-editor.org/rfc/rfc3031" target="_blank" rel="noopener">RFC 3031</a> (arquitectura MPLS), <a href="https://www.rfc-editor.org/rfc/rfc3032" target="_blank" rel="noopener">RFC 3032</a> (codificación de etiquetas), <a href="https://www.rfc-editor.org/rfc/rfc5036" target="_blank" rel="noopener">RFC 5036</a> (LDP) y <a href="https://www.rfc-editor.org/rfc/rfc4364" target="_blank" rel="noopener">RFC 4364</a> (BGP/MPLS IP VPN).</li>
-    <li>Cisco. <i>MPLS Basic Configuration Guide</i> y <i>MPLS Layer 3 VPNs Configuration Guide</i>, Cisco IOS XE.</li>
+    <li>IETF <a href="https://www.rfc-editor.org/rfc/rfc3031" target="_blank" rel="noopener">RFC 3031</a> (arquitectura MPLS), <a href="https://www.rfc-editor.org/rfc/rfc3032" target="_blank" rel="noopener">RFC 3032</a> (codificación de etiquetas) y <a href="https://www.rfc-editor.org/rfc/rfc5036" target="_blank" rel="noopener">RFC 5036</a> (LDP).</li>
+    <li>Cisco. <i>MPLS Basic Configuration Guide</i>, Cisco IOS XE.</li>
   </ul></div>
 </div></section>
 
@@ -599,6 +586,9 @@ function stackG(labels){/* dibuja la pila: IP + etiquetas, la de arriba a la izq
   const parts=[...labels.map((l,i)=>({t:l.t,c:l.c||"tagr"})),{t:"IP",c:"ip"}];const w=46,tot=parts.length*w;
   return parts.map((p,i)=>`<rect x="${-tot/2+i*w}" y="-15" width="${w-2}" height="30" rx="4" ${p.c==="ip"?'fill="var(--panel)" stroke="var(--muted)"':`class="tagr"${p.c==="vpn"?' style="fill:var(--ok)"':""}`}/><text class="tagt" x="${-tot/2+i*w+w/2-1}" y="5" text-anchor="middle"${p.c==="ip"?' style="fill:var(--ink)"':(p.c==="vpn"?' style="fill:#fff"':"")}>${p.t}</text>`).join("");}
 
+/* ---------- intro: cómo funciona ---------- */
+stepsCards("#howSteps","#howX");
+
 /* ---------- 3: Edge / Core ---------- */
 $("#m3Go").onclick=async()=>{const g=$("#m3Pkt"),t=$("#m3L");
   t.textContent="IP";await animate(g,[[700,60],[615,87]],400);t.textContent="25";await sleep(250);
@@ -701,100 +691,16 @@ picker("#vfList","#vfX",vf.map(v=>[v[0],v[1]]));
 $("#vfList").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("#vfT").textContent=vf[+b.dataset.i][0];$("#vfO").textContent=vf[+b.dataset.i][2]});
 $("#vfT").textContent=vf[0][0];$("#vfO").textContent=vf[0][2];
 
-/* ---------- 12: topología VPN ---------- */
-const VN={cer1:[90,90,"CE_R1"],cera:[90,310,"CE_RA"],pe1:[230,200,"PE_R1"],p2:[390,200,"P_R2"],p3:[530,200,"P_R3"],p4:[670,200,"P_R4"],pe5:[810,200,"PE_R5"]};
-const VN2={cer2:[810,70,"CE_R2"],cerb:[810,330,"CE_RB"]};
-const vrole={cer1:["CE_R1 · Cliente A, sitio 1","Router del cliente. Anuncia 192.168.0.0/24 a PE_R1 con un protocolo normal. No sabe nada de MPLS, etiquetas ni VRF."],
- cera:["CE_RA · Cliente B, sitio 1","Router del cliente B, con la red 10.0.0.0/24. Tampoco ejecuta MPLS."],
- pe1:["PE_R1 · Provider Edge","Tiene una VRF por cliente (A y B) asociada a cada interfaz hacia un CE. Aprende las rutas del CE, las pasa a MP-BGP y es el LSR de entrada/salida."],
- p2:["P_R2 · Provider","Router del núcleo. Solo ejecuta el IGP y LDP. No conoce las rutas de los clientes ni ejecuta BGP: cambia etiquetas LDP."],
- p3:["P_R3 · Provider","Igual que P_R2: conmuta etiquetas sin mirar al cliente."],
- p4:["P_R4 · Provider (penúltimo salto)","Conmuta etiquetas; con PHP quita la etiqueta LDP antes de PE_R5."],
- pe5:["PE_R5 · Provider Edge","Mantiene las VRF de A y B del otro sitio. Intercambia rutas VPNv4 con PE_R1 por MP-iBGP."],
- cer2:["CE_R2 · Cliente A, sitio 2","Red 192.168.2.0/24. Ve las rutas del sitio 1 del cliente A como si fueran normales."],
- cerb:["CE_RB · Cliente B, sitio 2","Red 10.0.2.0/24. Nunca ve las rutas del cliente A."]};
-function vpnDraw(sel){const all={...VN,...VN2};
-  let s=`<rect class="zone" x="170" y="140" width="700" height="120" rx="14"/><text class="lbl" x="185" y="160">Dominio MPLS (red P)</text>
-  <path d="M90 90 L230 200 L810 200 L810 70" class="wire" stroke-width="5" style="stroke:var(--accent)"/><path d="M90 310 L230 200 M810 200 L810 330" class="wire" stroke-width="5" style="stroke:var(--amber)"/>
-  <text class="lbl k" x="20" y="40">Cliente A sitio 1 · 192.168.0.0/24</text><text class="lbl" x="20" y="370" style="fill:var(--amber)">Cliente B sitio 1 · 10.0.0.0/24</text>
-  <text class="lbl k" x="880" y="30" text-anchor="end">Cliente A sitio 2 · 192.168.2.0/24</text><text class="lbl" x="880" y="380" text-anchor="end" style="fill:var(--amber)">Cliente B sitio 2 · 10.0.2.0/24</text>`;
-  Object.entries(all).forEach(([k,v])=>{s+=`<g class="clk" data-k="${k}">${R(v[0],v[1],v[2],k===sel?"box amb":(k.startsWith("ce")?"box bk":"box"),104,44)}</g>`});
-  $("#vpnSvg").innerHTML=s;$("#vpT").textContent=vrole[sel][0];$("#vpX").innerHTML=vrole[sel][1];}
-$("#vpnSvg").addEventListener("click",e=>{const g=e.target.closest(".clk");if(g)vpnDraw(g.dataset.k)});vpnDraw("pe1");
-
-/* ---------- 13: propagación de la ruta ---------- */
-const RX=[110,330,720,1110,1330];
-const rp=[
- [4,"1. CE_RB anuncia la ruta","CE_RB anuncia 10.0.2.0/24 a PE_R5 con el protocolo PE-CE acordado: estático, OSPF, EIGRP, RIP o eBGP.","PE_R5# show ip route vrf B 10.0.2.0\nRouting entry for 10.0.2.0/24\n  Known via \"ospf 2\", distance 110\n  * 10.5.0.6, via GigabitEthernet0/2"],
- [3,"2. Queda en la VRF del cliente B","PE_R5 instala la ruta en la VRF B, no en la tabla global. La VRF tiene su RD (1:110) y sus route targets.","PE_R5# show ip vrf\n  Name       Default RD    Interfaces\n  A          1:100         Gi0/1\n  B          1:110         Gi0/2"],
- [3,"3. Pasa a MP-BGP como VPNv4","PE_R5 redistribuye la ruta en BGP. Se convierte en 1:110:10.0.2.0/24, recibe la etiqueta VPN 35 y se marca con el RT de exportación.","PE_R5# show bgp vpnv4 unicast all labels\n   Network          Next Hop      In label/Out label\nRoute Distinguisher: 1:110 (B)\n   10.0.2.0/24      10.5.0.6      35/nolabel"],
- [2,"4. MP-iBGP entre los PE","La ruta VPNv4 viaja de PE_R5 a PE_R1 con next hop 5.5.5.5 (loopback de PE_R5). Los routers P no ejecutan BGP ni la ven.","PE_R1# show bgp vpnv4 unicast all\n   Network          Next Hop     Metric LocPrf Weight Path\nRoute Distinguisher: 1:110 (default for vrf B)\n *>i 10.0.2.0/24     5.5.5.5          0    100      0 ?"],
- [1,"5. PE_R1 la importa en la VRF B","El RT de la ruta coincide con el import de la VRF B, así que PE_R1 la instala ahí con next hop PE_R5.","PE_R1# show ip route vrf B 10.0.2.0\nRouting entry for 10.0.2.0/24\n  Known via \"bgp 1\", distance 200, metric 0\n  * 5.5.5.5 (default), from 5.5.5.5"],
- [0,"6. Llega a CE_RA","PE_R1 la anuncia a CE_RA por el protocolo PE-CE. CE_RA la ve como una ruta cualquiera.","CE_RA# show ip route 10.0.2.0\nO E2     10.0.2.0/24 [110/1] via 10.1.0.1, Gi0/0"]];
-let rpI=0;
-function rpDraw(){const st=rp[rpI];
-  const names=["CE_RA","PE_R1","P_R2 · P_R3 · P_R4","PE_R5","CE_RB"];
-  let s=`<rect class="zone" x="230" y="70" width="980" height="130" rx="14"/><text class="lbl" x="245" y="90">Dominio MPLS</text><line class="wire" x1="110" y1="135" x2="1330" y2="135"/>`;
-  RX.forEach((x,k)=>{s+=R(x,135,names[k],k===st[0]?"box amb":(k===0||k===4?"box bk":"box"),k===2?250:130,50)});
-  const arrows=[[1330,1110],[1110,1110],[1110,1110],[1110,330],[330,330],[330,110]];const a=arrows[rpI];
-  s+=`<path d="M${a[0]} 60 L${a[1]+(a[0]===a[1]?0:10)} 60" stroke="var(--ok)" stroke-width="5" marker-end="url(#ra)"/><defs><marker id="ra" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--ok)"/></marker></defs>`;
-  s+=`<text class="lbl k" x="720" y="235" text-anchor="middle">${rpI>=2&&rpI<=4?"1:110:10.0.2.0/24 · etiqueta VPN 35 · next hop 5.5.5.5":"10.0.2.0/24"}</text>`;
-  if(rpI===3)s+=`<path d="M1110 105 C900 30 540 30 330 105" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="8 6"/><text class="lbl k" x="720" y="40" text-anchor="middle">sesión MP-iBGP entre loopbacks</text>`;
-  $("#rpSvg").innerHTML=s;$("#rpH").textContent=st[1];$("#rpX").textContent=st[2];$("#rpO").textContent=st[3];$("#rpN").textContent=`Paso ${rpI+1} de ${rp.length}`;
-  $("#rpPrev").disabled=rpI===0;$("#rpNext").disabled=rpI===rp.length-1;}
-$("#rpPrev").onclick=()=>{rpI=Math.max(0,rpI-1);rpDraw()};$("#rpNext").onclick=()=>{rpI=Math.min(rp.length-1,rpI+1);rpDraw()};rpDraw();
-
-/* ---------- 14: VPNv4 ---------- */
-let rdc="A",rdp="192.168.0.0/24";
-function rdRender(){const rd=rdc==="A"?"1:100":"1:110";$("#rdRD").textContent="RD "+rd;$("#rdIP").textContent=rdp;$("#rdRes").textContent=`VPNv4: ${rd}:${rdp}`;
-  const rows=[["1:100","192.168.0.0/24","A"],["1:100","10.0.0.0/24","A"],["1:110","10.0.0.0/24","B"],["1:110","10.0.2.0/24","B"]];
-  $("#rdTbl").innerHTML=`<span class="p">PE_R1#</span> show bgp vpnv4 unicast all\n   Network            Next Hop\n`+rows.map(r=>{const on=r[0]===rd&&r[1]===rdp;return `${on?'<span class="h">':""}Route Distinguisher: ${r[0]} (vrf ${r[2]})\n *>  ${pad(r[1],18)} 0.0.0.0${on?"</span>":""}`}).join("\n")+`\n<span class="d">! 10.0.0.0/24 aparece dos veces, sin conflicto:</span>\n<span class="d">! 1:100:10.0.0.0/24 y 1:110:10.0.0.0/24</span>`;}
-seg("#rdC",v=>{rdc=v;rdRender()});seg("#rdP",v=>{rdp=v;rdRender()});rdRender();
-
-/* ---------- 15: pila de etiquetas ---------- */
-const SX=[90,280,520,760,1000,1200,1360];
-const SN=["CE_RA","PE_R1","P_R2","P_R3","P_R4","PE_R5","CE_RB"];
-const st=[
- [0,[],"CE_RA envía un paquete IP","Destino 10.0.2.10. CE_RA no sabe que hay MPLS: lo envía a PE_R1 como a cualquier router.","CE_RA# show ip route 10.0.2.0\nO E2  10.0.2.0/24 [110/1] via 10.1.0.1"],
- [1,[{t:"99"},{t:"35",c:"vpn"}],"PE_R1 impone dos etiquetas","Busca en la VRF B: 1:110:10.0.2.0/24 → etiqueta VPN 35, next hop PE_R5. Para llegar a PE_R5, LDP le dio la etiqueta 99 vía P_R2. Pone 35 abajo y 99 arriba.","PE_R1# show ip cef vrf B 10.0.2.0\n10.0.2.0/24\n  nexthop 10.12.0.2 Gi0/1 label 99 35"],
- [2,[{t:"10"},{t:"35",c:"vpn"}],"P_R2 cambia solo la de arriba","Mira únicamente la etiqueta LDP: 99 → 10 hacia P_R3. La etiqueta VPN 35 viaja sin cambios.","P_R2# show mpls forwarding-table labels 99\nLocal  Outgoing  Prefix      Outgoing  Next Hop\n99     10        5.5.5.5/32  Gi0/1     10.23.0.3"],
- [3,[{t:"52"},{t:"35",c:"vpn"}],"P_R3 cambia 10 por 52","Igual que P_R2. Ningún router P sabe a qué cliente pertenece el paquete.","P_R3# show mpls forwarding-table labels 10\n10     52        5.5.5.5/32  Gi0/1     10.34.0.4"],
- [4,[{t:"35",c:"vpn"}],"P_R4 hace PHP","PE_R5 le anunció imp-null para su loopback: P_R4 quita la etiqueta LDP y envía el paquete solo con la etiqueta VPN.","P_R4# show mpls forwarding-table labels 52\n52     Pop Label 5.5.5.5/32  Gi0/1     10.45.0.5"],
- [5,[],"PE_R5 lee la etiqueta VPN","La etiqueta 35 le dice a qué VRF pertenece el paquete (B). La quita y lo reenvía por IP a CE_RB.","PE_R5# show mpls forwarding-table labels 35\n35     No Label  10.0.2.0/24[V] Gi0/2  10.5.0.6"],
- [6,[],"CE_RB recibe el paquete IP","Llega igual que salió de CE_RA. Sin la etiqueta VPN, PE_R5 no sabría si 10.0.2.10 es del cliente A o del B.","CE_RB# ! recibe 10.0.2.10 desde 10.0.0.x"]];
-let stI=0;
-function stDraw(){const s0=st[stI];
-  let s=`<rect class="zone" x="190" y="90" width="1110" height="150" rx="14"/><text class="lbl" x="205" y="110">Dominio MPLS</text><line class="wire" x1="90" y1="180" x2="1360" y2="180"/>`;
-  SX.forEach((x,k)=>{s+=R(x,180,SN[k],k===s0[0]?"box amb":(k===0||k===6?"box bk":"box"),k===0||k===6?120:110,48)});
-  const ldp=["","99","10","52","pop"];[1,2,3,4].forEach(k=>{s+=`<text class="lbl" x="${(SX[k]+SX[k+1])/2}" y="230" text-anchor="middle">LDP ${ldp[k]}</text>`});
-  s+=`<text class="lbl k" x="1200" y="125" text-anchor="middle">VPN 35 asignada aquí</text><path d="M1200 90 C1000 20 480 20 280 90" fill="none" stroke="var(--ok)" stroke-width="2.5" stroke-dasharray="7 5"/><text class="lbl" x="740" y="36" text-anchor="middle" style="fill:var(--ok)">MP-iBGP: 1:110:10.0.2.0/24 → etiqueta 35</text>`;
-  s+=`<g transform="translate(${SX[s0[0]]},${135})">${stackG(s0[1])}</g>`;
-  $("#stSvg").innerHTML=s;$("#stH").textContent=s0[2];$("#stX").textContent=s0[3];$("#stO").textContent=s0[4];$("#stN").textContent=`Paso ${stI+1} de ${st.length}`;
-  $("#stPrev").disabled=stI===0;$("#stNext").disabled=stI===st.length-1;}
-$("#stPrev").onclick=()=>{stI=Math.max(0,stI-1);stDraw()};$("#stNext").onclick=()=>{stI=Math.min(st.length-1,stI+1);stDraw()};stDraw();
-
-/* ---------- 16: síntomas L3VPN ---------- */
-const l3=[
- ["El CE remoto no recibe la ruta","Falta redistribuir entre BGP y el protocolo PE-CE en algún PE, en alguno de los dos sentidos.","PE_R1# show run | section router bgp\n address-family ipv4 vrf B\n  redistribute ospf 2\nPE_R1# show run | section router ospf 2\n redistribute bgp 1 subnets"],
- ["La ruta está en BGP VPNv4 pero no en la VRF","El route target importado no coincide con el exportado por el otro PE.","PE_R1# show ip vrf detail B\n  Export VPN route-target communities\n    RT:1:110\n  Import VPN route-target communities\n    RT:1:111   <-- no calza"],
- ["No hay vecindad VPNv4 entre PE","El vecino no está activado en address-family vpnv4, o falta send-community extended (los RT viajan como comunidades extendidas).","PE_R1# show bgp vpnv4 unicast all summary\nPE_R1# show run | section vpnv4\n  neighbor 5.5.5.5 activate\n  neighbor 5.5.5.5 send-community extended"],
- ["La ruta está en la VRF, pero el ping falla","No hay LSP completo hacia la loopback del PE remoto: un enlace sin mpls ip, LDP caído o la /32 resumida en el IGP.","PE_R1# show mpls forwarding-table 5.5.5.5\nPE_R1# traceroute 5.5.5.5 source lo0\n  2 10.23.0.3 3 msec   <-- sin etiqueta"],
- ["Prueba desde el PE falla, desde el CE funciona","Se hizo ping en la tabla global. Hay que indicar la VRF.","PE_R1# ping vrf B 10.0.2.10\nPE_R1# traceroute vrf B 10.0.2.10"],
- ["Dos clientes con la misma red se mezclan","Las dos VRF usan el mismo RD o comparten route targets por error.","PE_R1# show ip vrf\n  A    1:100   Gi0/1\n  B    1:100   Gi0/2   <-- mismo RD"]];
-picker("#l3List","#l3X",l3.map(v=>[v[0],v[1]]));
-$("#l3List").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("#l3T").textContent=l3[+b.dataset.i][0];$("#l3O").textContent=l3[+b.dataset.i][2]});
-$("#l3T").textContent=l3[0][0];$("#l3O").textContent=l3[0][2];
-
 /* ---------- Quiz ---------- */
 quiz("#quiz",[
+ {q:"¿Cuál es la idea central de MPLS?",o:["Cifrar el tráfico entre sitios","Clasificar el paquete una vez en el borde y reenviarlo por etiqueta en el núcleo","Reemplazar al IGP","Comprimir la cabecera IP"],ok:1,e:"El borde mira la IP una vez y asigna una etiqueta; el núcleo solo conmuta etiquetas."},
  {q:"¿Qué hace un LSR intermedio con un paquete etiquetado?",o:["Busca la IP de destino en la FIB","Cambia la etiqueta según la LFIB (swap)","Agrega una segunda etiqueta","Lo envía al PE para que decida"],ok:1,e:"Los LSR intermedios solo miran la etiqueta superior y la cambian según la LFIB."},
+ {q:"¿Por qué MPLS necesita un IGP funcionando?",o:["Porque LDP solo asigna etiquetas a prefijos que están en la tabla de enrutamiento","Porque las etiquetas viajan dentro de OSPF","Porque el IGP cifra las etiquetas","No lo necesita"],ok:0,e:"Sin ruta IP no hay etiqueta: LDP etiqueta los prefijos que el IGP instaló."},
  {q:"¿Con qué mensajes descubre LDP a sus vecinos?",o:["TCP 646 a la loopback","UDP 646 a 224.0.0.2","UDP 179 a 224.0.0.5","TCP 179 al vecino"],ok:1,e:"Los Hello van por UDP 646 a 224.0.0.2. Luego la sesión se establece por TCP 646."},
- {q:"Hay Hellos LDP en ambos sentidos pero la sesión no sube. ¿Qué revisas?",o:["La MTU de la interfaz","Que el LDP ID (loopback) del vecino sea alcanzable por el IGP","El valor de EXP","El RD de la VRF"],ok:1,e:"La sesión TCP se abre hacia la dirección de transporte, que por defecto es el LDP ID. Sin ruta a esa loopback no hay sesión."},
+ {q:"Hay Hellos LDP en ambos sentidos pero la sesión no sube. ¿Qué revisas?",o:["La MTU de la interfaz","Que el LDP ID (loopback) del vecino sea alcanzable por el IGP","El valor de EXP","El TTL de la etiqueta"],ok:1,e:"La sesión TCP se abre hacia la dirección de transporte, que por defecto es el LDP ID. Sin ruta a esa loopback no hay sesión."},
  {q:"¿Para qué sirve PHP?",o:["Para que el último router haga una sola búsqueda","Para cifrar las etiquetas","Para elegir el LDP ID","Para balancear entre LSP"],ok:0,e:"El penúltimo salto quita la etiqueta, así el router de salida solo busca en la FIB."},
- {q:"¿Qué es una dirección VPNv4?",o:["Una IPv4 con máscara /32","RD de 8 bytes + prefijo IPv4 de 4 bytes","Una etiqueta MPLS de 32 bits","RT + etiqueta VPN"],ok:1,e:"El RD (64 bits) antepuesto al prefijo IPv4 (32 bits) forma una dirección de 96 bits."},
- {q:"En la pila de una VPN de capa 3, ¿qué etiqueta va arriba (la más externa)?",o:["La etiqueta VPN","La etiqueta LDP","El RD","El RT"],ok:1,e:"Arriba va la LDP, que los P cambian salto a salto. Abajo va la VPN, que solo lee el PE de salida."},
- {q:"¿Qué saben los routers CE de MPLS?",o:["Todo: ejecutan LDP","Solo las etiquetas VPN","Nada: intercambian rutas IP normales con el PE","Solo los RD"],ok:2,e:"El CE no ejecuta MPLS ni conoce las VRF. Eso facilita que el cliente use el servicio."},
- {q:"La ruta del cliente llega a PE_R1 por MP-BGP pero no aparece en su VRF. ¿Causa más probable?",o:["El RD es distinto en cada PE","El route target importado no coincide","Falta PHP","El CE no tiene MPLS"],ok:1,e:"El RT decide en qué VRF se importa una ruta VPNv4. El RD puede ser distinto en cada PE sin problema."}]);
+ {q:"¿Qué etiqueta anuncia el router de salida para pedir PHP?",o:["0 (explicit-null)","1 (router alert)","3 (implicit-null)","16"],ok:2,e:"La etiqueta 3 nunca viaja en un paquete: le indica al vecino que quite la etiqueta."},
+ {q:"El tráfico de R1 a R5 funciona, pero el de R5 a R1 no. ¿Por qué es posible?",o:["Porque el LSP es unidireccional y el retorno usa otro LSP","Porque MPLS solo funciona en un sentido","Porque PHP bloquea el retorno","No es posible en MPLS"],ok:0,e:"Cada sentido tiene su propio LSP con sus etiquetas. Hay que revisar ambos."}]);
 
 boot();
 })();
