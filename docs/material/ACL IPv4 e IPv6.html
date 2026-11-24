@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Listas de acceso IPv4 e IPv6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Lienzo fijo 1600x900 (16:9) escalado a la ventana. Misma paleta y tipografía que las presentaciones de la unidad 2. */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#15212c; --muted:#5a6876; --line:#d3dae1; --frame:#d8dee5;
+  --accent:#1c63a8; --accent-ink:#ffffff; --accent-soft:#e1ecf7;
+  --amber:#a8650a; --amber-soft:#fbefdc; --ok:#1f7a4a; --ok-soft:#e0f2e8; --bad:#b0322b; --bad-soft:#f9e3e1;
+  --term-bg:#0f1b26; --term-fg:#d2dee9; --term-dim:#7f93a6; --term-hl:#ffd27a; --term-prompt:#7cc0ff;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d151d; --panel:#16212c; --ink:#e3eaf1; --muted:#97a6b4; --line:#2a3846; --frame:#070c11;
+  --accent:#5aa6ea; --accent-ink:#06121c; --accent-soft:#1a3043;
+  --amber:#f0b25a; --amber-soft:#3a2a12; --ok:#5fcf91; --ok-soft:#14301f; --bad:#f08a80; --bad-soft:#3b1a17;
+  --term-bg:#0a121a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d151d; --panel:#16212c; --ink:#e3eaf1; --muted:#97a6b4; --line:#2a3846; --frame:#070c11;
+  --accent:#5aa6ea; --accent-ink:#06121c; --accent-soft:#1a3043;
+  --amber:#f0b25a; --amber-soft:#3a2a12; --ok:#5fcf91; --ok-soft:#14301f; --bad:#f08a80; --bad-soft:#3b1a17;
+  --term-bg:#0a121a; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--frame);color:var(--ink);font-family:var(--f-body);overflow:hidden}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* ---------- marco y escala ---------- */
+.deck{position:fixed;inset:0;display:flex;flex-direction:column}
+.viewport{flex:1;min-height:0;position:relative;overflow:hidden}
+.canvas{position:absolute;left:50%;top:50%;width:1600px;height:900px;transform:translate(-50%,-50%) scale(var(--s,1));transform-origin:center;background:var(--bg);box-shadow:0 6px 30px rgba(0,0,0,.18);overflow:hidden;font-size:23px;line-height:1.45}
+.slide{position:absolute;inset:0;padding:50px 72px 44px;overflow:hidden}
+.slide[hidden]{display:none!important}
+.inner{height:100%;display:flex;flex-direction:column;gap:20px}
+.slide.enter .inner{animation:enter .35s ease-out}
+@keyframes enter{from{opacity:.25;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- tipografía dentro del lienzo ---------- */
+.canvas h1{font-size:66px;font-weight:800;line-height:1.04}
+.canvas h2{font-size:40px;font-weight:800;line-height:1.1}
+.canvas h3{font-size:23px;font-weight:700}
+.eyebrow{font-family:var(--f-display);font-size:15px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.head{display:flex;flex-direction:column;gap:6px}
+.lead{font-size:24px;color:var(--muted);max-width:76ch}
+.canvas ul{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:7px}
+.canvas ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:7px}
+.canvas a{color:var(--accent)}
+code{font-family:var(--f-mono);font-size:.84em;background:var(--accent-soft);padding:1px 6px;border-radius:4px}
+.small{font-size:20px}
+.muted{color:var(--muted)}
+b,strong{font-weight:700}
+
+/* ---------- bloques ---------- */
+.fill{flex:1;min-height:0}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+.cols.st{align-items:stretch}
+.cols.w37{grid-template-columns:minmax(0,3fr) minmax(0,7fr)}
+.cols.w46{grid-template-columns:minmax(0,4fr) minmax(0,6fr)}
+.cols.w64{grid-template-columns:minmax(0,6fr) minmax(0,4fr)}
+.cols.w73{grid-template-columns:minmax(0,7fr) minmax(0,3fr)}
+.cols.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cols.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel.tight{padding:14px 16px;gap:8px}
+.note{border-left:5px solid var(--amber);background:var(--amber-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.fix{border-left:5px solid var(--ok);background:var(--ok-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.warn{border-left:5px solid var(--bad);background:var(--bad-soft);padding:12px 16px;border-radius:6px;font-size:20px}
+.fe{font-weight:700;color:var(--ok)}
+.term{background:var(--term-bg);color:var(--term-fg);font-family:var(--f-mono);font-size:17px;line-height:1.5;border-radius:8px;padding:14px 16px;white-space:pre;overflow:hidden;min-width:0;border:1px solid var(--line)}
+.term.sm{font-size:15px;padding:12px 14px}
+.term.xs{font-size:13.5px;padding:10px 12px;line-height:1.42}
+.term .p{color:var(--term-prompt)} .term .h{color:var(--term-hl)} .term .d{color:var(--term-dim)} .term .g{color:#8be0ae} .term .r{color:#ff9d94}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--panel)}
+.seg button{background:transparent;border:0;padding:8px 16px;color:var(--ink);font-size:18px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.ctl{display:flex;flex-direction:column;gap:4px;font-size:17px;color:var(--muted)}
+.ctl select,.ctl input[type=number],.ctl input[type=text]{font:inherit;font-size:18px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+.ctl input[type=range]{width:100%}
+.tog{display:inline-flex;gap:8px;align-items:center;font-size:18px;cursor:pointer}
+.tog input{width:18px;height:18px}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:7px;padding:9px 18px;font-weight:700;font-size:18px}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.btn.danger{background:var(--bad);color:var(--panel)}
+.btn:disabled{opacity:.45;cursor:default}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.badge.ok{background:var(--ok-soft);color:var(--ok)} .badge.bad{background:var(--bad-soft);color:var(--bad)} .badge.blue{background:var(--accent-soft);color:var(--accent)} .badge.amb{background:var(--amber-soft);color:var(--amber)}
+table{border-collapse:collapse;width:100%;font-size:20px}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-display);font-size:14.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td code{white-space:nowrap}
+tr.hit td{background:var(--amber-soft)}
+tr.ok td{background:var(--ok-soft)}
+tr.no td{background:var(--bad-soft)}
+.result{font-family:var(--f-display);font-size:28px;font-weight:800}
+.big{font-family:var(--f-display);font-size:34px;font-weight:800}
+
+/* ---------- SVG ---------- */
+svg{width:100%;height:auto;display:block}
+.dia text{font-family:var(--f-display);font-weight:700;font-size:15px;fill:var(--ink)}
+.dia .lbl{font-family:var(--f-mono);font-weight:400;font-size:12px;fill:var(--muted)}
+.dia .lbl.k{fill:var(--accent);font-weight:600}
+.dia .box{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.dia .box.act{fill:var(--ok-soft);stroke:var(--ok);stroke-width:2.6}
+.dia .box.amb{fill:var(--amber-soft);stroke:var(--amber);stroke-width:2.2}
+.dia .box.bk{fill:var(--panel);stroke:var(--muted)}
+.dia .box.off{fill:var(--bad-soft);stroke:var(--bad);stroke-dasharray:5 3}
+.dia .zone{fill:var(--accent-soft);stroke:var(--line);opacity:.55}
+.dia .zone2{fill:var(--amber-soft);stroke:var(--line);opacity:.6}
+.dia .host{fill:var(--panel);stroke:var(--line);stroke-width:1.4}
+.dia .wire{stroke:var(--muted);stroke-width:2.2;fill:none}
+.dia .wire.down{stroke:var(--bad);stroke-dasharray:6 4}
+.dia .wire.ok{stroke:var(--ok)}
+.dia .wire.acc{stroke:var(--accent);stroke-width:3}
+.dia .wire.dash{stroke-dasharray:6 5}
+.dia .flow{stroke:var(--ok);stroke-width:3.5;fill:none;stroke-dasharray:9 7;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.dia .pkt{fill:var(--amber)}
+.dia .tagr{fill:var(--amber);stroke:none}
+.dia .tagt{font-family:var(--f-mono);font-size:12px;font-weight:600;fill:#1b1206}
+.dia .clk{cursor:pointer}
+.dia .clk:hover{filter:brightness(1.06)}
+.dia .sel{stroke-width:3.4!important;stroke:var(--amber)!important}
+
+/* ---------- componentes ---------- */
+.log{font-family:var(--f-mono);font-size:14px;color:var(--muted);white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;overflow:hidden}
+.agenda{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.agenda button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;color:var(--ink);display:flex;flex-direction:column;gap:6px;font-size:24px}
+.agenda button:hover{border-color:var(--accent)}
+.agenda small{color:var(--muted);font-size:17px}
+.cover{justify-content:center;gap:24px}
+.cover .meta{display:flex;gap:10px;flex-wrap:wrap}
+.cards{display:grid;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.card .ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-family:var(--f-display);font-weight:800;font-size:19px}
+.card h3{font-size:21px}
+.card p{font-size:19px;color:var(--muted)}
+.steps{display:grid;gap:12px}
+.steps>div{border-top:5px solid var(--accent);background:var(--panel);border-radius:0 0 10px 10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;font-size:20px;cursor:pointer}
+.steps>div b{font-family:var(--f-display);font-size:22px}
+.steps>div.on{border-top-color:var(--amber);background:var(--amber-soft)}
+.annot .ln{display:block;padding:0 6px;margin:0 -6px;border-radius:3px}
+.annot .ln.k{color:var(--term-hl);cursor:pointer}
+.annot .ln.k:hover,.annot .ln.sel{background:rgba(255,210,122,.17)}
+.pick{display:flex;flex-direction:column;gap:8px}
+.pick button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:11px 15px;color:var(--ink);font-size:20px}
+.pick button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.quiz .opts{display:flex;flex-direction:column;gap:10px}
+.quiz .opts button{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 18px;color:var(--ink);font-size:22px}
+.quiz .opts button.right{border-color:var(--ok);background:var(--ok-soft)}
+.quiz .opts button.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.quiz .q{font-size:28px;font-weight:600}
+.pktrow{display:flex;gap:0;font-family:var(--f-mono);font-size:15px;font-weight:600}
+.pktrow span{padding:12px 10px;border:1px solid var(--line);text-align:center;margin-left:-1px}
+.pktrow .h1{background:var(--accent-soft);color:var(--accent)} .pktrow .h2{background:var(--amber-soft);color:var(--amber)} .pktrow .h3{background:var(--ok-soft);color:var(--ok)} .pktrow .h4{background:var(--bad-soft);color:var(--bad)} .pktrow .h0{background:var(--panel);color:var(--ink)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:16px;color:var(--muted)}
+.legend i{display:inline-block;width:13px;height:13px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* ---------- barra de navegación ---------- */
+nav.bar{flex:none;display:flex;align-items:center;gap:10px;padding:8px max(16px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));border-top:1px solid var(--line);background:var(--panel);font-size:15px}
+nav.bar .prog{flex:1;height:5px;background:var(--line);border-radius:3px;overflow:hidden;min-width:40px}
+nav.bar .prog i{display:block;height:100%;background:var(--accent);transition:width .25s}
+nav.bar button{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px 12px}
+nav.bar button:disabled{opacity:.4}
+nav.bar .count{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px}
+:fullscreen nav.bar{opacity:0;transition:opacity .2s}
+:fullscreen nav.bar:hover{opacity:1}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- impresión: una diapositiva 16:9 por página ---------- */
+@media print{
+  @page{size:1600px 900px;margin:0}
+  html,body{height:auto;overflow:visible;background:#fff}
+  .deck{position:static;display:block}
+  nav.bar{display:none}
+  .viewport{overflow:visible}
+  .canvas{position:static;transform:none;width:auto;height:auto;box-shadow:none;background:transparent}
+  .slide,.slide[hidden]{display:block!important;position:relative;width:1600px;height:900px;break-after:page;background:var(--bg)}
+  .slide.enter .inner{animation:none}
+}
+</style></head><body>
+<div class="deck">
+<div class="viewport"><div class="canvas" id="stage">
+<section class="slide" data-title="Portada"><div class="inner cover">
+  <span class="eyebrow">ARY6112 · Troubleshooting · ACL</span>
+  <h1>Listas de acceso IPv4 e IPv6</h1>
+  <p class="lead">Qué es una ACL, cómo la procesa el router, cómo se aplica en IPv4 y en IPv6 y qué mirar cuando una ACL no se comporta como se espera.</p>
+  <div class="meta"><span class="badge blue">Routing y Switching Corporativo</span><span class="badge blue">Usa ← → · F pantalla completa</span></div>
+</div></section>
+
+<section class="slide" data-title="Agenda"><div class="inner">
+  <div class="head"><span class="eyebrow">Agenda</span><h2>Lo que veremos</h2></div>
+  <div class="agenda" id="agenda"></div>
+</div></section>
+
+<section class="slide" data-title="Qué es una ACL y cómo funciona" data-agenda="Qué es una ACL" data-sub="Definición, funcionamiento y tipos"><div class="inner">
+  <div class="head"><span class="eyebrow">Para empezar</span><h2>Qué es una ACL y cómo funciona</h2>
+  <p class="lead">Una <b>ACL</b> (Access Control List) es una lista ordenada de reglas, llamadas <b>ACE</b>. Cada regla dice <code>permit</code> o <code>deny</code> y describe un tipo de tráfico: origen, destino, protocolo o puertos. El router compara cada paquete con la lista y actúa según la primera regla que coincide.</p></div>
+  <div class="cols w46 fill">
+    <style>.steps.cmp{gap:8px}.steps.cmp>div{padding:9px 16px;gap:0;font-size:18px}.steps.cmp>div b{font-size:20px}</style>
+    <div class="steps cmp" id="aclHow" style="grid-template-columns:1fr">
+      <div data-x="Cada línea tiene un número de secuencia. El orden importa: las reglas más específicas van arriba y las generales abajo."><b>1. Se escribe la lista</b><span>Reglas en orden</span></div>
+      <div data-x="Una ACL creada no hace nada. Hay que asociarla a una interfaz (entrada o salida) o a un servicio: NAT, VTY, route-map, CoPP…"><b>2. Se aplica</b><span>Interfaz y sentido, o un servicio</span></div>
+      <div data-x="El router revisa las reglas una por una, en orden, contra los campos del paquete."><b>3. Se compara el paquete</b><span>De arriba hacia abajo</span></div>
+      <div data-x="En cuanto una regla coincide, se aplica su acción y <b>no se revisan las demás</b>."><b>4. Decide la primera coincidencia</b><span>permit o deny</span></div>
+      <div data-x="Toda ACL termina con un <code>deny any</code> invisible. Una ACL con solo reglas deny bloquea todo."><b>5. Deny implícito</b><span>Si nada coincide</span></div>
+    </div>
+    <div class="stack">
+      <div class="panel tight"><table><thead><tr><th>Tipo</th><th>Qué mira</th></tr></thead><tbody>
+        <tr><td><b>Estándar</b> (1-99)</td><td>Solo la IP de origen</td></tr>
+        <tr><td><b>Extendida</b> (100-199)</td><td>Origen, destino, protocolo y puertos</td></tr>
+        <tr><td><b>Nombrada</b></td><td>Estándar o extendida, con nombre</td></tr>
+        <tr><td><b>IPv6</b></td><td>Siempre nombrada y extendida</td></tr></tbody></table></div>
+      <div class="panel tight"><p id="aclHowX">Pasa el cursor o toca un paso.</p></div>
+    </div>
+  </div>
+  <div class="note"><b>Analogía:</b> es la lista del guardia en la puerta de un edificio. Revisa la lista desde arriba, aplica la primera línea que te describe y, si no estás en la lista, no entras.</div>
+</div></section>
+
+<section class="slide" data-title="¿Qué es una ACL?" data-agenda="ACL IPv4" data-sub="Usos, procesamiento, tipos, aplicación y tiempo"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>Una ACL identifica tráfico; el servicio decide qué hacer con él</h2>
+  <p class="lead">Una ACL creada no hace nada hasta que se aplica a una interfaz, un servicio o una función.</p></div>
+  <div class="cols w46 fill">
+    <div class="cards" style="grid-template-columns:1fr 1fr">
+      <div class="card"><div class="ic">1</div><h3>Filtrado de paquetes</h3><p><code>ip access-group</code> en una interfaz, entrada o salida.</p></div>
+      <div class="card"><div class="ic">2</div><h3>NAT / PAT</h3><p>Qué direcciones privadas se traducen a la pública.</p></div>
+      <div class="card"><div class="ic">3</div><h3>Redistribución</h3><p>Qué rutas pasan de un protocolo a otro (con route-map).</p></div>
+      <div class="card"><div class="ic">4</div><h3>PBR y QoS</h3><p>Qué paquetes siguen una política o reciben una marca.</p></div>
+      <div class="card"><div class="ic">5</div><h3>CoPP</h3><p>Qué tráfico hacia la CPU entra en cada clase.</p></div>
+      <div class="card"><div class="ic">6</div><h3>Acceso a gestión</h3><p><code>access-class</code> en las líneas VTY.</p></div>
+    </div>
+    <div class="panel">
+      <svg viewBox="0 0 560 400" class="dia" role="img" aria-label="Tres routers con ACL en distintas interfaces y la política que aplica cada una">
+        <path class="zone" d="M410 30h130v70H410z" rx="10"/><text x="475" y="72" text-anchor="middle">Internet</text>
+        <path class="zone" d="M410 150h130v70H410z"/><text x="475" y="182" text-anchor="middle">Subred HR</text><text class="lbl" x="475" y="200" text-anchor="middle">172.17.0.0/20</text>
+        <line class="wire" x1="280" y1="65" x2="410" y2="65"/><line class="wire" x1="280" y1="65" x2="150" y2="185"/><line class="wire" x1="280" y1="65" x2="310" y2="185"/>
+        <line class="wire" x1="310" y1="185" x2="410" y2="185"/><line class="wire" x1="150" y1="185" x2="90" y2="300"/><line class="wire" x1="150" y1="185" x2="200" y2="300"/><line class="wire" x1="310" y1="185" x2="310" y2="300"/>
+        <rect class="box" x="245" y="45" width="70" height="40" rx="6"/><text x="280" y="70" text-anchor="middle">R2</text>
+        <rect class="box" x="115" y="165" width="70" height="40" rx="6"/><text x="150" y="190" text-anchor="middle">R1</text>
+        <rect class="box" x="275" y="165" width="70" height="40" rx="6"/><text x="310" y="190" text-anchor="middle">R3</text>
+        <rect class="host" x="55" y="300" width="70" height="34" rx="4"/><text x="90" y="322" text-anchor="middle">S1</text>
+        <rect class="host" x="165" y="300" width="70" height="34" rx="4"/><text x="200" y="322" text-anchor="middle">S2</text>
+        <rect class="host" x="275" y="300" width="70" height="34" rx="4"/><text x="310" y="322" text-anchor="middle">S3</text>
+        <rect class="tagr" x="335" y="52" width="46" height="22" rx="4"/><text class="tagt" x="358" y="68" text-anchor="middle">ACL</text>
+        <rect class="tagr" x="350" y="174" width="46" height="22" rx="4"/><text class="tagt" x="373" y="190" text-anchor="middle">ACL</text>
+        <rect class="tagr" x="92" y="225" width="46" height="22" rx="4"/><text class="tagt" x="115" y="241" text-anchor="middle">ACL</text>
+        <rect class="tagr" x="318" y="240" width="46" height="22" rx="4"/><text class="tagt" x="341" y="256" text-anchor="middle">ACL</text>
+        <text class="lbl k" x="280" y="20" text-anchor="middle">permitir correo entrante · denegar Telnet entrante</text>
+        <text class="lbl k" x="10" y="365">R1: denegar video a S1 y el acceso de S1 a S2</text>
+        <text class="lbl k" x="10" y="388">R3: denegar acceso a HR, FTP, web y actualizaciones</text>
+      </svg>
+    </div>
+  </div>
+</div></section>
+
+<section class="slide" data-title="Cómo procesa una ACL"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>De arriba hacia abajo, gana la primera coincidencia</h2>
+  <p class="lead">Elige un paquete y evalúalo contra la ACL 100. Mira en qué línea se detiene y qué pasa si ninguna coincide.</p></div>
+  <div class="cols w46 fill">
+    <div class="stack">
+      <div class="steps" style="grid-template-columns:1fr">
+        <div><b>1. Procesamiento descendente</b><span>Las entradas se revisan en orden, desde la de menor número de secuencia.</span></div>
+        <div><b>2. Ejecución inmediata</b><span>La primera entrada que coincide decide: permit o deny. Las demás ya no se miran.</span></div>
+        <div><b>3. Deny implícito</b><span>Al final hay un <code>deny any</code> invisible. Una ACL sin ningún permit lo bloquea todo.</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ctrls">
+        <label class="ctl" style="flex:1">Paquete que entra<select id="aclPkt"></select></label>
+        <button class="btn" id="aclGo" style="align-self:flex-end">Evaluar</button>
+      </div>
+      <div class="term" id="aclTerm"></div>
+      <div class="result" id="aclRes">&nbsp;</div>
+      <p id="aclWhy" class="small muted">&nbsp;</p>
+    </div>
+  </div>
+</div></section>
+
+<section class="slide" data-title="ACL estándar y extendida"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>Estándar mira solo el origen; extendida mira casi todo</h2></div>
+  <div class="cols st fill">
+    <div class="panel">
+      <table><thead><tr><th></th><th>Estándar</th><th>Extendida</th></tr></thead><tbody>
+        <tr><td>Números</td><td>1–99, 1300–1999</td><td>100–199, 2000–2699</td></tr>
+        <tr><td>Compara</td><td>IP de origen</td><td>Protocolo, origen, destino, puertos, flags, DSCP</td></tr>
+        <tr><td>Ubicación típica</td><td>Cerca del destino</td><td>Cerca del origen</td></tr>
+        <tr><td>Nombrada</td><td><code>ip access-list standard</code></td><td><code>ip access-list extended</code></td></tr>
+      </tbody></table>
+      <div class="note">Ordena de lo más específico a lo más general. Si una entrada general queda primero, las específicas de abajo nunca se usan.</div>
+      <div class="fix"><span class="fe">Precisión.</span> Los IOS recientes no rechazan las entradas más específicas. Rechazan las que ya quedan cubiertas por una entrada anterior: <code>% Access rule can't be configured at higher sequence num as it is part of the existing rule</code>.</div>
+    </div>
+    <div class="term sm"><span class="p">Router#</span> show access-lists
+Standard IP access list 1
+ 5 deny 10.1.1.5
+ 10 permit 10.1.1.0, wildcard bits 0.0.0.63 <span class="h">(1 match)</span>
+ 20 deny 10.1.1.64, wildcard bits 0.0.0.63
+ 30 permit 10.1.1.0, wildcard bits 0.0.0.255
+
+<span class="p">R1#</span> show access-lists 100
+Extended IP access list 100
+ 10 deny tcp host 10.1.1.5 host 192.0.2.1 eq www
+ 20 permit tcp 10.1.1.0 0.0.0.63 host 192.0.2.1 eq telnet
+ 30 deny ip 10.1.1.64 0.0.0.63 host 192.0.2.1
+ 40 permit ip 10.1.1.0 0.0.0.255 any
+
+<span class="d">! Los contadores (matches) indican qué entrada está</span>
+<span class="d">! atrapando el tráfico. Reinícialos antes de probar:</span>
+<span class="p">R1#</span> clear access-list counters 100</div>
+  </div>
+</div></section>
+
+<section class="slide" data-title="Aplicar una ACL a una interfaz"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>La interfaz y el sentido importan tanto como las entradas</h2>
+  <p class="lead">Cambia el sentido y observa qué paquetes revisa cada ACL. <code>in</code> filtra lo que llega al router; <code>out</code>, lo que sale después de enrutarse.</p></div>
+  <div class="cols w46 fill">
+    <div class="panel">
+      <svg viewBox="0 0 520 230" class="dia" role="img" aria-label="LAN, R1 e interfaz Gi0/0 con el sentido de la ACL">
+        <rect class="host" x="10" y="90" width="120" height="50" rx="6"/><text x="70" y="113" text-anchor="middle">LAN</text><text class="lbl" x="70" y="130" text-anchor="middle">10.1.1.0/24</text>
+        <line class="wire" x1="130" y1="115" x2="260" y2="115"/>
+        <rect class="box" x="260" y="85" width="110" height="60" rx="8"/><text x="315" y="120" text-anchor="middle">R1</text>
+        <line class="wire" x1="370" y1="115" x2="510" y2="115"/>
+        <text class="lbl k" x="200" y="104" text-anchor="middle">Gi0/0</text>
+        <path id="dirIn" d="M150 150 L245 150" stroke="var(--ok)" stroke-width="4" marker-end="url(#ar)"/>
+        <path id="dirOut" d="M245 80 L150 80" stroke="var(--accent)" stroke-width="4" marker-end="url(#ar2)"/>
+        <text class="lbl" id="dirInT" x="198" y="175" text-anchor="middle">in: ACL 1</text>
+        <text class="lbl" id="dirOutT" x="198" y="66" text-anchor="middle">out: ACL 100</text>
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--ok)"/></marker>
+        <marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--accent)"/></marker></defs>
+      </svg>
+      <div class="ctrls"><div class="seg" id="dirSeg"><button data-v="ok" aria-pressed="true">Como en la figura</button><button data-v="swap" aria-pressed="false">Sentidos invertidos</button><button data-v="none" aria-pressed="false">ACL 100 no existe</button></div></div>
+      <p id="dirTxt" class="note"></p>
+    </div>
+    <div class="term sm" id="dirTerm"></div>
+  </div>
+</div></section>
+
+<section class="slide" data-title="ACL basada en tiempo"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>Una entrada que se activa según el reloj del router</h2>
+  <p class="lead">La entrada 10 bloquea la web de 10.1.1.5 solo fuera del horario laboral. Mueve el día y la hora para ver cuándo está <b>active</b>.</p></div>
+  <div class="cols w46 fill">
+    <div class="panel">
+      <div class="ctrls">
+        <div class="seg" id="trDay"><button data-v="lv" aria-pressed="true">Lunes a viernes</button><button data-v="sd" aria-pressed="false">Sábado o domingo</button></div>
+      </div>
+      <label class="ctl">Hora del router: <b id="trH"></b><input type="range" id="trR" min="0" max="23.5" step="0.5" value="10"></label>
+      <div class="result" id="trRes"></div>
+      <p id="trWhy"></p>
+      <div class="warn">El router usa su propio reloj. Si la hora está mal (sin NTP o con zona horaria errada), la ACL se activa en otro momento. Revisa <code>show clock</code> y <code>show ntp status</code>.</div>
+    </div>
+    <div class="term sm" id="trTerm"></div>
+  </div>
+</div></section>
+
+<section class="slide" data-title="ACL IPv6: reglas implícitas" data-agenda="ACL IPv6" data-sub="Permisos implícitos de ND y aplicación"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv6</span><h2>IPv6 agrega dos permisos implícitos antes del deny final</h2>
+  <p class="lead">Neighbor Discovery (NDP) reemplaza a ARP. Para que no se rompa, cada ACL IPv6 permite NA y NS de forma implícita. Agrega la línea de abajo y mira el efecto.</p></div>
+  <div class="cols w64 fill">
+    <div class="stack">
+      <div class="term sm" id="v6Term"></div>
+      <label class="tog"><input type="checkbox" id="v6Deny"> Agregar <code>deny ipv6 any any log</code> al final, como se hace en IPv4</label>
+      <div class="fix"><span class="fe">Fe de erratas.</span> La presentación original escribe <code>deny ipv6 any aní log</code>; el comando es <code>deny ipv6 any any log</code>.</div>
+    </div>
+    <div class="panel">
+      <svg viewBox="0 0 520 200" class="dia" id="v6Svg" role="img" aria-label="R1 resolviendo la dirección de capa 2 de su vecino con NS y NA">
+        <rect class="box" x="30" y="70" width="120" height="56" rx="8"/><text x="90" y="103" text-anchor="middle">R1</text>
+        <rect class="box" id="v6R2" x="370" y="70" width="120" height="56" rx="8"/><text x="430" y="103" text-anchor="middle">Vecino</text>
+        <line class="wire" id="v6W" x1="150" y1="98" x2="370" y2="98"/>
+        <text class="lbl k" id="v6L1" x="260" y="60" text-anchor="middle">NS: ¿quién tiene 2001:DB8:A:A::20?</text>
+        <text class="lbl k" id="v6L2" x="260" y="150" text-anchor="middle">NA: soy yo, mi MAC es …</text>
+        <circle class="pkt" id="v6P" r="7" cx="-20" cy="0"/>
+      </svg>
+      <div class="ctrls"><button class="btn" id="v6Go">Resolver vecino</button></div>
+      <p id="v6Txt" class="note">Con las reglas implícitas, NS y NA pasan aunque no las escribas.</p>
+    </div>
+  </div>
+</div></section>
+
+<section class="slide" data-title="Aplicar y verificar una ACL IPv6"><div class="inner">
+  <div class="head"><span class="eyebrow">Listas de acceso IPv6</span><h2>En IPv6 todas son extendidas y nombradas</h2></div>
+  <div class="cols fill">
+    <div class="stack">
+      <div class="panel tight"><table style="font-size:18px"><thead><tr><th>Tarea</th><th>IPv4</th><th>IPv6</th></tr></thead><tbody>
+        <tr><td>Crear</td><td><code>ip access-list extended N</code></td><td><code>ipv6 access-list N</code></td></tr>
+        <tr><td>Aplicar</td><td><code>ip access-group N in</code></td><td><code>ipv6 traffic-filter N in</code></td></tr>
+        <tr><td>Ver en interfaz</td><td><code>show ip interface</code></td><td><code>show ipv6 interface</code></td></tr>
+        <tr><td>Ver entradas</td><td><code>show access-lists</code></td><td><code>show ipv6 access-list</code></td></tr>
+        <tr><td>Máscara</td><td>Wildcard</td><td>Longitud de prefijo (/64)</td></tr>
+      </tbody></table></div>
+      <div class="note">Al revisar, confirma tres cosas: que la ACL existe con ese nombre exacto (distingue mayúsculas), que está en la interfaz correcta y que el sentido es el que pide el diseño.</div>
+    </div>
+    <div class="term xs"><span class="p">R1(config)#</span> interface gigabitEthernet 0/0
+<span class="p">R1(config-if)#</span> ipv6 traffic-filter ENARSI in
+<span class="p">R1#</span> show ipv6 access-list
+IPv6 access list ENARSI
+ permit tcp host 2001:DB8:A:A::20 host 2001:DB8:A:B::7 eq telnet sequence 10
+ deny tcp any host 2001:DB8:A:B::7 eq telnet sequence 20
+ permit tcp host 2001:DB8:A:A::20 host 2001:DB8:D::1 eq www sequence 30
+ deny ipv6 2001:DB8:A:A::/80 any sequence 40
+ permit ipv6 2001:DB8:A:A::/64 any sequence 50
+
+<span class="p">R1#</span> show ipv6 interface gigabitEthernet 0/0
+GigabitEthernet0/0 is up, line protocol is up
+  IPv6 is enabled, link-local address is FE80::C808:3FF:FE78:8
+  Global unicast address(es):
+    2001:DB8:A:A::1, subnet is 2001:DB8:A:A::/64
+  Joined group address(es):
+  MTU is 1500 bytes
+  Input features: Access List
+  <span class="h">Inbound access list ENARSI</span>
+  ND DAD is enabled, number of DAD attempts: 1</div>
+  </div>
+</div></section>
+
+<section class="slide" data-title="Resumen"><div class="inner">
+  <div class="head"><span class="eyebrow">Resumen</span><h2>Lo que hay que llevarse</h2></div>
+  <div class="cols c3 st">
+    <div class="panel"><h3>ACL IPv4</h3><ul>
+      <li>De arriba abajo, primera coincidencia, deny implícito.</li>
+      <li>Revisa contadores con <code>show access-lists</code>.</li>
+      <li>Interfaz y sentido: <code>show ip interface</code>.</li>
+      <li>Las de tiempo dependen del reloj del router.</li></ul></div>
+    <div class="panel"><h3>ACL IPv6</h3><ul>
+      <li>Solo extendidas y nombradas.</li>
+      <li>Permiten NA y NS de forma implícita.</li>
+      <li>Un <code>deny ipv6 any any</code> explícito rompe NDP.</li>
+      <li>Se aplican con <code>ipv6 traffic-filter</code>.</li></ul></div>
+    <div class="panel"><h3>Diagnóstico</h3><ul>
+      <li>¿La ACL está aplicada, en la interfaz y el sentido correctos?</li>
+      <li>¿Qué regla está sumando coincidencias?</li>
+      <li>¿Hay una regla general antes de una específica?</li>
+      <li>¿Falta un permit al final?</li></ul></div>
+  </div>
+  <div class="fix"><span class="fe">Sigue con:</span> <a href="Protecci%C3%B3n%20del%20Plano%20de%20Control%20con%20CoPP.html">Protección del plano de control con CoPP</a>, que usa ACL para clasificar el tráfico hacia la CPU.</div>
+</div></section>
+
+<section class="slide" data-title="Preguntas" data-agenda="Preguntas" data-sub="Comprueba lo aprendido"><div class="inner">
+  <div class="head"><span class="eyebrow">Preguntas</span><h2>Comprueba lo aprendido</h2></div>
+  <div class="panel quiz fill" id="quiz"></div>
+</div></section>
+
+<section class="slide" data-title="Referencias"><div class="inner">
+  <div class="head"><span class="eyebrow">Referencias</span><h2>Bibliografía</h2></div>
+  <div class="panel"><ul>
+    <li>Raymond Lacoste, Brad Edgeworth. <i>CCNP Enterprise Advanced Routing ENARSI 300-410 Official Cert Guide</i>. Cisco Press. Capítulo 21, Troubleshooting ACLs and Prefix Lists.</li>
+    <li>Cisco. <i>Security Configuration Guide: Access Control Lists</i>, Cisco IOS XE.</li>
+  </ul></div>
+</div></section>
+
+</div></div>
+<nav class="bar" aria-label="Navegación de diapositivas">
+  <button id="prev" aria-label="Diapositiva anterior">←</button>
+  <span class="count" id="count"></span>
+  <div class="prog"><i id="prog"></i></div>
+  <select id="jump" aria-label="Ir a diapositiva"></select>
+  <button id="fs" aria-label="Pantalla completa" title="Pantalla completa (F)">⛶</button>
+  <button id="next" aria-label="Diapositiva siguiente">→</button>
+</nav>
+</div>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pad=(s,n)=>{s=String(s);return s.length>=n?s+" ":s+" ".repeat(n-s.length)};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+/* Botones segmentados: <div class="seg" id="x"><button data-v="a" aria-pressed="true">…</div> */
+function seg(id,cb){const el=$(id);el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;el.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.v)});}
+/* Mueve un elemento SVG (circle o g) por una lista de puntos */
+function animate(el,pts,ms){return new Promise(res=>{
+  const put=(x,y)=>{if(el.tagName==="circle"){el.setAttribute("cx",x);el.setAttribute("cy",y)}else el.setAttribute("transform",`translate(${x},${y})`)};
+  if(reduce||pts.length<2){put(...pts[pts.length-1]);return res()}
+  const n=pts.length-1,t0=performance.now();
+  (function f(t){const k=Math.max(0,Math.min(1,(t-t0)/ms)),s=Math.min(n-1,Math.floor(k*n)),u=k*n-s,a=pts[s],b=pts[s+1];
+    put(a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u);if(k<1)requestAnimationFrame(f);else res()})(t0);});}
+/* Salida anotada: lines=[[texto, explicación|null], …] */
+function annot(termId,outId,lines){
+  const t=$(termId);
+  t.innerHTML=lines.map((a,i)=>`<span class="ln${a[1]?" k":""}" data-i="${i}"${a[1]?' tabindex="0"':""}>${esc(a[0])||" "}</span>`).join("");
+  t.addEventListener("click",e=>{const l=e.target.closest(".ln");if(!l||!lines[l.dataset.i][1])return;t.querySelectorAll(".ln").forEach(x=>x.classList.toggle("sel",x===l));$(outId).innerHTML=lines[l.dataset.i][1]});
+  t.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.classList.contains("ln"))e.target.click()});
+}
+/* Lista de opciones que muestra un detalle: items=[[etiqueta, html], …] */
+function picker(listId,outId,items,first=0){
+  const l=$(listId);l.classList.add("pick");
+  l.innerHTML=items.map((it,i)=>`<button type="button" data-i="${i}" aria-pressed="false">${it[0]}</button>`).join("");
+  const show=i=>{l.querySelectorAll("button").forEach((b,k)=>b.setAttribute("aria-pressed",k===i));$(outId).innerHTML=items[i][1]};
+  l.addEventListener("click",e=>{const b=e.target.closest("button");if(b)show(+b.dataset.i)});
+  show(first);
+}
+/* Pasos con tarjetas: <div class="steps" id="x"><div data-x="…">…</div></div> */
+function stepsCards(id,outId){const el=$(id);const all=[...el.children];
+  const on=d=>{all.forEach(x=>x.classList.toggle("on",x===d));$(outId).innerHTML=d.dataset.x};
+  all.forEach(d=>{d.tabIndex=0;d.addEventListener("click",()=>on(d));d.addEventListener("mouseenter",()=>on(d));d.addEventListener("keydown",e=>{if(e.key==="Enter")on(d)})});}
+/* Cuestionario de una pregunta a la vez */
+function quiz(id,Q){
+  const el=$(id);let i=0;const ans=Q.map(()=>null);
+  function render(){
+    const q=Q[i],a=ans[i];
+    el.innerHTML=`<div class="ctrls" style="justify-content:space-between"><span class="eyebrow">Pregunta ${i+1} de ${Q.length}</span><span class="badge blue">Puntaje: ${ans.filter((x,k)=>x===Q[k].ok).length} / ${Q.length}</span></div>
+    <p class="q">${q.q}</p>
+    <div class="opts">${q.o.map((o,k)=>`<button type="button" data-k="${k}" class="${a===null?"":(k===q.ok?"right":(k===a?"wrong":""))}" ${a!==null?"disabled":""}>${String.fromCharCode(65+k)}. ${o}</button>`).join("")}</div>
+    <div class="${a===null?"":(a===q.ok?"fix":"warn")}" style="min-height:62px">${a===null?'<span class="muted">Elige una respuesta.</span>':(a===q.ok?"<b>Correcto.</b> ":"<b>No.</b> ")+(a===null?"":q.e)}</div>
+    <div class="ctrls"><button class="btn ghost" data-nav="-1" ${i===0?"disabled":""}>← Anterior</button><button class="btn" data-nav="1" ${i===Q.length-1?"disabled":""}>Siguiente →</button><button class="btn ghost" data-nav="0">Reiniciar</button></div>`;
+  }
+  el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;
+    if(b.dataset.k!==undefined&&ans[i]===null){ans[i]=+b.dataset.k;render()}
+    else if(b.dataset.nav!==undefined){const d=+b.dataset.nav;if(d===0){ans.fill(null);i=0}else i=Math.max(0,Math.min(Q.length-1,i+d));render()}});
+  render();
+}
+/* ---------- navegación y escala ---------- */
+const slides=$$(".slide");let cur=0;
+function fit(){const v=$(".viewport").getBoundingClientRect();const s=Math.min(v.width/1600,v.height/900);$(".canvas").style.setProperty("--s",s);}
+window.addEventListener("resize",fit);
+$("#jump").innerHTML=slides.map((s,i)=>`<option value="${i}">${i+1}. ${esc(s.dataset.title)}</option>`).join("");
+function go(i){
+  i=Math.max(0,Math.min(slides.length-1,i));
+  slides.forEach((s,k)=>{s.hidden=k!==i;s.classList.toggle("enter",k===i)});
+  cur=i;$("#count").textContent=`${i+1} / ${slides.length}`;
+  $("#prog").style.width=((i+1)/slides.length*100)+"%";$("#jump").value=i;
+  $("#prev").disabled=i===0;$("#next").disabled=i===slides.length-1;
+  try{history.replaceState(null,"","#s"+(i+1))}catch(e){}
+  slides[i].dispatchEvent(new CustomEvent("show"));
+}
+$("#prev").onclick=()=>go(cur-1);$("#next").onclick=()=>go(cur+1);
+$("#jump").onchange=e=>go(+e.target.value);
+$("#fs").onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(e){}};
+document.addEventListener("keydown",e=>{
+  if(e.target.closest("input,select,textarea"))return;
+  if(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" "){go(cur+1);e.preventDefault()}
+  else if(e.key==="ArrowLeft"||e.key==="PageUp"){go(cur-1);e.preventDefault()}
+  else if(e.key==="Home")go(0);else if(e.key==="End")go(slides.length-1);
+  else if(e.key==="f"||e.key==="F")$("#fs").click();
+});
+/* toque: deslizar para cambiar */
+let tx=null;$(".viewport").addEventListener("touchstart",e=>{tx=e.touches[0].clientX},{passive:true});
+$(".viewport").addEventListener("touchend",e=>{if(tx===null)return;const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>60&&!e.target.closest("input,button,select,.term"))go(cur+(d<0?1:-1));tx=null});
+/* Agenda automática a partir de data-agenda */
+(function(){const ag=$("#agenda");if(!ag)return;
+  ag.innerHTML=slides.map((s,i)=>s.dataset.agenda?`<button data-go="${i}"><small>Diapositiva ${i+1}</small><b>${esc(s.dataset.agenda)}</b><small>${esc(s.dataset.sub||"")}</small></button>`:"").join("");
+  ag.onclick=e=>{const b=e.target.closest("[data-go]");if(b)go(+b.dataset.go)};})();
+function boot(){fit();const m=location.hash.match(/^#s(\d+)/);go(m?+m[1]-1:0);
+  /* ?check: informa qué diapositivas desbordan el lienzo (uso interno al construir) */
+  if(location.search.includes("check")){const out=[];$(".canvas").style.setProperty("--s",1);
+    slides.forEach((s,k)=>{s.hidden=false;const R=s.getBoundingClientRect();
+      s.querySelectorAll(".inner *").forEach(el=>{const r=el.getBoundingClientRect();if(!r.width)return;
+        const sc=getComputedStyle(el);
+        if(r.bottom>R.bottom-36+1||r.right>R.right-60+1)out.push(`s${k+1} sale del lienzo: <${el.tagName.toLowerCase()} class="${el.className}"> b=${Math.round(r.bottom-R.top)} r=${Math.round(r.right-R.left)}`);
+        if((sc.overflow==="hidden"||sc.overflowY==="hidden")&&el.scrollHeight>el.clientHeight+2)out.push(`s${k+1} recorta: <${el.tagName.toLowerCase()} class="${el.className}" id="${el.id}"> ${el.scrollHeight}>${el.clientHeight}`);
+        if(el.matches(".panel,.card,.stack,.note,.fix,.warn,td,th")&&el.scrollWidth>el.clientWidth+2)out.push(`s${k+1} desborda ancho: <${el.tagName.toLowerCase()} class="${el.className}"> ${el.scrollWidth}>${el.clientWidth}`);
+        if(sc.overflow==="hidden"&&el.scrollWidth>el.clientWidth+2)out.push(`s${k+1} recorta ancho: <${el.tagName.toLowerCase()} class="${el.className}" id="${el.id}"> ${el.scrollWidth}>${el.clientWidth}`);});
+      s.hidden=k!==cur;});
+    const pre=document.createElement("pre");pre.id="__report";pre.textContent=out.length?[...new Set(out)].join("\n"):"OK";document.body.appendChild(pre);}
+}
+
+/* ---------- intro: aclHow ---------- */
+stepsCards("#aclHow","#aclHowX");
+
+/* ---------- Evaluador ACL 100 ---------- */
+const inNet=(ip,net,wc)=>{const a=ip.split(".").map(Number),n=net.split(".").map(Number),w=wc.split(".").map(Number);return a.every((o,i)=>((o|w[i])===(n[i]|w[i])))};
+const ACL=[
+  {t:" 10 deny tcp host 10.1.1.5 host 192.0.2.1 eq www",act:"deny",m:p=>p.pr==="tcp"&&p.s==="10.1.1.5"&&p.d==="192.0.2.1"&&p.dp===80},
+  {t:" 20 permit tcp 10.1.1.0 0.0.0.63 host 192.0.2.1 eq telnet",act:"permit",m:p=>p.pr==="tcp"&&inNet(p.s,"10.1.1.0","0.0.0.63")&&p.d==="192.0.2.1"&&p.dp===23},
+  {t:" 30 deny ip 10.1.1.64 0.0.0.63 host 192.0.2.1",act:"deny",m:p=>inNet(p.s,"10.1.1.64","0.0.0.63")&&p.d==="192.0.2.1"},
+  {t:" 40 permit ip 10.1.1.0 0.0.0.255 any",act:"permit",m:p=>inNet(p.s,"10.1.1.0","0.0.0.255")}];
+const PKTS=[
+  {n:"TCP 10.1.1.5 → 192.0.2.1 : 80 (web)",pr:"tcp",s:"10.1.1.5",d:"192.0.2.1",dp:80},
+  {n:"TCP 10.1.1.5 → 192.0.2.1 : 23 (Telnet)",pr:"tcp",s:"10.1.1.5",d:"192.0.2.1",dp:23},
+  {n:"TCP 10.1.1.70 → 192.0.2.1 : 23 (Telnet)",pr:"tcp",s:"10.1.1.70",d:"192.0.2.1",dp:23},
+  {n:"UDP 10.1.1.70 → 8.8.8.8 : 53 (DNS)",pr:"udp",s:"10.1.1.70",d:"8.8.8.8",dp:53},
+  {n:"TCP 10.1.2.5 → 192.0.2.1 : 80 (otra subred)",pr:"tcp",s:"10.1.2.5",d:"192.0.2.1",dp:80}];
+$("#aclPkt").innerHTML=PKTS.map((p,i)=>`<option value="${i}">${esc(p.n)}</option>`).join("");
+function aclDraw(hl,hit){
+  $("#aclTerm").innerHTML=`<span class="p">R1#</span> show access-lists 100\nExtended IP access list 100\n`+ACL.map((a,i)=>{
+    const c=i===hit?(a.act==="permit"?"g":"r"):(i<hl?"d":(i===hl?"h":""));return `<span class="${c}">${esc(a.t)}</span>`}).join("\n")+
+    `\n<span class="${hit===4?"r":(hl>=4?"h":"d")}"> (deny ip any any implícito)</span>`;}
+aclDraw(-1,-1);
+let aclBusy=false;
+$("#aclGo").onclick=async()=>{if(aclBusy)return;aclBusy=true;const p=PKTS[+$("#aclPkt").value];$("#aclRes").innerHTML="&nbsp;";$("#aclWhy").innerHTML="&nbsp;";
+  let hit=4;for(let i=0;i<ACL.length;i++){aclDraw(i,-1);await sleep(reduce?0:420);if(ACL[i].m(p)){hit=i;break}}
+  if(hit===4){aclDraw(4,-1);await sleep(reduce?0:420)}
+  aclDraw(hit,hit);
+  const ok=hit<4&&ACL[hit].act==="permit";
+  $("#aclRes").innerHTML=ok?'<span style="color:var(--ok)">Permitido</span>':'<span style="color:var(--bad)">Descartado</span>';
+  $("#aclWhy").innerHTML=hit===4?"Ninguna entrada coincide. Lo descarta el deny implícito, que no aparece en la salida ni suma contadores.":
+   `Coincide con la entrada ${(hit+1)*10}. ${hit===0?"Es la más específica y está primero.":hit===2?"La entrada 20 no lo atrapa porque 10.1.1.70 está fuera de 10.1.1.0/26.":hit===1&&p.s==="10.1.1.5"?"La entrada 10 solo bloquea web; para Telnet, 10.1.1.5 cae en la 20.":"Las entradas anteriores no coinciden."}`;
+  aclBusy=false;};
+
+/* ---------- Sentido de la ACL ---------- */
+const dirOut={
+ ok:["Outgoing access list is 100","Inbound access list is 1","ACL 1 revisa lo que llega desde la LAN; ACL 100 revisa lo que sale hacia la LAN, después de enrutarse."],
+ swap:["Outgoing access list is 1","Inbound access list is 100","Con los sentidos invertidos, la ACL 100 revisa el tráfico que llega desde la LAN y la ACL 1 el que va hacia ella. La sintaxis es válida y no hay error: solo el resultado es distinto."],
+ none:["Outgoing access list is 100","Inbound access list is 1","La ACL 100 está aplicada pero no existe. IOS no avisa y deja pasar todo en ese sentido. Confírmalo con show access-lists 100, que no devuelve nada."]};
+function dirRender(v){const o=dirOut[v];
+  $("#dirTerm").innerHTML=`<span class="p">R1(config)#</span> interface gigabitEthernet 0/0
+<span class="p">R1(config-if)#</span> ip access-group ${v==="swap"?"1 out":"100 out"}
+<span class="p">R1(config-if)#</span> ip access-group ${v==="swap"?"100 in":"1 in"}
+<span class="p">R1#</span> show ip interface gigabitEthernet 0/0
+GigabitEthernet0/0 is up, line protocol is up
+  Internet address is 10.1.1.1/24
+  Broadcast address is 255.255.255.255
+  MTU is 1500 bytes
+  Helper address is 172.16.1.10
+  Multicast reserved groups joined: 224.0.0.5 224.0.0.6
+  <span class="h">${o[0]}</span>
+  <span class="h">${o[1]}</span>
+  Proxy ARP is enabled
+  Local Proxy ARP is disabled${v==="none"?`\n\n<span class="p">R1#</span> show access-lists 100\n<span class="p">R1#</span>  <span class="d">! sin salida: la ACL no existe</span>`:""}`;
+  $("#dirInT").textContent=v==="swap"?"in: ACL 100":"in: ACL 1";$("#dirOutT").textContent=v==="swap"?"out: ACL 1":(v==="none"?"out: ACL 100 (no existe)":"out: ACL 100");
+  $("#dirTxt").textContent=o[2];$("#dirTxt").className=v==="ok"?"fix":"note";}
+seg("#dirSeg",dirRender);dirRender("ok");
+
+/* ---------- ACL por tiempo ---------- */
+let trDay="lv";
+function trRender(){const h=+$("#trR").value;const hh=`${String(Math.floor(h)).padStart(2,"0")}:${h%1?"30":"00"}`;$("#trH").textContent=hh;
+  const active=trDay==="sd"||h>=17||h<9;
+  $("#trRes").innerHTML=active?'<span style="color:var(--bad)">Entrada 10 active: web bloqueada</span>':'<span style="color:var(--ok)">Entrada 10 inactive: web permitida</span>';
+  $("#trWhy").textContent=active?(trDay==="sd"?"El fin de semana completo está dentro del time-range.":"Fuera del horario laboral (17:00 a 8:59)."):"Dentro del horario laboral: la entrada 10 se ignora y el paquete sigue a las entradas de abajo.";
+  $("#trTerm").innerHTML=`<span class="p">R1#</span> show access-lists 100
+Extended IP access list 100
+ 10 deny tcp host 10.1.1.5 host 192.0.2.1 eq www
+    time-range AFTERHOURS <span class="${active?"r":"g"}">(${active?"active":"inactive"})</span>
+ 20 permit tcp 10.1.1.0 0.0.0.63 host 192.0.2.1 eq telnet
+ 30 deny ip 10.1.1.64 0.0.0.63 host 192.0.2.1
+ 40 permit ip 10.1.1.0 0.0.0.255 any
+
+<span class="p">R1#</span> show time-range AFTERHOURS
+time-range entry: AFTERHOURS <span class="${active?"r":"g"}">(${active?"active":"inactive"})</span>
+   periodic weekdays 17:00 to 23:59
+   periodic weekdays 0:00 to 8:59
+   periodic weekend 0:00 to 23:59
+   used in: IP ACL entry
+
+<span class="p">R1#</span> show clock
+${hh}:00.000 CLT ${trDay==="sd"?"Sat":"Wed"} Nov 5 2026`;}
+seg("#trDay",v=>{trDay=v;trRender()});$("#trR").oninput=trRender;trRender();
+
+/* ---------- IPv6 y NDP ---------- */
+function v6Draw(){const d=$("#v6Deny").checked;
+  $("#v6Term").innerHTML=`<span class="p">R1#</span> show ipv6 access-list
+IPv6 access list ENARSI
+ permit tcp host 2001:DB8:A:A::20 host 2001:DB8:A:B::7 eq telnet sequence 10
+ deny tcp any host 2001:DB8:A:B::7 eq telnet sequence 20
+ permit tcp host 2001:DB8:A:A::20 host 2001:DB8:D::1 eq www sequence 30
+ deny ipv6 2001:DB8:A:A::/80 any sequence 40
+ permit ipv6 2001:DB8:A:A::/64 any sequence 50${d?`\n <span class="r">deny ipv6 any any log sequence 60</span>`:""}
+<span class="d"> ! implícitas, siempre al final:</span>
+<span class="${d?"r":"g"}"> permit icmp any any nd-na${d?"   ← ya no se alcanza":""}</span>
+<span class="${d?"r":"g"}"> permit icmp any any nd-ns${d?"   ← ya no se alcanza":""}</span>
+<span class="d"> deny ipv6 any any</span>`;
+  $("#v6Txt").textContent=d?"El deny explícito está antes de los permisos implícitos. NS y NA coinciden con él y se descartan: R1 no puede resolver la MAC del vecino y el tráfico IPv6 se corta, aunque el resto de la ACL esté bien. Si necesitas un deny con log, agrega antes permit icmp any any nd-na y nd-ns.":"Con las reglas implícitas, NS y NA pasan aunque no las escribas.";
+  $("#v6Txt").className=d?"warn":"note";}
+$("#v6Deny").onchange=v6Draw;v6Draw();
+$("#v6Go").onclick=async()=>{const p=$("#v6P"),d=$("#v6Deny").checked;$("#v6R2").setAttribute("class","box");
+  await animate(p,[[150,98],[370,98]],700);
+  await animate(p,[[370,98],[160,98]],700);
+  if(d){$("#v6W").setAttribute("class","wire down");p.setAttribute("cx",-20);}
+  else{$("#v6W").setAttribute("class","wire ok");$("#v6R2").setAttribute("class","box act");p.setAttribute("cx",-20)}};
+
+/* ---------- Quiz ---------- */
+quiz("#quiz",[
+ {q:"Con la ACL 100 del ejemplo, ¿qué pasa con un paquete web de 10.1.1.5 hacia 192.0.2.1?",o:["Lo permite la entrada 40","Lo descarta la entrada 10","Lo permite la entrada 20","Lo descarta el deny implícito"],ok:1,e:"La entrada 10 es la primera que coincide (tcp, host 10.1.1.5, host 192.0.2.1, eq www). Las demás ya no se revisan."},
+ {q:"Una ACL tiene solo entradas deny y se aplica de entrada en una interfaz. ¿Qué ocurre?",o:["Bloquea solo lo que nombran las entradas","No hace nada hasta agregar un permit","Bloquea todo el tráfico de entrada","IOS rechaza la configuración"],ok:2,e:"Lo que no coincide con los deny cae en el deny implícito. Hace falta al menos un permit."},
+ {q:"Agregaste deny ipv6 any any log al final de una ACL IPv6 y se cortó el tráfico hacia el vecino. ¿Por qué?",o:["IPv6 no admite la palabra log","El deny explícito queda antes de los permisos implícitos de NS y NA, y rompe NDP","Las ACL IPv6 no tienen deny implícito","Faltó el número de secuencia"],ok:1,e:"Los permit implícitos de nd-na y nd-ns van al final, después de todo lo que escribas. Un deny any explícito los deja inalcanzables."},
+ {q:"¿Con qué comando se aplica una ACL IPv6 a una interfaz?",o:["ipv6 access-group","ipv6 traffic-filter","ip access-group ipv6","ipv6 access-class"],ok:1,e:"ipv6 traffic-filter NOMBRE in|out. access-class es para las líneas VTY."},
+ {q:"Una ACL basada en tiempo bloquea la web a mediodía. ¿Qué revisas primero?",o:["El número de secuencia","El reloj del router: show clock y NTP","El sentido de la ACL","La máscara wildcard"],ok:1,e:"El time-range usa el reloj local. Con la hora o la zona horaria mal, se activa en otro momento."},
+
+ {q:"¿Qué hace una ACL recién creada que no se aplicó en ningún lado?",o:["Filtra todo el tráfico del router","Nada: hay que aplicarla a una interfaz o servicio","Filtra solo el tráfico de gestión","Bloquea el tráfico hasta reiniciar"],ok:1,e:"La ACL solo identifica tráfico. Lo que pasa con él lo decide el lugar donde se aplica."},
+ {q:"¿Qué campos puede revisar una ACL IPv4 estándar?",o:["Origen y destino","Solo la IP de origen","Protocolo y puertos","Solo la IP de destino"],ok:1,e:"La estándar solo mira el origen. Para destino, protocolo o puertos se usa una extendida."}]);
+
+boot();
+})();
+</script>
+</body></html>

@@ -427,6 +427,99 @@ Label      Label      or Tunnel Id    Switched interface
   </div>
 </div></section>
 
+<section class="slide" data-title="Primero CEF" data-agenda="Implementación de MPLS" data-sub="CEF, mpls ip, LDP y MTU"><div class="inner">
+  <div class="head"><span class="eyebrow">Implementación de MPLS · paso 1</span><h2>Sin CEF no hay MPLS</h2>
+  <p class="lead">MPLS usa la FIB de CEF para saber qué etiqueta imponer. CEF se activa de forma global y queda activo en todas las interfaces que lo soportan.</p></div>
+  <div class="cols st fill">
+    <div class="stack">
+      <div class="panel"><h3><code>ip cef [distributed]</code></h3><ul class="small">
+        <li>Modo de configuración global. Inicia CEF y crea la FIB.</li>
+        <li><code>distributed</code> activa dCEF, que corre en las tarjetas de línea (VIP).</li>
+        <li>Todas las interfaces compatibles quedan con CEF.</li></ul></div>
+      <div class="panel"><h3><code>ip route-cache cef</code></h3><ul class="small">
+        <li>Modo interfaz. Activa CEF en una interfaz en particular.</li>
+        <li>Casi nunca hace falta: con el comando global ya está activo.</li>
+        <li><code>no ip route-cache cef</code> lo desactiva en esa interfaz.</li></ul></div>
+      <div class="panel"><h3><code>mpls label range 16 1000</code></h3><p class="small">Opcional. Limita el rango de etiquetas que asigna el router, por ejemplo para reconocer de un vistazo qué router asignó cada etiqueta en un laboratorio.</p></div>
+    </div>
+    <div class="stack">
+      <div class="term"><span class="p">R1#</span> show ip cef summary
+IPv4 CEF is enabled and running
+VRF Default
+ 23 prefixes (23/0 fwd/non-fwd)
+
+<span class="p">R1#</span> show cef interface Gi0/1 | include switching
+  IP CEF switching enabled
+
+<span class="p">R1#</span> show mpls label range
+Downstream Generic label region: Min/Max label: 16/1000</div>
+      <div class="note">Si <code>show ip cef</code> responde <code>%IPv4 CEF not running</code>, ningún paquete se etiqueta aunque LDP esté arriba. Es lo primero que se revisa.</div>
+    </div>
+  </div>
+</div></section>
+
+<section class="slide" data-title="mpls ip y protocolo de etiquetas"><div class="inner">
+  <div class="head"><span class="eyebrow">Implementación de MPLS · paso 2</span><h2>Activar MPLS en cada interfaz del núcleo</h2></div>
+  <div class="cols fill">
+    <div class="stack">
+      <div class="term"><span class="p">Router(config-if)#</span> mpls ip
+<span class="d">! activa la conmutación de etiquetas en la</span>
+<span class="d">! interfaz e inicia LDP</span>
+
+<span class="p">Router(config-if)#</span> mpls label protocol [tdp | ldp | both]
+<span class="d">! elige el protocolo de distribución</span></div>
+      <div class="fix"><span class="fe">Actualización.</span> TDP es el protocolo antiguo de Cisco y ya no existe en IOS actual. Desde IOS 12.4(3) el valor por defecto es LDP, y en IOS-XE solo queda LDP. Las opciones <code>tdp</code> y <code>both</code> se explican porque aparecen en el original y en redes heredadas.</div>
+    </div>
+    <div class="panel">
+      <table><thead><tr><th></th><th>TDP</th><th>LDP</th></tr></thead><tbody>
+        <tr><td>Origen</td><td>Cisco, propietario</td><td>Estándar IETF (RFC 5036)</td></tr>
+        <tr><td>Transporte</td><td>TCP 711</td><td>UDP 646 (Hello), TCP 646 (sesión)</td></tr>
+        <tr><td>Interoperabilidad</td><td>Solo Cisco</td><td>Cualquier fabricante</td></tr>
+        <tr><td>Estado actual</td><td>Obsoleto</td><td>Por defecto</td></tr>
+      </tbody></table>
+      <h3>Lo que hacen los dos</h3>
+      <ul class="small"><li>Asignan una etiqueta a cada prefijo que eligió el IGP.</li><li>Descubren vecinos, abren, supervisan y cierran sesiones.</li><li>Distribuyen, solicitan y liberan asociaciones etiqueta-prefijo.</li><li>Construyen los LSP que usan los servicios del proveedor, como las VPN.</li></ul>
+    </div>
+  </div>
+</div></section>
+
+<section class="slide" data-title="Habilitar MPLS en el núcleo"><div class="inner">
+  <div class="head"><span class="eyebrow">Implementación de MPLS</span><h2>MPLS en el núcleo, nunca hacia el cliente</h2>
+  <p class="lead">El proveedor activa <code>mpls ip</code> en todas las interfaces internas y bloquea LDP en las que dan al cliente. Toca una interfaz para ver su configuración; prueba qué pasa sin la ACL.</p></div>
+  <div class="cols w64 fill">
+    <div class="panel">
+      <svg viewBox="0 0 860 260" class="dia" id="nlSvg" role="img" aria-label="C1 conectado a A, A a B, B a un switch y C, C a C2"></svg>
+      <div class="ctrls"><label class="tog"><input type="checkbox" id="nlAcl" checked> ACL NoLDP en A Serial3/1</label><button class="btn ghost" id="nlGo">C1 envía Hello LDP</button></div>
+    </div>
+    <div class="stack"><div class="term sm" id="nlCfg"></div><p class="note" id="nlTxt"></p></div>
+  </div>
+</div></section>
+
+<section class="slide" data-title="Red con TDP y LDP"><div class="inner">
+  <div class="head"><span class="eyebrow">Implementación de MPLS</span><h2>Cada enlace habla el protocolo que entiende el vecino</h2>
+  <p class="lead">En la red del ejemplo, A es un Cisco antiguo que solo habla TDP, y L1 y L2 son de otros fabricantes que solo hablan LDP. B elige el protocolo por interfaz. Toca un enlace.</p></div>
+  <div class="cols w64 fill">
+    <div class="panel"><svg viewBox="0 0 860 330" class="dia" id="mxSvg" role="img" aria-label="Router B con enlaces a A, L1 y al switch hacia C y L2"></svg></div>
+    <div class="stack"><div class="term" id="mxCfg"></div><p class="note" id="mxTxt"></p></div>
+  </div>
+</div></section>
+
+<section class="slide" data-title="MTU en redes MPLS"><div class="inner">
+  <div class="head"><span class="eyebrow">Configuración de MTU</span><h2>Cada etiqueta suma 4 bytes al paquete</h2>
+  <p class="lead">Un paquete IP de 1500 bytes con etiquetas ya no cabe en una MTU LAN de 1500. Para no fragmentar, se sube la MTU MPLS en todos los routers del segmento y se activan jumbo frames en los switches del camino. Elige el servicio.</p></div>
+  <div class="cols w46 fill">
+    <div class="panel">
+      <div id="mtuList"></div>
+      <div class="pktrow" id="mtuRow" style="font-size:15px"></div>
+      <div class="result" id="mtuRes"></div>
+    </div>
+    <div class="stack">
+      <div class="term" id="mtuCfg"></div>
+      <div class="note" id="mtuTxt"></div>
+    </div>
+  </div>
+</div></section>
+
 <section class="slide" data-title="Verificación de MPLS" data-agenda="Troubleshooting MPLS" data-sub="Qué revisar y en qué orden"><div class="inner">
   <div class="head"><span class="eyebrow">Troubleshooting MPLS</span><h2>Del enlace a la etiqueta: qué revisar y en qué orden</h2>
   <p class="lead">Toca un paso para ver el comando y cómo se ve cuando falla.</p></div>
@@ -438,7 +531,7 @@ Label      Label      or Tunnel Id    Switched interface
 
 <section class="slide" data-title="Resumen"><div class="inner">
   <div class="head"><span class="eyebrow">Resumen</span><h2>Lo que hay que llevarse</h2></div>
-  <div class="cols c3 st">
+  <div class="cols c4 st">
     <div class="panel"><h3>La idea</h3><ul>
       <li>Se clasifica en el borde una vez; el núcleo reenvía solo por etiqueta.</li>
       <li>Push en la entrada, swap en el núcleo, pop a la salida.</li>
@@ -449,6 +542,9 @@ Label      Label      or Tunnel Id    Switched interface
       <li>LDP: Hello UDP 646 a 224.0.0.2, sesión TCP 646 hacia el LDP ID.</li>
       <li>LIB guarda todas; LFIB, la del siguiente salto del IGP.</li>
       <li>PHP: el egreso anuncia imp-null (3) y el penúltimo salto quita la etiqueta.</li></ul></div>
+    <div class="panel"><h3>Implementación</h3><ul>
+      <li><code>ip cef</code> primero.</li><li><code>mpls ip</code> en cada interfaz interna; LDP por defecto.</li>
+      <li>Bloquear UDP/TCP 646 hacia los clientes.</li><li>MTU: 1500 + 4 bytes por etiqueta.</li></ul></div>
     <div class="panel"><h3>Diagnóstico</h3><ul>
       <li>De abajo hacia arriba: IGP, CEF, interfaces, LDP, LFIB.</li>
       <li>Loopbacks /32 de los routers de borde en el IGP, sin resumir.</li>
@@ -678,6 +774,88 @@ $("#swStep").onclick=async()=>{if(sw.busy)return;sw.busy=true;await swTo(sw.i>=4
 $("#swGo").onclick=async()=>{if(sw.busy)return;sw.busy=true;for(let i=0;i<5;i++){await swTo(i);await sleep(reduce?0:900)}sw.busy=false};
 $("#swPhp").onchange=()=>{sw.i=-1;swDraw();$("#swTxt").textContent="Pulsa enviar o avanza paso a paso."};swDraw();
 
+
+const RB=(x,y,name,cls="box",w=110,h=48)=>`<rect class="${cls}" x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="8"/><text x="${x}" y="${y+6}" text-anchor="middle">${name}</text>`;
+
+/* ---------- 5: núcleo con filtro LDP ---------- */
+const NL={A:[260,130],B:[460,130],SW:[620,130],C:[770,130]};
+const nlCfg={A:`<span class="d">! Router A</span>
+ip cef
+!
+interface Serial2/1
+ <span class="h">mpls ip</span>
+!
+interface Serial3/1          <span class="d">! hacia el cliente C1</span>
+ <span class="h">ip access-group NoLDP in</span>
+!
+ip access-list extended NoLDP
+ deny   udp any any eq 646
+ deny   tcp any any eq 646
+ permit ip any any`,B:`<span class="d">! Router B</span>
+ip cef
+!
+interface Serial2/1
+ <span class="h">mpls ip</span>
+!
+interface FastEthernet0/0
+ <span class="h">mpls ip</span>`};
+let nlSel="A";
+function nlDraw(state){const acl=$("#nlAcl").checked;
+  $("#nlSvg").innerHTML=`<rect class="zone" x="190" y="50" width="640" height="170" rx="14"/><text class="lbl" x="205" y="72">Red del proveedor</text>
+  <line class="wire" x1="90" y1="130" x2="770" y2="130"/><line class="wire" x1="770" y1="130" x2="850" y2="130"/>
+  ${RB(70,130,"C1","box bk",80)}${RB(850-30,130,"C2","box bk",70)}
+  <g class="clk" data-k="A">${RB(NL.A[0],130,"A",nlSel==="A"?"box amb":"box")}</g><g class="clk" data-k="B">${RB(NL.B[0],130,"B",nlSel==="B"?"box amb":"box")}</g>
+  <rect class="host" x="585" y="112" width="70" height="36" rx="5"/><text x="620" y="135" text-anchor="middle" font-size="12">Cat6000</text>${RB(NL.C[0]-40,130,"C","box",70)}
+  <text class="lbl" x="150" y="118" text-anchor="middle">S3/1</text><text class="lbl" x="360" y="118" text-anchor="middle">S2/1</text><text class="lbl" x="550" y="118" text-anchor="middle">Fa0/0</text>
+  ${acl?`<rect class="tagr" x="170" y="140" width="66" height="22" rx="4"/><text class="tagt" x="203" y="156" text-anchor="middle">NoLDP</text>`:""}
+  <text class="lbl k" x="430" y="200" text-anchor="middle">mpls ip solo en interfaces internas</text>
+  <circle class="pkt" id="nlP" r="8" cx="-20" cy="0"/>
+  ${state==="drop"?`<text x="200" y="98" text-anchor="middle" style="fill:var(--bad)">✕ descartado por la ACL</text>`:state==="ign"?`<text x="230" y="98" text-anchor="middle" style="fill:var(--amber)">llega, A lo ignora</text>`:""}`;
+  $("#nlCfg").innerHTML=nlCfg[nlSel];
+  $("#nlTxt").innerHTML=acl?"La ACL descarta los Hello LDP (UDP 646) y las sesiones (TCP 646) que llegan desde el cliente. El original solo bloquea UDP 646; conviene bloquear también TCP 646.":"Sin <code>mpls ip</code> en S3/1, A no responde Hellos de enlace. Pero quedas con una sola barrera: un Hello <i>dirigido</i> (targeted) a la loopback de A, o un <code>mpls ip</code> puesto por error, abriría una sesión LDP con el cliente.";}
+$("#nlSvg").addEventListener("click",e=>{const g=e.target.closest(".clk");if(g){nlSel=g.dataset.k;nlDraw()}});
+$("#nlAcl").onchange=()=>nlDraw();
+$("#nlGo").onclick=async()=>{nlDraw();const acl=$("#nlAcl").checked;await animate($("#nlP"),[[110,130],[acl?195:240,130]],700);nlDraw(acl?"drop":"ign")};
+nlDraw();
+
+/* ---------- 6: red mixta ---------- */
+const MX={s10:["interface Serial1/0\n mpls ip\n mpls label protocol tdp","Hacia A, un Cisco antiguo que solo habla TDP."],
+ s21:["interface Serial2/1\n mpls ip\n mpls label protocol ldp","Hacia L1, de otro fabricante: solo LDP, porque TDP es propietario de Cisco."],
+ fa00:["interface FastEthernet0/0\n mpls ip\n mpls label protocol both","En la LAN hay vecinos de los dos tipos (C y L2). Con both, B habla TDP con unos y LDP con otros en la misma interfaz."]};
+let mxSel="fa00";
+function mxDraw(){const L=(k,x1,y1,x2,y2,lx,ly,t)=>`<g class="clk" data-k="${k}"><line class="wire${mxSel===k?" acc":""}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${mxSel===k?5:3}"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="transparent" stroke-width="22"/><text class="lbl${mxSel===k?" k":""}" x="${lx}" y="${ly}">${t}</text></g>`;
+  $("#mxSvg").innerHTML=`<rect class="zone" x="10" y="10" width="840" height="310" rx="14"/><text class="lbl" x="830" y="34" text-anchor="end">Red del proveedor</text>
+  ${L("s10",130,90,330,90,195,78,"S1/0 · tdp")}${L("s21",330,90,150,250,200,190,"S2/1 · ldp")}${L("fa00",330,90,540,90,400,78,"Fa0/0 · both")}
+  <line class="wire" x1="540" y1="90" x2="720" y2="90"/><line class="wire" x1="560" y1="90" x2="560" y2="250"/>
+  ${RB(130,90,"A")}${RB(330,90,"B","box amb")}${RB(150,250,"L1","box bk")}${RB(560,250,"L2","box bk")}${RB(720,90,"C")}
+  <rect class="host" x="520" y="72" width="80" height="36" rx="5"/><text x="560" y="95" text-anchor="middle" font-size="12">switch</text>
+  <text class="lbl" x="130" y="135" text-anchor="middle">Cisco, solo TDP</text><text class="lbl" x="150" y="295" text-anchor="middle">otro fabricante, solo LDP</text><text class="lbl" x="560" y="295" text-anchor="middle">otro fabricante, solo LDP</text><text class="lbl" x="720" y="135" text-anchor="middle">Cisco</text>`;
+  $("#mxCfg").textContent="ip cef\n!\n"+MX[mxSel][0];$("#mxTxt").textContent=MX[mxSel][1];}
+$("#mxSvg").addEventListener("click",e=>{const g=e.target.closest(".clk");if(g){mxSel=g.dataset.k;mxDraw()}});mxDraw();
+
+/* ---------- 7: MTU ---------- */
+const MT=[
+ ["IP sin MPLS",0,1500,"Sin etiquetas: el paquete de 1500 bytes cabe en la MTU LAN por defecto."],
+ ["MPLS puro (1 etiqueta)",1,1504,"Una etiqueta LDP: 1500 + 4 = 1504."],
+ ["MPLS VPN de capa 3 (2 etiquetas)",2,1508,"Etiqueta LDP + etiqueta VPN: 1500 + 8 = 1508."],
+ ["MPLS VPN + ingeniería de tráfico (3)",3,1512,"Etiqueta TE + LDP + VPN: 1500 + 12 = 1512. Es el valor del ejemplo, que soporta pilas de hasta tres etiquetas."],
+ ["AToM / EoMPLS (trama completa)",2,1526,"El pseudowire lleva la trama Ethernet entera: 1500 + 14 de cabecera Ethernet + 4 de control word + 8 de dos etiquetas = 1526. Con 802.1Q suma 4 más (1530). Es la fórmula de Cisco: MTU núcleo ≥ MTU borde + cabecera de transporte + cabecera AToM + etiquetas × 4."]];
+function mtuShow(i){const m=MT[i];
+  $("#mtuRow").innerHTML=(i===4?'<span class="h4" style="flex:1.2">Eth 14</span><span class="h3" style="flex:1">CW 4</span>':"")+Array.from({length:m[1]},(_,k)=>`<span class="h2" style="flex:1">Etiq. 4</span>`).join("")+`<span class="h1" style="flex:6">Paquete IP 1500</span>`;
+  $("#mtuRes").textContent=`MTU MPLS mínima: ${m[2]} bytes`;
+  $("#mtuCfg").innerHTML=`<span class="d">! en cada router del segmento LAN</span>
+interface FastEthernet0/0
+ mpls ip
+ <span class="h">mpls mtu ${Math.max(m[2],1500)}</span>
+
+<span class="d">! en el switch del camino (CatOS, del ejemplo)</span>
+set port 1/3 jumbo enable
+set port 1/4 jumbo enable
+<span class="d">! en un switch IOS: system mtu jumbo 9000</span>`;
+  $("#mtuTxt").innerHTML=m[3]+" <b>Todos</b> los routers del segmento deben tener el mismo valor, y el switch debe dejar pasar esas tramas: si no, los paquetes grandes se pierden y los pequeños (como el ping por defecto) funcionan.";}
+picker("#mtuList","#mtuTxt",MT.map(m=>[m[0],""]),3);
+$("#mtuList").addEventListener("click",e=>{const b=e.target.closest("button");if(b)mtuShow(+b.dataset.i)});mtuShow(3);
+
 /* ---------- 11: verificación ---------- */
 const vf=[
  ["1. IGP y loopbacks","Cada PE debe tener una ruta /32 a la loopback de los otros. Si se resume, no hay etiqueta para la /32 y el LSP se rompe.","R1# show ip route 5.5.5.5\nRouting entry for 5.5.5.5/32\n  Known via \"ospf 1\", distance 110, metric 4"],
@@ -700,7 +878,10 @@ quiz("#quiz",[
  {q:"Hay Hellos LDP en ambos sentidos pero la sesión no sube. ¿Qué revisas?",o:["La MTU de la interfaz","Que el LDP ID (loopback) del vecino sea alcanzable por el IGP","El valor de EXP","El TTL de la etiqueta"],ok:1,e:"La sesión TCP se abre hacia la dirección de transporte, que por defecto es el LDP ID. Sin ruta a esa loopback no hay sesión."},
  {q:"¿Para qué sirve PHP?",o:["Para que el último router haga una sola búsqueda","Para cifrar las etiquetas","Para elegir el LDP ID","Para balancear entre LSP"],ok:0,e:"El penúltimo salto quita la etiqueta, así el router de salida solo busca en la FIB."},
  {q:"¿Qué etiqueta anuncia el router de salida para pedir PHP?",o:["0 (explicit-null)","1 (router alert)","3 (implicit-null)","16"],ok:2,e:"La etiqueta 3 nunca viaja en un paquete: le indica al vecino que quite la etiqueta."},
- {q:"El tráfico de R1 a R5 funciona, pero el de R5 a R1 no. ¿Por qué es posible?",o:["Porque el LSP es unidireccional y el retorno usa otro LSP","Porque MPLS solo funciona en un sentido","Porque PHP bloquea el retorno","No es posible en MPLS"],ok:0,e:"Cada sentido tiene su propio LSP con sus etiquetas. Hay que revisar ambos."}]);
+ {q:"El tráfico de R1 a R5 funciona, pero el de R5 a R1 no. ¿Por qué es posible?",o:["Porque el LSP es unidireccional y el retorno usa otro LSP","Porque MPLS solo funciona en un sentido","Porque PHP bloquea el retorno","No es posible en MPLS"],ok:0,e:"Cada sentido tiene su propio LSP con sus etiquetas. Hay que revisar ambos."},
+ {q:"¿Qué se debe habilitar antes que MPLS en un router?",o:["NTP","CEF","OSPF en todas las interfaces","IPsec"],ok:1,e:"MPLS usa la FIB de CEF. Sin CEF no se etiquetan paquetes."},
+ {q:"¿Qué hace mpls ip en una interfaz?",o:["Solo crea la LFIB","Activa la conmutación de etiquetas e inicia LDP","Cambia la MTU a 1504","Bloquea LDP hacia el cliente"],ok:1,e:"Habilita MPLS en modo trama en esa interfaz y arranca el descubrimiento LDP."},
+ {q:"¿Qué MTU MPLS necesita una VPN de capa 3 para transportar paquetes IP de 1500 bytes sin fragmentar?",o:["1500","1504","1508","1512"],ok:2,e:"Dos etiquetas (LDP + VPN) de 4 bytes: 1500 + 8 = 1508."}]);
 
 boot();
 })();

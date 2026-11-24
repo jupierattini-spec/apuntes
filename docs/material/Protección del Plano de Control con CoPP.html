@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Seguridad en Red Corporativa</title>
+<title>CoPP: plano de control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
@@ -193,223 +193,33 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
 </style></head><body>
 <div class="deck">
 <div class="viewport"><div class="canvas" id="stage">
-<!-- 1 Portada -->
 <section class="slide" data-title="Portada"><div class="inner cover">
-  <span class="eyebrow">ARY6112 · Troubleshooting · Unidad 3.1.1</span>
-  <h1>Aplicando seguridad a una red corporativa</h1>
-  <p class="lead">Listas de acceso IPv4 e IPv6, protección del plano de control con CoPP y separación de tablas de enrutamiento con VRF-Lite y EVN. Qué hace cada una, cómo se verifica y qué mirar cuando falla.</p>
+  <span class="eyebrow">ARY6112 · Troubleshooting · CoPP</span>
+  <h1>Protección del plano de control con CoPP</h1>
+  <p class="lead">Por qué la CPU del router necesita protección, cómo CoPP clasifica y limita el tráfico que llega a ella con MQC, y cómo se verifica cuando algo deja de funcionar.</p>
   <div class="meta"><span class="badge blue">Routing y Switching Corporativo</span><span class="badge blue">Usa ← → · F pantalla completa</span></div>
 </div></section>
 
-<!-- 2 Agenda -->
 <section class="slide" data-title="Agenda"><div class="inner">
   <div class="head"><span class="eyebrow">Agenda</span><h2>Lo que veremos</h2></div>
   <div class="agenda" id="agenda"></div>
 </div></section>
 
-<!-- 3 ¿Qué es una ACL? -->
-<section class="slide" data-title="¿Qué es una ACL?" data-agenda="ACL IPv4" data-sub="Procesamiento, tipos, aplicación y tiempo"><div class="inner">
-  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>Una ACL identifica tráfico; el servicio decide qué hacer con él</h2>
-  <p class="lead">Una ACL creada no hace nada hasta que se aplica a una interfaz, un servicio o una función.</p></div>
-  <div class="cols w46 fill">
-    <div class="cards" style="grid-template-columns:1fr 1fr">
-      <div class="card"><div class="ic">1</div><h3>Filtrado de paquetes</h3><p><code>ip access-group</code> en una interfaz, entrada o salida.</p></div>
-      <div class="card"><div class="ic">2</div><h3>NAT / PAT</h3><p>Qué direcciones privadas se traducen a la pública.</p></div>
-      <div class="card"><div class="ic">3</div><h3>Redistribución</h3><p>Qué rutas pasan de un protocolo a otro (con route-map).</p></div>
-      <div class="card"><div class="ic">4</div><h3>PBR y QoS</h3><p>Qué paquetes siguen una política o reciben una marca.</p></div>
-      <div class="card"><div class="ic">5</div><h3>CoPP</h3><p>Qué tráfico hacia la CPU entra en cada clase.</p></div>
-      <div class="card"><div class="ic">6</div><h3>Acceso a gestión</h3><p><code>access-class</code> en las líneas VTY.</p></div>
-    </div>
-    <div class="panel">
-      <svg viewBox="0 0 560 400" class="dia" role="img" aria-label="Tres routers con ACL en distintas interfaces y la política que aplica cada una">
-        <path class="zone" d="M410 30h130v70H410z" rx="10"/><text x="475" y="72" text-anchor="middle">Internet</text>
-        <path class="zone" d="M410 150h130v70H410z"/><text x="475" y="182" text-anchor="middle">Subred HR</text><text class="lbl" x="475" y="200" text-anchor="middle">172.17.0.0/20</text>
-        <line class="wire" x1="280" y1="65" x2="410" y2="65"/><line class="wire" x1="280" y1="65" x2="150" y2="185"/><line class="wire" x1="280" y1="65" x2="310" y2="185"/>
-        <line class="wire" x1="310" y1="185" x2="410" y2="185"/><line class="wire" x1="150" y1="185" x2="90" y2="300"/><line class="wire" x1="150" y1="185" x2="200" y2="300"/><line class="wire" x1="310" y1="185" x2="310" y2="300"/>
-        <rect class="box" x="245" y="45" width="70" height="40" rx="6"/><text x="280" y="70" text-anchor="middle">R2</text>
-        <rect class="box" x="115" y="165" width="70" height="40" rx="6"/><text x="150" y="190" text-anchor="middle">R1</text>
-        <rect class="box" x="275" y="165" width="70" height="40" rx="6"/><text x="310" y="190" text-anchor="middle">R3</text>
-        <rect class="host" x="55" y="300" width="70" height="34" rx="4"/><text x="90" y="322" text-anchor="middle">S1</text>
-        <rect class="host" x="165" y="300" width="70" height="34" rx="4"/><text x="200" y="322" text-anchor="middle">S2</text>
-        <rect class="host" x="275" y="300" width="70" height="34" rx="4"/><text x="310" y="322" text-anchor="middle">S3</text>
-        <rect class="tagr" x="335" y="52" width="46" height="22" rx="4"/><text class="tagt" x="358" y="68" text-anchor="middle">ACL</text>
-        <rect class="tagr" x="350" y="174" width="46" height="22" rx="4"/><text class="tagt" x="373" y="190" text-anchor="middle">ACL</text>
-        <rect class="tagr" x="92" y="225" width="46" height="22" rx="4"/><text class="tagt" x="115" y="241" text-anchor="middle">ACL</text>
-        <rect class="tagr" x="318" y="240" width="46" height="22" rx="4"/><text class="tagt" x="341" y="256" text-anchor="middle">ACL</text>
-        <text class="lbl k" x="280" y="20" text-anchor="middle">permitir correo entrante · denegar Telnet entrante</text>
-        <text class="lbl k" x="10" y="365">R1: denegar video a S1 y el acceso de S1 a S2</text>
-        <text class="lbl k" x="10" y="388">R3: denegar acceso a HR, FTP, web y actualizaciones</text>
-      </svg>
-    </div>
+<section class="slide" data-title="Por qué proteger el plano de control" data-agenda="Qué es CoPP" data-sub="Planos del router y el problema que resuelve"><div class="inner">
+  <div class="head"><span class="eyebrow">Para empezar</span><h2>Un router trabaja en tres planos y uno de ellos es frágil</h2>
+  <p class="lead">La mayor parte del tráfico <b>atraviesa</b> el router y se conmuta en hardware (CEF). Pero una parte va <b>dirigida al router mismo</b> y la procesa la CPU: los Hello de OSPF, las sesiones BGP, SSH, SNMP, ping al router… La CPU es un recurso limitado y compartido por todo eso.</p></div>
+  <div class="cols c3 st">
+    <div class="card"><div class="ic">D</div><h3>Plano de datos</h3><p>Paquetes que pasan de una interfaz a otra. Rápido, en hardware o CEF.</p></div>
+    <div class="card"><div class="ic">C</div><h3>Plano de control</h3><p>Protocolos que construyen la tabla: OSPF, EIGRP, BGP, LDP, ARP. Van a la CPU.</p></div>
+    <div class="card"><div class="ic">G</div><h3>Plano de gestión</h3><p>Acceso al equipo: SSH, SNMP, NTP, syslog. También van a la CPU.</p></div>
+  </div>
+  <div class="cols st">
+    <div class="warn"><b>El problema.</b> Una ráfaga de ping, un escaneo, un error de configuración en otro equipo o un ataque pueden llenar la CPU. Entonces se pierden Hello, caen las adyacencias OSPF o BGP y el router deja de enrutar: una falla local se convierte en una caída de la red.</div>
+    <div class="fix"><span class="fe">La solución: CoPP.</span> Control Plane Policing pone un “guardia de tránsito” delante de la CPU. Clasifica el tráfico que va hacia ella y limita la velocidad de cada clase, para que nada pueda acaparar el procesador y lo crítico (enrutamiento) siempre tenga paso.</div>
   </div>
 </div></section>
 
-<!-- 4 Procesamiento -->
-<section class="slide" data-title="Cómo procesa una ACL"><div class="inner">
-  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>De arriba hacia abajo, gana la primera coincidencia</h2>
-  <p class="lead">Elige un paquete y evalúalo contra la ACL 100. Mira en qué línea se detiene y qué pasa si ninguna coincide.</p></div>
-  <div class="cols w46 fill">
-    <div class="stack">
-      <div class="steps" style="grid-template-columns:1fr">
-        <div><b>1. Procesamiento descendente</b><span>Las entradas se revisan en orden, desde la de menor número de secuencia.</span></div>
-        <div><b>2. Ejecución inmediata</b><span>La primera entrada que coincide decide: permit o deny. Las demás ya no se miran.</span></div>
-        <div><b>3. Deny implícito</b><span>Al final hay un <code>deny any</code> invisible. Una ACL sin ningún permit lo bloquea todo.</span></div>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="ctrls">
-        <label class="ctl" style="flex:1">Paquete que entra<select id="aclPkt"></select></label>
-        <button class="btn" id="aclGo" style="align-self:flex-end">Evaluar</button>
-      </div>
-      <div class="term" id="aclTerm"></div>
-      <div class="result" id="aclRes">&nbsp;</div>
-      <p id="aclWhy" class="small muted">&nbsp;</p>
-    </div>
-  </div>
-</div></section>
-
-<!-- 5 Estándar y extendida -->
-<section class="slide" data-title="ACL estándar y extendida"><div class="inner">
-  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>Estándar mira solo el origen; extendida mira casi todo</h2></div>
-  <div class="cols st fill">
-    <div class="panel">
-      <table><thead><tr><th></th><th>Estándar</th><th>Extendida</th></tr></thead><tbody>
-        <tr><td>Números</td><td>1–99, 1300–1999</td><td>100–199, 2000–2699</td></tr>
-        <tr><td>Compara</td><td>IP de origen</td><td>Protocolo, origen, destino, puertos, flags, DSCP</td></tr>
-        <tr><td>Ubicación típica</td><td>Cerca del destino</td><td>Cerca del origen</td></tr>
-        <tr><td>Nombrada</td><td><code>ip access-list standard</code></td><td><code>ip access-list extended</code></td></tr>
-      </tbody></table>
-      <div class="note">Ordena de lo más específico a lo más general. Si una entrada general queda primero, las específicas de abajo nunca se usan.</div>
-      <div class="fix"><span class="fe">Precisión.</span> Los IOS recientes no rechazan las entradas más específicas. Rechazan las que ya quedan cubiertas por una entrada anterior: <code>% Access rule can't be configured at higher sequence num as it is part of the existing rule</code>.</div>
-    </div>
-    <div class="term sm"><span class="p">Router#</span> show access-lists
-Standard IP access list 1
- 5 deny 10.1.1.5
- 10 permit 10.1.1.0, wildcard bits 0.0.0.63 <span class="h">(1 match)</span>
- 20 deny 10.1.1.64, wildcard bits 0.0.0.63
- 30 permit 10.1.1.0, wildcard bits 0.0.0.255
-
-<span class="p">R1#</span> show access-lists 100
-Extended IP access list 100
- 10 deny tcp host 10.1.1.5 host 192.0.2.1 eq www
- 20 permit tcp 10.1.1.0 0.0.0.63 host 192.0.2.1 eq telnet
- 30 deny ip 10.1.1.64 0.0.0.63 host 192.0.2.1
- 40 permit ip 10.1.1.0 0.0.0.255 any
-
-<span class="d">! Los contadores (matches) indican qué entrada está</span>
-<span class="d">! atrapando el tráfico. Reinícialos antes de probar:</span>
-<span class="p">R1#</span> clear access-list counters 100</div>
-  </div>
-</div></section>
-
-<!-- 6 Aplicación en interfaz -->
-<section class="slide" data-title="Aplicar una ACL a una interfaz"><div class="inner">
-  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>La interfaz y el sentido importan tanto como las entradas</h2>
-  <p class="lead">Cambia el sentido y observa qué paquetes revisa cada ACL. <code>in</code> filtra lo que llega al router; <code>out</code>, lo que sale después de enrutarse.</p></div>
-  <div class="cols w46 fill">
-    <div class="panel">
-      <svg viewBox="0 0 520 230" class="dia" role="img" aria-label="LAN, R1 e interfaz Gi0/0 con el sentido de la ACL">
-        <rect class="host" x="10" y="90" width="120" height="50" rx="6"/><text x="70" y="113" text-anchor="middle">LAN</text><text class="lbl" x="70" y="130" text-anchor="middle">10.1.1.0/24</text>
-        <line class="wire" x1="130" y1="115" x2="260" y2="115"/>
-        <rect class="box" x="260" y="85" width="110" height="60" rx="8"/><text x="315" y="120" text-anchor="middle">R1</text>
-        <line class="wire" x1="370" y1="115" x2="510" y2="115"/>
-        <text class="lbl k" x="200" y="104" text-anchor="middle">Gi0/0</text>
-        <path id="dirIn" d="M150 150 L245 150" stroke="var(--ok)" stroke-width="4" marker-end="url(#ar)"/>
-        <path id="dirOut" d="M245 80 L150 80" stroke="var(--accent)" stroke-width="4" marker-end="url(#ar2)"/>
-        <text class="lbl" id="dirInT" x="198" y="175" text-anchor="middle">in: ACL 1</text>
-        <text class="lbl" id="dirOutT" x="198" y="66" text-anchor="middle">out: ACL 100</text>
-        <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--ok)"/></marker>
-        <marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--accent)"/></marker></defs>
-      </svg>
-      <div class="ctrls"><div class="seg" id="dirSeg"><button data-v="ok" aria-pressed="true">Como en la figura</button><button data-v="swap" aria-pressed="false">Sentidos invertidos</button><button data-v="none" aria-pressed="false">ACL 100 no existe</button></div></div>
-      <p id="dirTxt" class="note"></p>
-    </div>
-    <div class="term sm" id="dirTerm"></div>
-  </div>
-</div></section>
-
-<!-- 7 ACL por tiempo -->
-<section class="slide" data-title="ACL basada en tiempo"><div class="inner">
-  <div class="head"><span class="eyebrow">Listas de acceso IPv4</span><h2>Una entrada que se activa según el reloj del router</h2>
-  <p class="lead">La entrada 10 bloquea la web de 10.1.1.5 solo fuera del horario laboral. Mueve el día y la hora para ver cuándo está <b>active</b>.</p></div>
-  <div class="cols w46 fill">
-    <div class="panel">
-      <div class="ctrls">
-        <div class="seg" id="trDay"><button data-v="lv" aria-pressed="true">Lunes a viernes</button><button data-v="sd" aria-pressed="false">Sábado o domingo</button></div>
-      </div>
-      <label class="ctl">Hora del router: <b id="trH"></b><input type="range" id="trR" min="0" max="23.5" step="0.5" value="10"></label>
-      <div class="result" id="trRes"></div>
-      <p id="trWhy"></p>
-      <div class="warn">El router usa su propio reloj. Si la hora está mal (sin NTP o con zona horaria errada), la ACL se activa en otro momento. Revisa <code>show clock</code> y <code>show ntp status</code>.</div>
-    </div>
-    <div class="term sm" id="trTerm"></div>
-  </div>
-</div></section>
-
-<!-- 8 ACL IPv6 reglas -->
-<section class="slide" data-title="ACL IPv6: reglas implícitas" data-agenda="ACL IPv6" data-sub="Permisos implícitos de ND y aplicación"><div class="inner">
-  <div class="head"><span class="eyebrow">Listas de acceso IPv6</span><h2>IPv6 agrega dos permisos implícitos antes del deny final</h2>
-  <p class="lead">Neighbor Discovery (NDP) reemplaza a ARP. Para que no se rompa, cada ACL IPv6 permite NA y NS de forma implícita. Agrega la línea de abajo y mira el efecto.</p></div>
-  <div class="cols w64 fill">
-    <div class="stack">
-      <div class="term sm" id="v6Term"></div>
-      <label class="tog"><input type="checkbox" id="v6Deny"> Agregar <code>deny ipv6 any any log</code> al final, como se hace en IPv4</label>
-      <div class="fix"><span class="fe">Fe de erratas.</span> La presentación original escribe <code>deny ipv6 any aní log</code>; el comando es <code>deny ipv6 any any log</code>.</div>
-    </div>
-    <div class="panel">
-      <svg viewBox="0 0 520 200" class="dia" id="v6Svg" role="img" aria-label="R1 resolviendo la dirección de capa 2 de su vecino con NS y NA">
-        <rect class="box" x="30" y="70" width="120" height="56" rx="8"/><text x="90" y="103" text-anchor="middle">R1</text>
-        <rect class="box" id="v6R2" x="370" y="70" width="120" height="56" rx="8"/><text x="430" y="103" text-anchor="middle">Vecino</text>
-        <line class="wire" id="v6W" x1="150" y1="98" x2="370" y2="98"/>
-        <text class="lbl k" id="v6L1" x="260" y="60" text-anchor="middle">NS: ¿quién tiene 2001:DB8:A:A::20?</text>
-        <text class="lbl k" id="v6L2" x="260" y="150" text-anchor="middle">NA: soy yo, mi MAC es …</text>
-        <circle class="pkt" id="v6P" r="7" cx="-20" cy="0"/>
-      </svg>
-      <div class="ctrls"><button class="btn" id="v6Go">Resolver vecino</button></div>
-      <p id="v6Txt" class="note">Con las reglas implícitas, NS y NA pasan aunque no las escribas.</p>
-    </div>
-  </div>
-</div></section>
-
-<!-- 9 Aplicar ACL IPv6 -->
-<section class="slide" data-title="Aplicar y verificar una ACL IPv6"><div class="inner">
-  <div class="head"><span class="eyebrow">Listas de acceso IPv6</span><h2>En IPv6 todas son extendidas y nombradas</h2></div>
-  <div class="cols fill">
-    <div class="stack">
-      <div class="panel tight"><table style="font-size:18px"><thead><tr><th>Tarea</th><th>IPv4</th><th>IPv6</th></tr></thead><tbody>
-        <tr><td>Crear</td><td><code>ip access-list extended N</code></td><td><code>ipv6 access-list N</code></td></tr>
-        <tr><td>Aplicar</td><td><code>ip access-group N in</code></td><td><code>ipv6 traffic-filter N in</code></td></tr>
-        <tr><td>Ver en interfaz</td><td><code>show ip interface</code></td><td><code>show ipv6 interface</code></td></tr>
-        <tr><td>Ver entradas</td><td><code>show access-lists</code></td><td><code>show ipv6 access-list</code></td></tr>
-        <tr><td>Máscara</td><td>Wildcard</td><td>Longitud de prefijo (/64)</td></tr>
-      </tbody></table></div>
-      <div class="note">Al revisar, confirma tres cosas: que la ACL existe con ese nombre exacto (distingue mayúsculas), que está en la interfaz correcta y que el sentido es el que pide el diseño.</div>
-    </div>
-    <div class="term xs"><span class="p">R1(config)#</span> interface gigabitEthernet 0/0
-<span class="p">R1(config-if)#</span> ipv6 traffic-filter ENARSI in
-<span class="p">R1#</span> show ipv6 access-list
-IPv6 access list ENARSI
- permit tcp host 2001:DB8:A:A::20 host 2001:DB8:A:B::7 eq telnet sequence 10
- deny tcp any host 2001:DB8:A:B::7 eq telnet sequence 20
- permit tcp host 2001:DB8:A:A::20 host 2001:DB8:D::1 eq www sequence 30
- deny ipv6 2001:DB8:A:A::/80 any sequence 40
- permit ipv6 2001:DB8:A:A::/64 any sequence 50
-
-<span class="p">R1#</span> show ipv6 interface gigabitEthernet 0/0
-GigabitEthernet0/0 is up, line protocol is up
-  IPv6 is enabled, link-local address is FE80::C808:3FF:FE78:8
-  Global unicast address(es):
-    2001:DB8:A:A::1, subnet is 2001:DB8:A:A::/64
-  Joined group address(es):
-  MTU is 1500 bytes
-  Input features: Access List
-  <span class="h">Inbound access list ENARSI</span>
-  ND DAD is enabled, number of DAD attempts: 1</div>
-  </div>
-</div></section>
-
-<!-- 10 CoPP concepto -->
-<section class="slide" data-title="Qué es CoPP" data-agenda="CoPP" data-sub="ACL, class-map, policy-map y service-policy"><div class="inner">
+<section class="slide" data-title="Qué es CoPP" data-agenda="Cómo se configura CoPP" data-sub="ACL, class-map, policy-map y service-policy"><div class="inner">
   <div class="head"><span class="eyebrow">Control Plane Policing</span><h2>CoPP limita el tráfico que llega a la CPU del router</h2>
   <p class="lead">Es una política de QoS aplicada a la interfaz lógica <code>control-plane</code>. Clasifica el tráfico hacia la CPU (gestión, enrutamiento, ICMP…) y le pone un límite de velocidad a cada clase, para que una ráfaga inesperada no desestabilice el equipo.</p></div>
   <div class="panel">
@@ -440,7 +250,6 @@ GigabitEthernet0/0 is up, line protocol is up
   <div class="fix"><span class="fe">Fe de erratas.</span> El resumen original dice que CoPP se basa en el firewall por zonas (ZBF). En realidad usa MQC, la misma estructura de QoS: class-map, policy-map y service-policy.</div>
 </div></section>
 
-<!-- 11 ACL para CoPP -->
 <section class="slide" data-title="ACL para CoPP"><div class="inner">
   <div class="head"><span class="eyebrow">CoPP · paso 1</span><h2>Las ACL definen qué protocolos caen en cada clase</h2>
   <p class="lead">Aquí <code>permit</code> no significa “dejar pasar”: significa “esto pertenece a la clase”. Son ACL abiertas; el control lo hace el policer.</p></div>
@@ -488,7 +297,6 @@ ip access-list extended ACL-CoPP-Routing
   </div>
 </div></section>
 
-<!-- 12 Clasificador interactivo -->
 <section class="slide" data-title="Simulador: ¿en qué clase cae?"><div class="inner">
   <div class="head"><span class="eyebrow">CoPP en vivo</span><h2>Sigue un paquete por la política</h2>
   <p class="lead">Elige un paquete dirigido al router. El simulador recorre las clases en orden y muestra cuál lo atrapa, su tasa y qué pasa si se excede.</p></div>
@@ -501,7 +309,6 @@ ip access-list extended ACL-CoPP-Routing
   </div>
 </div></section>
 
-<!-- 13 Class-map -->
 <section class="slide" data-title="Class-map en CoPP"><div class="inner">
   <div class="head"><span class="eyebrow">CoPP · paso 2</span><h2>El class-map une cada ACL con una clase</h2></div>
   <div class="cols w46 fill">
@@ -533,7 +340,6 @@ class-map match-all CLASS-CoPP-ICMP
   </div>
 </div></section>
 
-<!-- 14 Policy-map -->
 <section class="slide" data-title="Policy-map en CoPP"><div class="inner">
   <div class="head"><span class="eyebrow">CoPP · paso 3</span><h2>El policy-map pone la tasa y la acción de cada clase</h2>
   <p class="lead">Las clases vitales (IPsec, gestión, enrutamiento) usan <code>violate-action transmit</code> mientras se mide una línea base. ICMP, DHCP y el resto se descartan al violar.</p></div>
@@ -570,7 +376,6 @@ class-map match-all CLASS-CoPP-ICMP
   </div>
 </div></section>
 
-<!-- 15 Aplicar y verificar -->
 <section class="slide" data-title="Aplicar y verificar CoPP"><div class="inner">
   <div class="head"><span class="eyebrow">CoPP · paso 4</span><h2>Se aplica en una sola interfaz: control-plane</h2>
   <p class="lead">Toca una línea resaltada de la verificación para ver qué significa.</p></div>
@@ -588,8 +393,7 @@ class-map match-all CLASS-CoPP-ICMP
   </div>
 </div></section>
 
-<!-- 16 Síntomas CoPP -->
-<section class="slide" data-title="CoPP: del síntoma a la causa"><div class="inner">
+<section class="slide" data-agenda="Troubleshooting CoPP" data-sub="Del síntoma a la causa" data-title="CoPP: del síntoma a la causa"><div class="inner">
   <div class="head"><span class="eyebrow">Troubleshooting CoPP</span><h2>Del síntoma a la causa</h2><p class="lead">Toca un síntoma para ver dónde mirar primero.</p></div>
   <div class="cols w37 fill">
     <div id="cpsList"></div>
@@ -597,153 +401,37 @@ class-map match-all CLASS-CoPP-ICMP
   </div>
 </div></section>
 
-<!-- 17 VRF-Lite concepto -->
-<section class="slide" data-title="VRF-Lite" data-agenda="VRF-Lite y EVN" data-sub="Tablas de enrutamiento separadas sin MPLS"><div class="inner">
-  <div class="head"><span class="eyebrow">Introducción a Service Provider</span><h2>VRF-Lite: varias tablas de enrutamiento en un mismo router</h2>
-  <p class="lead">Una VRF (Virtual Routing and Forwarding) es una tabla de enrutamiento independiente. En un proveedor se usa con MPLS, una por cliente. VRF-Lite es usar VRF <b>sin MPLS</b>: el router Central separa a VRF A de VRF B aunque compartan el equipo.</p></div>
-  <div class="cols w64 fill">
-    <div class="panel">
-      <svg viewBox="0 0 820 400" class="dia" role="img" aria-label="Router Central con R1 y R2 en VRF A y R3 y R4 en VRF B">
-        <rect class="zone" x="10" y="10" width="395" height="380" rx="24"/><rect class="zone2" x="415" y="10" width="395" height="380" rx="24"/>
-        <text x="40" y="200" font-size="22">VRF A</text><text x="700" y="200" font-size="22">VRF B</text>
-        <line class="wire" x1="140" y1="85" x2="410" y2="200"/><line class="wire" x1="140" y1="315" x2="410" y2="200"/>
-        <line class="wire" x1="680" y1="85" x2="410" y2="200"/><line class="wire" x1="680" y1="315" x2="410" y2="200"/>
-        <rect class="box" x="80" y="60" width="120" height="48" rx="8"/><text x="140" y="90" text-anchor="middle">R1</text><text class="lbl" x="140" y="45" text-anchor="middle">10.10.10.0/24</text>
-        <rect class="box" x="80" y="292" width="120" height="48" rx="8"/><text x="140" y="322" text-anchor="middle">R2</text><text class="lbl" x="140" y="365" text-anchor="middle">10.20.20.0/24</text>
-        <rect class="box" x="620" y="60" width="120" height="48" rx="8"/><text x="680" y="90" text-anchor="middle">R3</text><text class="lbl" x="680" y="45" text-anchor="middle">10.30.30.0/24</text>
-        <rect class="box" x="620" y="292" width="120" height="48" rx="8"/><text x="680" y="322" text-anchor="middle">R4</text><text class="lbl" x="680" y="365" text-anchor="middle">10.40.40.0/24</text>
-        <rect class="box amb" x="345" y="172" width="130" height="56" rx="8"/><text x="410" y="206" text-anchor="middle">Central</text>
-        <text class="lbl" x="250" y="128">S0/0/0 · 10.10.1.0/30</text><text class="lbl" x="230" y="282">S0/0/1 · 10.20.2.0/30</text>
-        <text class="lbl" x="440" y="128">S0/1/0 · 10.30.3.0/30</text><text class="lbl" x="450" y="282">S0/1/1 · 10.40.4.0/30</text>
-      </svg>
-    </div>
-    <div class="stack">
-      <div class="panel tight"><h3>Qué consigue</h3><ul class="small">
-        <li>Cada VRF tiene sus propias rutas, interfaces y vecinos.</li>
-        <li>Pueden repetirse prefijos entre VRF sin conflicto.</li>
-        <li>No hay tráfico entre VRF salvo que se configure a propósito.</li></ul></div>
-      <div class="note">Cada interfaz pertenece a una sola VRF. Para llevar varias VRF por un mismo enlace hacen falta subinterfaces, una por VRF. Ese es el costo que EVN reduce.</div>
-    </div>
-  </div>
-</div></section>
-
-<!-- 18 VRF-Lite config y verificación -->
-<section class="slide" data-title="Configurar y verificar VRF-Lite"><div class="inner">
-  <div class="head"><span class="eyebrow">VRF-Lite</span><h2>Crear la VRF, asociar la interfaz y mirar la tabla correcta</h2>
-  <p class="lead">Cambia de tabla. La global de Central no tiene ninguna de estas redes: si buscas con <code>show ip route</code> sin <code>vrf</code>, parece que no existen.</p></div>
-  <div class="cols fill">
-    <div class="stack">
-      <div class="term xs"><span class="p">Central(config)#</span> ip vrf VRF-A
-<span class="p">Central(config)#</span> ip vrf VRF-B
-<span class="p">Central(config)#</span> interface Serial0/0/0
-<span class="p">Central(config-if)#</span> ip vrf forwarding VRF-A
-<span class="p">Central(config-if)#</span> ip address 10.10.1.1 255.255.255.252
-<span class="p">Central(config)#</span> interface Serial0/0/1
-<span class="p">Central(config-if)#</span> ip vrf forwarding VRF-A
-<span class="p">Central(config-if)#</span> ip address 10.20.2.1 255.255.255.252
-<span class="p">Central(config)#</span> interface Serial0/1/0
-<span class="p">Central(config-if)#</span> ip vrf forwarding VRF-B
-<span class="p">Central(config-if)#</span> ip address 10.30.3.1 255.255.255.252
-<span class="d">! … Serial0/1/1 igual, en VRF-B con 10.40.4.1/30</span></div>
-      <div class="warn"><code>ip vrf forwarding</code> borra la IP que ya tenía la interfaz (<code>% Interface … IPv4 disabled and address(es) removed</code>). Por eso se escribe antes de <code>ip address</code>. Si se hace al revés, la interfaz queda sin IP.</div>
-    </div>
-    <div class="stack">
-      <div class="ctrls"><div class="seg" id="vrfSeg"><button data-v="g" aria-pressed="false">show ip route</button><button data-v="a" aria-pressed="true">vrf VRF-A</button><button data-v="b" aria-pressed="false">vrf VRF-B</button></div></div>
-      <div class="term sm" id="vrfOut"></div>
-      <div class="panel tight"><h3>Comandos con contexto de VRF</h3><p class="small"><code>show ip route vrf VRF-A</code> · <code>ping vrf VRF-A 10.10.1.2</code> · <code>show ip vrf interfaces</code> · <code>router ospf 1 vrf VRF-A</code></p></div>
-    </div>
-  </div>
-</div></section>
-
-<!-- 19 EVN -->
-<section class="slide" data-title="EVN: Easy Virtual Network"><div class="inner">
-  <div class="head"><span class="eyebrow">EVN</span><h2>EVN: un solo troncal virtual en vez de una subinterfaz por VRF</h2>
-  <p class="lead">Cisco Easy Virtual Network se apoya en VRF-Lite. Entre routers usa un <b>VNET trunk</b> que etiqueta cada VRF con un <i>vnet tag</i>, así la configuración no crece con el número de VRF.</p></div>
-  <div class="ctrls"><div class="seg" id="evnSeg"><button data-v="lite" aria-pressed="true">VRF-Lite tradicional</button><button data-v="evn" aria-pressed="false">Con EVN</button></div><span class="badge amb" id="evnCount"></span></div>
-  <div class="cols w46 fill">
-    <div class="panel">
-      <svg viewBox="0 0 560 250" class="dia" id="evnSvg" role="img" aria-label="R1 y R2 unidos por un enlace que transporta tres VRF">
-        <rect class="box" x="40" y="80" width="120" height="90" rx="10"/><text x="100" y="130" text-anchor="middle">R1</text>
-        <rect class="box" x="400" y="80" width="120" height="90" rx="10"/><text x="460" y="130" text-anchor="middle">R2</text>
-        <g id="evnLines"></g>
-        <text class="lbl k" id="evnLbl" x="280" y="210" text-anchor="middle"></text>
-        <text class="lbl" x="280" y="40" text-anchor="middle">VRF A 172.16.0.0/16 · VRF B 172.17.0.0/16 · VRF C 172.18.0.0/16</text>
-      </svg>
-      <ul class="small">
-        <li><b>Interfaces de borde:</b> hacia los usuarios, 802.1Q normal, una VLAN por VRF.</li>
-        <li><b>Interfaz troncal:</b> entre routers EVN, <code>vnet trunk</code> transporta todas las VRF.</li>
-      </ul>
-    </div>
-    <div class="term sm" id="evnCfg"></div>
-  </div>
-</div></section>
-
-<!-- 20 EVN características -->
-<section class="slide" data-title="EVN: servicios compartidos y contexto"><div class="inner">
-  <div class="head"><span class="eyebrow">EVN</span><h2>Servicios compartidos sin BGP y diagnóstico por contexto</h2></div>
-  <div class="cols w64 fill">
-    <div class="panel">
-      <h3>Replicación de rutas</h3>
-      <p class="small">DHCP, DNS y correo viven en la VRF C. Con <b>route replication</b>, VRF A y VRF B ven las rutas de C sin ver las de la otra. Antes esto exigía importar rutas con BGP, route distinguisher y route targets.</p>
-      <div class="ctrls"><div class="seg" id="rrSeg"><button data-v="A" aria-pressed="true">Tabla VRF A</button><button data-v="B" aria-pressed="false">Tabla VRF B</button><button data-v="C" aria-pressed="false">Tabla VRF C</button></div></div>
-      <div class="term sm" id="rrOut"></div>
-      <div class="term xs">vrf definition A
- address-family ipv4
-  route-replicate from vrf C unicast connected</div>
-    </div>
-    <div class="stack">
-      <div class="panel"><h3>routing-context</h3><p class="small">Entra al contexto de una VRF y desde ahí los comandos se aplican a esa VRF sin escribir <code>vrf</code> cada vez. El prompt lo muestra.</p>
-      <div class="term"><span class="p">R1#</span> routing-context vrf red
-<span class="p">R1%red#</span> show ip route
-<span class="d">! muestra la tabla de la VRF red</span>
-<span class="p">R1%red#</span> routing-context vrf global
-<span class="p">R1#</span></div></div>
-      <div class="note">EVN existe solo en ciertas plataformas IOS-XE (por ejemplo, Catalyst 4500/6500 y ASR 1000). Si el comando <code>vnet</code> no aparece, el equipo no lo soporta.</div>
-    </div>
-  </div>
-</div></section>
-
-<!-- 21 Resumen -->
 <section class="slide" data-title="Resumen"><div class="inner">
   <div class="head"><span class="eyebrow">Resumen</span><h2>Lo que hay que llevarse</h2></div>
-  <div class="cols c4 st">
-    <div class="panel"><h3>ACL IPv4</h3><ul>
-      <li>De arriba abajo, primera coincidencia, deny implícito.</li>
-      <li>Revisa contadores con <code>show access-lists</code>.</li>
-      <li>Interfaz y sentido: <code>show ip interface</code>.</li>
-      <li>Las de tiempo dependen del reloj.</li></ul></div>
-    <div class="panel"><h3>ACL IPv6</h3><ul>
-      <li>Solo extendidas y nombradas.</li>
-      <li>Permiten NA y NS de forma implícita.</li>
-      <li>Un <code>deny ipv6 any any</code> explícito rompe NDP.</li>
-      <li><code>ipv6 traffic-filter</code>.</li></ul></div>
-    <div class="panel"><h3>CoPP</h3><ul>
-      <li>MQC: ACL → class-map → policy-map → control-plane.</li>
-      <li>Orden de clases y class-default.</li>
-      <li>bps frente a pps.</li>
-      <li>Nombres exactos en cada paso.</li></ul></div>
-    <div class="panel"><h3>VRF-Lite y EVN</h3><ul>
-      <li>Tablas separadas sin MPLS.</li>
-      <li><code>ip vrf forwarding</code> antes de la IP.</li>
-      <li>Busca siempre con <code>vrf</code>.</li>
-      <li>EVN: vnet trunk y route replication.</li></ul></div>
+  <div class="cols c3 st">
+    <div class="panel"><h3>La idea</h3><ul>
+      <li>El plano de control lo procesa la CPU.</li>
+      <li>CoPP limita el tráfico hacia la CPU por clases.</li>
+      <li>Se aplica en la interfaz lógica <code>control-plane</code>.</li></ul></div>
+    <div class="panel"><h3>Configuración (MQC)</h3><ul>
+      <li>ACL → class-map → policy-map → <code>service-policy input</code>.</li>
+      <li>Orden de clases y <code>class-default</code>.</li>
+      <li>conform, exceed y violate.</li>
+      <li>bps frente a pps.</li></ul></div>
+    <div class="panel"><h3>Diagnóstico</h3><ul>
+      <li><code>show policy-map control-plane</code>.</li>
+      <li>Contadores de drop por clase.</li>
+      <li>Nombres exactos en cada paso.</li>
+      <li>Al principio, transmit en violate para medir.</li></ul></div>
   </div>
+  <div class="note">CoPP usa ACL para clasificar. Si necesitas repasarlas, revisa <a href="ACL%20IPv4%20e%20IPv6.html">Listas de acceso IPv4 e IPv6</a>.</div>
 </div></section>
 
-<!-- 22 Quiz -->
 <section class="slide" data-title="Preguntas" data-agenda="Preguntas" data-sub="Comprueba lo aprendido"><div class="inner">
   <div class="head"><span class="eyebrow">Preguntas</span><h2>Comprueba lo aprendido</h2></div>
   <div class="panel quiz fill" id="quiz"></div>
 </div></section>
 
-<!-- 23 Referencias -->
 <section class="slide" data-title="Referencias"><div class="inner">
   <div class="head"><span class="eyebrow">Referencias</span><h2>Bibliografía</h2></div>
   <div class="panel"><ul>
-    <li>Raymond Lacoste, Brad Edgeworth. <i>CCNP Enterprise Advanced Routing ENARSI 300-410 Official Cert Guide</i>. Cisco Press. Capítulo 21, Troubleshooting ACLs and Prefix Lists.</li>
-    <li>Misma obra. Capítulo 22, Infrastructure Security (CoPP).</li>
-    <li>Misma obra. Capítulo 18, VRF, MPLS and MPLS Layer 3 VPNs (VRF-Lite).</li>
-    <li>Cisco. <i>Easy Virtual Network Configuration Guide</i>, Cisco IOS XE.</li>
+    <li>Raymond Lacoste, Brad Edgeworth. <i>CCNP Enterprise Advanced Routing ENARSI 300-410 Official Cert Guide</i>. Cisco Press. Capítulo 22, Infrastructure Security (CoPP).</li>
+    <li>Cisco. <i>Control Plane Policing Configuration Guide</i>, Cisco IOS XE.</li>
   </ul></div>
 </div></section>
 
@@ -854,107 +542,6 @@ function boot(){fit();const m=location.hash.match(/^#s(\d+)/);go(m?+m[1]-1:0);
     const pre=document.createElement("pre");pre.id="__report";pre.textContent=out.length?[...new Set(out)].join("\n"):"OK";document.body.appendChild(pre);}
 }
 
-/* ---------- Evaluador ACL 100 ---------- */
-const inNet=(ip,net,wc)=>{const a=ip.split(".").map(Number),n=net.split(".").map(Number),w=wc.split(".").map(Number);return a.every((o,i)=>((o|w[i])===(n[i]|w[i])))};
-const ACL=[
-  {t:" 10 deny tcp host 10.1.1.5 host 192.0.2.1 eq www",act:"deny",m:p=>p.pr==="tcp"&&p.s==="10.1.1.5"&&p.d==="192.0.2.1"&&p.dp===80},
-  {t:" 20 permit tcp 10.1.1.0 0.0.0.63 host 192.0.2.1 eq telnet",act:"permit",m:p=>p.pr==="tcp"&&inNet(p.s,"10.1.1.0","0.0.0.63")&&p.d==="192.0.2.1"&&p.dp===23},
-  {t:" 30 deny ip 10.1.1.64 0.0.0.63 host 192.0.2.1",act:"deny",m:p=>inNet(p.s,"10.1.1.64","0.0.0.63")&&p.d==="192.0.2.1"},
-  {t:" 40 permit ip 10.1.1.0 0.0.0.255 any",act:"permit",m:p=>inNet(p.s,"10.1.1.0","0.0.0.255")}];
-const PKTS=[
-  {n:"TCP 10.1.1.5 → 192.0.2.1 : 80 (web)",pr:"tcp",s:"10.1.1.5",d:"192.0.2.1",dp:80},
-  {n:"TCP 10.1.1.5 → 192.0.2.1 : 23 (Telnet)",pr:"tcp",s:"10.1.1.5",d:"192.0.2.1",dp:23},
-  {n:"TCP 10.1.1.70 → 192.0.2.1 : 23 (Telnet)",pr:"tcp",s:"10.1.1.70",d:"192.0.2.1",dp:23},
-  {n:"UDP 10.1.1.70 → 8.8.8.8 : 53 (DNS)",pr:"udp",s:"10.1.1.70",d:"8.8.8.8",dp:53},
-  {n:"TCP 10.1.2.5 → 192.0.2.1 : 80 (otra subred)",pr:"tcp",s:"10.1.2.5",d:"192.0.2.1",dp:80}];
-$("#aclPkt").innerHTML=PKTS.map((p,i)=>`<option value="${i}">${esc(p.n)}</option>`).join("");
-function aclDraw(hl,hit){
-  $("#aclTerm").innerHTML=`<span class="p">R1#</span> show access-lists 100\nExtended IP access list 100\n`+ACL.map((a,i)=>{
-    const c=i===hit?(a.act==="permit"?"g":"r"):(i<hl?"d":(i===hl?"h":""));return `<span class="${c}">${esc(a.t)}</span>`}).join("\n")+
-    `\n<span class="${hit===4?"r":(hl>=4?"h":"d")}"> (deny ip any any implícito)</span>`;}
-aclDraw(-1,-1);
-let aclBusy=false;
-$("#aclGo").onclick=async()=>{if(aclBusy)return;aclBusy=true;const p=PKTS[+$("#aclPkt").value];$("#aclRes").innerHTML="&nbsp;";$("#aclWhy").innerHTML="&nbsp;";
-  let hit=4;for(let i=0;i<ACL.length;i++){aclDraw(i,-1);await sleep(reduce?0:420);if(ACL[i].m(p)){hit=i;break}}
-  if(hit===4){aclDraw(4,-1);await sleep(reduce?0:420)}
-  aclDraw(hit,hit);
-  const ok=hit<4&&ACL[hit].act==="permit";
-  $("#aclRes").innerHTML=ok?'<span style="color:var(--ok)">Permitido</span>':'<span style="color:var(--bad)">Descartado</span>';
-  $("#aclWhy").innerHTML=hit===4?"Ninguna entrada coincide. Lo descarta el deny implícito, que no aparece en la salida ni suma contadores.":
-   `Coincide con la entrada ${(hit+1)*10}. ${hit===0?"Es la más específica y está primero.":hit===2?"La entrada 20 no lo atrapa porque 10.1.1.70 está fuera de 10.1.1.0/26.":hit===1&&p.s==="10.1.1.5"?"La entrada 10 solo bloquea web; para Telnet, 10.1.1.5 cae en la 20.":"Las entradas anteriores no coinciden."}`;
-  aclBusy=false;};
-
-/* ---------- Sentido de la ACL ---------- */
-const dirOut={
- ok:["Outgoing access list is 100","Inbound access list is 1","ACL 1 revisa lo que llega desde la LAN; ACL 100 revisa lo que sale hacia la LAN, después de enrutarse."],
- swap:["Outgoing access list is 1","Inbound access list is 100","Con los sentidos invertidos, la ACL 100 revisa el tráfico que llega desde la LAN y la ACL 1 el que va hacia ella. La sintaxis es válida y no hay error: solo el resultado es distinto."],
- none:["Outgoing access list is 100","Inbound access list is 1","La ACL 100 está aplicada pero no existe. IOS no avisa y deja pasar todo en ese sentido. Confírmalo con show access-lists 100, que no devuelve nada."]};
-function dirRender(v){const o=dirOut[v];
-  $("#dirTerm").innerHTML=`<span class="p">R1(config)#</span> interface gigabitEthernet 0/0
-<span class="p">R1(config-if)#</span> ip access-group ${v==="swap"?"1 out":"100 out"}
-<span class="p">R1(config-if)#</span> ip access-group ${v==="swap"?"100 in":"1 in"}
-<span class="p">R1#</span> show ip interface gigabitEthernet 0/0
-GigabitEthernet0/0 is up, line protocol is up
-  Internet address is 10.1.1.1/24
-  Broadcast address is 255.255.255.255
-  MTU is 1500 bytes
-  Helper address is 172.16.1.10
-  Multicast reserved groups joined: 224.0.0.5 224.0.0.6
-  <span class="h">${o[0]}</span>
-  <span class="h">${o[1]}</span>
-  Proxy ARP is enabled
-  Local Proxy ARP is disabled${v==="none"?`\n\n<span class="p">R1#</span> show access-lists 100\n<span class="p">R1#</span>  <span class="d">! sin salida: la ACL no existe</span>`:""}`;
-  $("#dirInT").textContent=v==="swap"?"in: ACL 100":"in: ACL 1";$("#dirOutT").textContent=v==="swap"?"out: ACL 1":(v==="none"?"out: ACL 100 (no existe)":"out: ACL 100");
-  $("#dirTxt").textContent=o[2];$("#dirTxt").className=v==="ok"?"fix":"note";}
-seg("#dirSeg",dirRender);dirRender("ok");
-
-/* ---------- ACL por tiempo ---------- */
-let trDay="lv";
-function trRender(){const h=+$("#trR").value;const hh=`${String(Math.floor(h)).padStart(2,"0")}:${h%1?"30":"00"}`;$("#trH").textContent=hh;
-  const active=trDay==="sd"||h>=17||h<9;
-  $("#trRes").innerHTML=active?'<span style="color:var(--bad)">Entrada 10 active: web bloqueada</span>':'<span style="color:var(--ok)">Entrada 10 inactive: web permitida</span>';
-  $("#trWhy").textContent=active?(trDay==="sd"?"El fin de semana completo está dentro del time-range.":"Fuera del horario laboral (17:00 a 8:59)."):"Dentro del horario laboral: la entrada 10 se ignora y el paquete sigue a las entradas de abajo.";
-  $("#trTerm").innerHTML=`<span class="p">R1#</span> show access-lists 100
-Extended IP access list 100
- 10 deny tcp host 10.1.1.5 host 192.0.2.1 eq www
-    time-range AFTERHOURS <span class="${active?"r":"g"}">(${active?"active":"inactive"})</span>
- 20 permit tcp 10.1.1.0 0.0.0.63 host 192.0.2.1 eq telnet
- 30 deny ip 10.1.1.64 0.0.0.63 host 192.0.2.1
- 40 permit ip 10.1.1.0 0.0.0.255 any
-
-<span class="p">R1#</span> show time-range AFTERHOURS
-time-range entry: AFTERHOURS <span class="${active?"r":"g"}">(${active?"active":"inactive"})</span>
-   periodic weekdays 17:00 to 23:59
-   periodic weekdays 0:00 to 8:59
-   periodic weekend 0:00 to 23:59
-   used in: IP ACL entry
-
-<span class="p">R1#</span> show clock
-${hh}:00.000 CLT ${trDay==="sd"?"Sat":"Wed"} Nov 5 2026`;}
-seg("#trDay",v=>{trDay=v;trRender()});$("#trR").oninput=trRender;trRender();
-
-/* ---------- IPv6 y NDP ---------- */
-function v6Draw(){const d=$("#v6Deny").checked;
-  $("#v6Term").innerHTML=`<span class="p">R1#</span> show ipv6 access-list
-IPv6 access list ENARSI
- permit tcp host 2001:DB8:A:A::20 host 2001:DB8:A:B::7 eq telnet sequence 10
- deny tcp any host 2001:DB8:A:B::7 eq telnet sequence 20
- permit tcp host 2001:DB8:A:A::20 host 2001:DB8:D::1 eq www sequence 30
- deny ipv6 2001:DB8:A:A::/80 any sequence 40
- permit ipv6 2001:DB8:A:A::/64 any sequence 50${d?`\n <span class="r">deny ipv6 any any log sequence 60</span>`:""}
-<span class="d"> ! implícitas, siempre al final:</span>
-<span class="${d?"r":"g"}"> permit icmp any any nd-na${d?"   ← ya no se alcanza":""}</span>
-<span class="${d?"r":"g"}"> permit icmp any any nd-ns${d?"   ← ya no se alcanza":""}</span>
-<span class="d"> deny ipv6 any any</span>`;
-  $("#v6Txt").textContent=d?"El deny explícito está antes de los permisos implícitos. NS y NA coinciden con él y se descartan: R1 no puede resolver la MAC del vecino y el tráfico IPv6 se corta, aunque el resto de la ACL esté bien. Si necesitas un deny con log, agrega antes permit icmp any any nd-na y nd-ns.":"Con las reglas implícitas, NS y NA pasan aunque no las escribas.";
-  $("#v6Txt").className=d?"warn":"note";}
-$("#v6Deny").onchange=v6Draw;v6Draw();
-$("#v6Go").onclick=async()=>{const p=$("#v6P"),d=$("#v6Deny").checked;$("#v6R2").setAttribute("class","box");
-  await animate(p,[[150,98],[370,98]],700);
-  await animate(p,[[370,98],[160,98]],700);
-  if(d){$("#v6W").setAttribute("class","wire down");p.setAttribute("cx",-20);}
-  else{$("#v6W").setAttribute("class","wire ok");$("#v6R2").setAttribute("class","box act");p.setAttribute("cx",-20)}};
-
 /* ---------- Clasificador CoPP ---------- */
 const CL=[["CLASS-CoPP-ICMP","ACL-CoPP-ICMP","8 000","drop"],["CLASS-CoPP-IPsec","ACL-CoPP-IPsec","64 000","transmit"],["CLASS-CoPP-Initialize","ACL-CoPP-Initialize","8 000","drop"],["CLASS-CoPP-Management","ACL-CoPP-Management","32 000","transmit"],["CLASS-CoPP-Routing","ACL-CoPP-Routing","64 000","transmit"],["class-default","(todo lo demás)","8 000","drop"]];
 const CP=[
@@ -1009,87 +596,14 @@ picker("#cpsList","#cpsX",sym.map(s=>[s[0],s[1]]));
 $("#cpsList").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const s=sym[+b.dataset.i];$("#cpsT").textContent=s[0];$("#cpsO").textContent=s[2]});
 $("#cpsT").textContent=sym[0][0];$("#cpsO").textContent=sym[0][2];
 
-/* ---------- VRF ---------- */
-const vrfO={
- g:`Central# show ip route | begin Gateway
-Gateway of last resort is not set
-
-Central#
-<span class="d">! La tabla global está vacía: todas las interfaces</span>
-<span class="d">! están en una VRF.</span>`,
- a:`Central# show ip route vrf VRF-A | begin Gateway
-Gateway of last resort is not set
-
-      10.0.0.0/8 is variably subnetted, 4 subnets, 2 masks
-C        10.10.1.0/30 is directly connected, Serial0/0/0
-L        10.10.1.1/32 is directly connected, Serial0/0/0
-C        10.20.2.0/30 is directly connected, Serial0/0/1
-L        10.20.2.1/32 is directly connected, Serial0/0/1`,
- b:`Central# show ip route vrf VRF-B | begin Gateway
-Gateway of last resort is not set
-
-      10.0.0.0/8 is variably subnetted, 4 subnets, 2 masks
-C        10.30.3.0/30 is directly connected, Serial0/1/0
-L        10.30.3.1/32 is directly connected, Serial0/1/0
-C        10.40.4.0/30 is directly connected, Serial0/1/1
-L        10.40.4.1/32 is directly connected, Serial0/1/1`};
-seg("#vrfSeg",v=>$("#vrfOut").innerHTML=vrfO[v]);$("#vrfOut").innerHTML=vrfO.a;
-
-/* ---------- EVN ---------- */
-const evnC={lite:`<span class="d">! VRF-Lite: una subinterfaz por VRF en cada enlace</span>
-interface Gi0/0.101
- encapsulation dot1Q 101
- vrf forwarding A
- ip address 10.0.101.1 255.255.255.252
-interface Gi0/0.102
- encapsulation dot1Q 102
- vrf forwarding B
- ip address 10.0.102.1 255.255.255.252
-interface Gi0/0.103
- encapsulation dot1Q 103
- vrf forwarding C
- ip address 10.0.103.1 255.255.255.252
-<span class="d">! … y lo mismo en cada enlace entre routers</span>`,
-evn:`<span class="d">! EVN: cada VRF recibe un vnet tag</span>
-vrf definition A
- vnet tag 101
- address-family ipv4
-vrf definition B
- vnet tag 102
- address-family ipv4
-vrf definition C
- vnet tag 103
- address-family ipv4
-!
-interface Gi0/0
- <span class="h">vnet trunk</span>
- ip address 10.0.0.1 255.255.255.252
-<span class="d">! las VRF heredan la IP y la config del troncal</span>`};
-function evnRender(v){const L=$("#evnLines");
-  if(v==="lite"){L.innerHTML=[0,1,2].map(k=>`<line class="wire acc" x1="160" y1="${100+k*25}" x2="400" y2="${100+k*25}"/><text class="lbl" x="280" y="${95+k*25}" text-anchor="middle">Gi0/0.${101+k} · VRF ${"ABC"[k]}</text>`).join("");
-    $("#evnLbl").textContent="3 subinterfaces y 3 subredes por enlace";$("#evnCount").textContent="3 VRF × n enlaces = 3n subinterfaces";}
-  else{L.innerHTML=`<rect x="160" y="96" width="240" height="58" rx="29" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>`+[0,1,2].map(k=>`<line class="wire ${k===1?"":"dash"}" x1="170" y1="${110+k*15}" x2="390" y2="${110+k*15}" stroke-width="2"/>`).join("")+`<text class="lbl k" x="280" y="88" text-anchor="middle">VNET trunk · tags 101-103</text>`;
-    $("#evnLbl").textContent="Una interfaz y una subred por enlace";$("#evnCount").textContent="1 vnet trunk por enlace";}
-  $("#evnCfg").innerHTML=evnC[v];}
-seg("#evnSeg",evnRender);evnRender("lite");
-
-/* ---------- Route replication ---------- */
-const rr={A:"Tabla de enrutamiento de VRF A\n 172.16.0.0/16  => Gig0/0/1.A\n <span class=\"h\">192.168.0.0/24 => Gig0/0/2.C</span>   <span class=\"d\">(replicada de C)</span>",
- B:"Tabla de enrutamiento de VRF B\n 172.17.0.0/16  => Gig0/0/1.B\n <span class=\"h\">192.168.0.0/24 => Gig0/0/2.C</span>   <span class=\"d\">(replicada de C)</span>",
- C:"Tabla de enrutamiento de VRF C\n <span class=\"h\">172.16.0.0/16  => Gig0/0/1.A</span>   <span class=\"d\">(replicada de A)</span>\n <span class=\"h\">172.17.0.0/16  => Gig0/0/1.B</span>   <span class=\"d\">(replicada de B)</span>\n 192.168.0.0/24 => Gig0/0/2.C\n<span class=\"d\"> ! los servidores pueden responder a A y a B,</span>\n<span class=\"d\"> ! pero A y B no se ven entre sí</span>"};
-seg("#rrSeg",v=>$("#rrOut").innerHTML=rr[v]);$("#rrOut").innerHTML=rr.A;
-
 /* ---------- Quiz ---------- */
 quiz("#quiz",[
- {q:"Con la ACL 100 del ejemplo, ¿qué pasa con un paquete web de 10.1.1.5 hacia 192.0.2.1?",o:["Lo permite la entrada 40","Lo descarta la entrada 10","Lo permite la entrada 20","Lo descarta el deny implícito"],ok:1,e:"La entrada 10 es la primera que coincide (tcp, host 10.1.1.5, host 192.0.2.1, eq www). Las demás ya no se revisan."},
- {q:"Una ACL tiene solo entradas deny y se aplica de entrada en una interfaz. ¿Qué ocurre?",o:["Bloquea solo lo que nombran las entradas","No hace nada hasta agregar un permit","Bloquea todo el tráfico de entrada","IOS rechaza la configuración"],ok:2,e:"Lo que no coincide con los deny cae en el deny implícito. Hace falta al menos un permit."},
- {q:"Agregaste deny ipv6 any any log al final de una ACL IPv6 y se cortó el tráfico hacia el vecino. ¿Por qué?",o:["IPv6 no admite la palabra log","El deny explícito queda antes de los permisos implícitos de NS y NA, y rompe NDP","Las ACL IPv6 no tienen deny implícito","Faltó el número de secuencia"],ok:1,e:"Los permit implícitos de nd-na y nd-ns van al final, después de todo lo que escribas. Un deny any explícito los deja inalcanzables."},
- {q:"¿Con qué comando se aplica una ACL IPv6 a una interfaz?",o:["ipv6 access-group","ipv6 traffic-filter","ip access-group ipv6","ipv6 access-class"],ok:1,e:"ipv6 traffic-filter NOMBRE in|out. access-class es para las líneas VTY."},
  {q:"¿Dónde se aplica una política de CoPP?",o:["En cada interfaz física de entrada","En la interfaz control-plane con service-policy input","En las líneas VTY","En la ACL de la interfaz WAN"],ok:1,e:"CoPP tiene una sola interfaz posible: control-plane. Normalmente en sentido input."},
  {q:"Un protocolo no aparece en ninguna ACL de CoPP. ¿Qué tratamiento recibe?",o:["Se descarta siempre","Pasa sin límite","El de class-default","El de la primera clase del policy-map"],ok:2,e:"Lo que no coincide con ninguna clase queda en class-default, que en el ejemplo tiene 8 kbps y drop al violar."},
- {q:"En Central, show ip route no muestra 10.10.1.0/30, pero R1 hace ping a 10.10.1.1. ¿Qué pasa?",o:["La ruta está en la VRF A; hay que usar show ip route vrf VRF-A","La interfaz está caída","Falta un protocolo de enrutamiento","Central tiene una ACL"],ok:0,e:"Las interfaces de Central están en VRF. La tabla global queda vacía; cada VRF tiene la suya."},
- {q:"¿Qué reduce EVN respecto de VRF-Lite?",o:["El número de VRF posibles","La necesidad de MPLS en el núcleo","Las subinterfaces por VRF entre routers, gracias al vnet trunk","El uso de 802.1Q hacia los usuarios"],ok:2,e:"El vnet trunk transporta todas las VRF por una interfaz, etiquetadas con su vnet tag. Hacia los usuarios sigue habiendo 802.1Q."},
- {q:"Una ACL basada en tiempo bloquea la web a mediodía. ¿Qué revisas primero?",o:["El número de secuencia","El reloj del router: show clock y NTP","El sentido de la ACL","La máscara wildcard"],ok:1,e:"El time-range usa el reloj local. Con la hora o la zona horaria mal, se activa en otro momento."}]);
+
+ {q:"¿Qué tráfico protege CoPP?",o:["El que atraviesa el router de una LAN a otra","El que va dirigido a la CPU del router","Solo el tráfico cifrado","Solo el tráfico IPv6"],ok:1,e:"CoPP actúa sobre el plano de control y gestión: lo que el router procesa con su CPU."},
+ {q:"¿Por qué puede caer una adyacencia OSPF si la CPU se satura?",o:["Porque OSPF se desactiva solo","Porque se pierden los Hello y vence el dead interval","Porque cambia el router ID","No puede pasar"],ok:1,e:"Sin Hello procesados a tiempo, el vecino da la adyacencia por caída."},
+ {q:"¿En qué orden se arma una política CoPP?",o:["policy-map, ACL, class-map, control-plane","ACL, class-map, policy-map, service-policy en control-plane","class-map, ACL, control-plane, policy-map","control-plane, ACL, policy-map"],ok:1,e:"Es la estructura MQC: identificar, agrupar, definir la acción y aplicarla."}]);
 
 boot();
 })();

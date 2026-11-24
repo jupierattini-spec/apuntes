@@ -193,22 +193,42 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
 </style></head><body>
 <div class="deck">
 <div class="viewport"><div class="canvas" id="stage">
-<!-- 1 Portada -->
 <section class="slide" data-title="Portada"><div class="inner cover">
-  <span class="eyebrow">ARY6112 · Troubleshooting · Unidad 3.4.1</span>
+  <span class="eyebrow">ARY6112 · Troubleshooting · DMVPN</span>
   <h1>Configuración de DMVPN</h1>
-  <p class="lead">Túneles GRE, resolución de direcciones con NHRP, GRE multipunto y las tres fases de DMVPN. Al final, cómo IPsec protege el túnel y cómo se verifica.</p>
+  <p class="lead">Qué es DMVPN y cómo funciona, sus piezas (GRE, NHRP y GRE multipunto), sus tres fases y cómo se configura y verifica.</p>
   <div class="meta"><span class="badge blue">Routing y Switching Corporativo</span><span class="badge blue">Usa ← → · F pantalla completa</span></div>
 </div></section>
 
-<!-- 2 Agenda -->
 <section class="slide" data-title="Agenda"><div class="inner">
   <div class="head"><span class="eyebrow">Agenda</span><h2>Lo que veremos</h2></div>
   <div class="agenda" id="agenda"></div>
 </div></section>
 
-<!-- 3 GRE -->
-<section class="slide" data-title="GRE" data-agenda="Túneles GRE" data-sub="Encapsulación, configuración y verificación"><div class="inner">
+<section class="slide" data-title="Qué es DMVPN y cómo funciona" data-agenda="Qué es DMVPN" data-sub="Problema, piezas y funcionamiento"><div class="inner">
+  <div class="head"><span class="eyebrow">Para empezar</span><h2>Qué es DMVPN y cómo funciona</h2>
+  <p class="lead"><b>DMVPN</b> (Dynamic Multipoint VPN) conecta muchas sucursales con la casa matriz por Internet usando túneles. Cada sucursal (<b>spoke</b>) solo se configura contra la matriz (<b>hub</b>), pero cuando dos sucursales necesitan hablar, levantan un túnel directo entre ellas de forma automática.</p></div>
+  <div class="cols w46 fill">
+    <style>.steps.cmp{gap:8px}.steps.cmp>div{padding:9px 16px;gap:0;font-size:18px}.steps.cmp>div b{font-size:20px}</style>
+    <div class="steps cmp" id="dmHow" style="grid-template-columns:1fr">
+      <div data-x="Hub y spokes tienen una interfaz túnel GRE multipunto en la misma subred (por ejemplo 192.168.100.0/24). Los spokes conocen la IP pública del hub."><b>1. Túnel al hub</b><span>mGRE en todos</span></div>
+      <div data-x="Cada spoke le dice al hub: “mi IP de túnel es X y mi IP pública es Y”. El hub guarda esa tabla."><b>2. Registro NHRP</b><span>El spoke avisa dónde está</span></div>
+      <div data-x="Un protocolo de enrutamiento corre sobre el túnel y anuncia las LAN de cada sitio. Al inicio todo pasa por el hub."><b>3. Enrutamiento por el túnel</b><span>EIGRP, OSPF o BGP</span></div>
+      <div data-x="Cuando un spoke envía tráfico a otro spoke, consulta por NHRP la IP pública del destino (fases 2 y 3)."><b>4. Resolución spoke a spoke</b><span>NHRP pregunta al hub</span></div>
+      <div data-x="Con la IP pública del otro spoke se arma un túnel directo. Si deja de usarse, expira. Con IPsec, cada túnel además va cifrado."><b>5. Túnel directo dinámico</b><span>Se crea y expira solo</span></div>
+    </div>
+    <div class="stack">
+      <div class="cards" style="grid-template-columns:1fr 1fr">
+        <div class="card"><div class="ic">G</div><h3>mGRE</h3><p>Una interfaz túnel para muchos vecinos.</p></div>
+        <div class="card"><div class="ic">N</div><h3>NHRP</h3><p>Traduce IP de túnel a IP pública.</p></div>
+        <div class="card"><div class="ic">R</div><h3>Enrutamiento</h3><p>IGP o BGP dentro del túnel.</p></div>
+        <div class="card"><div class="ic">S</div><h3>IPsec</h3><p>Opcional: cifra los túneles.</p></div></div>
+      <div class="panel tight"><p id="dmHowX">Pasa el cursor o toca un paso.</p></div>
+    </div>
+  </div>
+</div></section>
+
+<section class="slide" data-title="GRE" data-agenda="Túneles GRE" data-sub="La base de DMVPN: encapsulación, configuración y verificación"><div class="inner">
   <div class="head"><span class="eyebrow">GRE</span><h2>GRE encapsula casi cualquier cosa, incluido el multicast</h2>
   <p class="lead">Generic Routing Encapsulation mete un paquete de capa 3 dentro de otro paquete IP unicast. No cifra nada por sí mismo, pero permite que OSPF o EIGRP (que usan multicast) pasen por un túnel IPsec, que solo protege unicast.</p></div>
   <div class="fix"><span class="fe">Fe de erratas.</span> El original dice “Protocolo de Enrutamiento Genérico”. GRE significa <b>Generic Routing Encapsulation</b>: es una encapsulación, no un protocolo de enrutamiento.</div>
@@ -234,7 +254,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 4 Configurar GRE -->
 <section class="slide" data-title="Crear un túnel GRE"><div class="inner">
   <div class="head"><span class="eyebrow">Pasos para crear el túnel</span><h2>Cuatro líneas en cada extremo</h2>
   <p class="lead">Interfaz túnel, IP del túnel, origen y destino; luego lo mismo al revés en el otro router. Provoca un error y mira qué le pasa al túnel.</p></div>
@@ -250,7 +269,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 5 Verificar GRE -->
 <section class="slide" data-title="Verificar un túnel GRE"><div class="inner">
   <div class="head"><span class="eyebrow">Verificación del túnel GRE</span><h2>Cómo leer <code>show interface tunnel</code></h2>
   <p class="lead">Toca una línea resaltada para ver qué significa y qué falla podría revelar.</p></div>
@@ -260,7 +278,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 6 NHRP -->
 <section class="slide" data-title="NHRP" data-agenda="NHRP y mGRE" data-sub="Resolución de direcciones y túnel multipunto"><div class="inner">
   <div class="head"><span class="eyebrow">Next Hop Resolution Protocol</span><h2>NHRP traduce IP del túnel a IP de transporte</h2>
   <p class="lead">En un túnel multipunto no hay un destino fijo. NHRP es el “ARP” de DMVPN: el hub (NHS) guarda qué IP pública (NBMA) tiene cada IP de túnel, y los spokes (NHC) le preguntan.</p></div>
@@ -285,7 +302,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 7 mGRE -->
 <section class="slide" data-title="GRE multipunto"><div class="inner">
   <div class="head"><span class="eyebrow">GRE multipunto (mGRE)</span><h2>Una sola interfaz túnel para muchos vecinos</h2>
   <p class="lead">Con GRE punto a punto, el hub necesitaría un túnel por sucursal. Con mGRE tiene una sola interfaz y NHRP le dice a dónde enviar cada paquete. Agrega sucursales y compara.</p></div>
@@ -296,7 +312,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 8 DMVPN -->
 <section class="slide" data-title="DMVPN y sus beneficios" data-agenda="DMVPN" data-sub="Fases, configuración y verificación"><div class="inner">
   <div class="head"><span class="eyebrow">Dynamic Multipoint VPN</span><h2>Malla completa sin configurar la malla</h2>
   <p class="lead">En hub-and-spoke, el tráfico entre sucursales pasa por la casa matriz. Una malla completa de túneles IPsec lo evita, pero es cara de configurar y mantener. DMVPN crea túneles directos entre sucursales cuando hacen falta y los borra cuando no se usan.</p></div>
@@ -312,7 +327,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 9 Fases -->
 <section class="slide" data-title="Simulador: fases de DMVPN"><div class="inner">
   <div class="head"><span class="eyebrow">Fases de DMVPN</span><h2>Por dónde va el tráfico de R31 a R41 en cada fase</h2>
   <p class="lead">Elige la fase y envía un paquete de la LAN de R31 (10.3.3.0/24) a la de R41 (10.4.4.0/24). Envíalo dos veces para ver qué cambia.</p></div>
@@ -323,7 +337,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 10 Topología -->
 <section class="slide" data-title="Topología de configuración"><div class="inner">
   <div class="head"><span class="eyebrow">Configuración de DMVPN</span><h2>Un hub, dos spokes y la red 192.168.100.0/24 en el túnel</h2>
   <p class="lead">R11 es el hub (NHS). R31 y R41 son spokes (NHC): conocen de forma estática la IP del hub, pero su propia IP de transporte puede ser estática o por DHCP. Los tres salen por una ruta por defecto al proveedor (172.16.0.0/16). EIGRP corre dentro del túnel y anuncia las LAN.</p></div>
@@ -343,7 +356,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 11 Config fase 1 y 3 -->
 <section class="slide" data-title="Configuración fase 1 y fase 3"><div class="inner">
   <div class="head"><span class="eyebrow">Configuración de DMVPN</span><h2>De fase 1 a fase 3 cambian pocas líneas</h2>
   <p class="lead">Elige fase y equipo. Toca una línea resaltada para ver qué hace.</p></div>
@@ -354,7 +366,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 12 Verificación -->
 <section class="slide" data-title="Verificar DMVPN"><div class="inner">
   <div class="head"><span class="eyebrow">Verificación de DMVPN</span><h2>Tres comandos para ver el estado del túnel</h2>
   <p class="lead">Cambia de comando y toca una línea resaltada.</p></div>
@@ -365,7 +376,6 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 13 Síntomas -->
 <section class="slide" data-title="DMVPN: del síntoma a la causa"><div class="inner">
   <div class="head"><span class="eyebrow">Troubleshooting DMVPN</span><h2>Del síntoma a la causa</h2><p class="lead">Toca un síntoma para ver dónde mirar primero.</p></div>
   <div class="cols w37 fill">
@@ -374,101 +384,37 @@ nav.bar select{font:inherit;max-width:34vw;color:var(--ink);background:var(--pan
   </div>
 </div></section>
 
-<!-- 14 Transporte seguro -->
-<section class="slide" data-title="Transporte seguro" data-agenda="Seguridad con IPsec" data-sub="Servicios, modos, IKE y verificación"><div class="inner">
-  <div class="head"><span class="eyebrow">Elementos de transporte seguro</span><h2>Internet como WAN: ya no se puede confiar en el camino</h2>
-  <p class="lead">Compara los dos escenarios. Con circuitos privados se asume que la red del proveedor es confiable; con Internet, el camino entre sucursal y matriz queda expuesto.</p></div>
-  <div class="ctrls"><div class="seg" id="tsSeg"><button data-v="p" aria-pressed="true">MPLS VPN o circuito privado</button><button data-v="i" aria-pressed="false">Internet como transporte</button></div></div>
-  <div class="panel"><svg viewBox="0 0 1440 260" class="dia" id="tsSvg" role="img" aria-label="Sucursal, transporte y centro de datos"></svg></div>
-  <div class="note" id="tsTxt"></div>
-</div></section>
-
-<!-- 15 Servicios IPsec -->
-<section class="slide" data-title="Servicios de IPsec"><div class="inner">
-  <div class="head"><span class="eyebrow">Seguridad en DMVPN</span><h2>IPsec entrega cuatro servicios</h2>
-  <p class="lead">DMVPN por sí solo no cifra nada. La seguridad la pone IPsec.</p></div>
-  <div class="cards" style="grid-template-columns:repeat(4,minmax(0,1fr))">
-    <div class="card"><div class="ic">C</div><h3>Confidencialidad</h3><p>Cifra los datos. Quien los intercepte no puede leerlos.</p></div>
-    <div class="card"><div class="ic">I</div><h3>Integridad</h3><p>Un hash en cada extremo comprueba que nadie modificó los datos en el camino.</p></div>
-    <div class="card"><div class="ic">A</div><h3>Autenticación</h3><p>Cada extremo verifica que el otro es quien dice ser (clave compartida o certificados).</p></div>
-    <div class="card"><div class="ic">R</div><h3>Antireplay</h3><p>Números de secuencia para descartar paquetes duplicados, como un inicio de sesión capturado y reenviado.</p></div>
-  </div>
-  <div class="fix"><span class="fe">Fe de erratas.</span> El resumen original dice que IPsec garantiza “confidencialidad, integridad y disponibilidad”. IPsec no garantiza disponibilidad; sus servicios son los cuatro de arriba.</div>
-</div></section>
-
-<!-- 16 Modos IPsec -->
-<section class="slide" data-title="Modos de IPsec"><div class="inner">
-  <div class="head"><span class="eyebrow">Modos de protección IPsec</span><h2>Transporte o túnel: cuántas cabeceras IP lleva el paquete</h2>
-  <p class="lead">Elige el caso y compara la estructura y el tamaño.</p></div>
-  <div class="panel tight"><div id="ipmList" class="ctrls" style="flex-direction:row"></div></div>
-  <div class="panel stack"><div class="pktrow" id="ipmRow" style="font-size:16px"></div><div class="legend"><span><i style="background:var(--amber-soft);outline:1px solid var(--amber)"></i>cifrado por ESP</span><span><i style="background:var(--accent-soft);outline:1px solid var(--accent)"></i>autenticado por ESP (incluye lo cifrado)</span><span><i style="background:var(--panel);outline:1px solid var(--line)"></i>visible</span></div></div>
-  <div class="cols"><div class="panel tight"><h3 id="ipmH"></h3><p id="ipmX" class="small"></p></div><div class="fix" id="ipmN"><span class="fe">Precisión.</span> El original dice que el modo transporte es frecuente en VPN site-to-site. En IPsec clásico entre sitios lo habitual es el modo túnel (es el valor por defecto). El modo transporte es el recomendado <b>para DMVPN</b>, porque GRE ya aporta la cabecera externa y así se ahorran 20 bytes.</div></div>
-</div></section>
-
-<!-- 17 IKE -->
-<section class="slide" data-title="IKE: cómo se arma el túnel cifrado"><div class="inner">
-  <div class="head"><span class="eyebrow">Resultados de IKE</span><h2>Cinco pasos desde el primer paquete hasta el cierre</h2>
-  <p class="lead">Avanza paso a paso entre R1 y R2.</p></div>
-  <div class="ctrls"><button class="btn ghost" id="ikPrev">← Paso</button><button class="btn" id="ikNext">Paso →</button><span class="badge blue" id="ikN"></span></div>
-  <div class="panel"><svg viewBox="0 0 1440 190" class="dia" id="ikSvg" role="img" aria-label="PC1, R1, R2 y PC2 con los túneles IKE"></svg></div>
-  <div class="cols w64"><div class="panel tight"><h3 id="ikH"></h3><p id="ikX"></p></div><div class="term sm" id="ikO"></div></div>
-</div></section>
-
-<!-- 18 IPsec en DMVPN y verificación -->
-<section class="slide" data-title="Proteger y verificar"><div class="inner">
-  <div class="head"><span class="eyebrow">Revisión del túnel protegido</span><h2>Proteger el túnel y leer <code>show crypto ipsec sa</code></h2>
-  <p class="lead">En DMVPN no hay crypto map: se aplica un perfil IPsec a la interfaz túnel. Toca una línea resaltada de la salida.</p></div>
-  <div class="cols fill">
-    <div class="stack">
-      <div class="term sm">crypto isakmp policy 10
- encryption aes 256
- hash sha256
- authentication pre-share
- group 14
-crypto isakmp key CISCO123 address 0.0.0.0 0.0.0.0
-!
-crypto ipsec transform-set TSET esp-aes 256 esp-sha256-hmac
- <span class="h">mode transport</span>
-crypto ipsec profile DMVPN-PROF
- set transform-set TSET
-!
-interface Tunnel100
- <span class="h">tunnel protection ipsec profile DMVPN-PROF</span></div>
-      <div class="panel tight"><span class="eyebrow">Interpretación</span><p id="saX" class="small">Selecciona una línea resaltada.</p></div>
-    </div>
-    <div class="term xs annot" id="saT"></div>
-  </div>
-</div></section>
-
-<!-- 19 Resumen -->
 <section class="slide" data-title="Resumen"><div class="inner">
   <div class="head"><span class="eyebrow">Resumen</span><h2>Lo que hay que llevarse</h2></div>
-  <div class="cols c4 st">
+  <div class="cols c3 st">
     <div class="panel"><h3>GRE</h3><ul>
-      <li>Encapsula multicast en unicast.</li><li>No cifra.</li><li>Origen alcanzable, ruta al destino y sin enrutamiento recursivo.</li><li>MTU 1476.</li></ul></div>
+      <li>Encapsula multicast en unicast.</li>
+      <li>No cifra.</li>
+      <li>Origen alcanzable, ruta al destino y sin enrutamiento recursivo.</li>
+      <li>MTU 1476.</li></ul></div>
     <div class="panel"><h3>NHRP y mGRE</h3><ul>
-      <li>NHRP: IP de túnel → IP NBMA.</li><li>Hub = NHS, spoke = NHC.</li><li>mGRE: una interfaz, muchos túneles.</li><li>Misma <code>tunnel key</code> en todos.</li></ul></div>
+      <li>NHRP: IP de túnel → IP NBMA.</li>
+      <li>Hub = NHS, spoke = NHC.</li>
+      <li>mGRE: una interfaz, muchos túneles.</li>
+      <li>Misma <code>tunnel key</code> en todos.</li></ul></div>
     <div class="panel"><h3>Fases</h3><ul>
-      <li>Fase 1: todo por el hub.</li><li>Fase 2: spoke a spoke, sin resumir.</li><li>Fase 3: redirect + shortcut, permite resumir.</li></ul></div>
-    <div class="panel"><h3>IPsec</h3><ul>
-      <li>Confidencialidad, integridad, autenticación, antireplay.</li><li>Modo transporte en DMVPN.</li><li>IKE fase 1 y fase 2.</li><li><code>show crypto ipsec sa</code>.</li></ul></div>
+      <li>Fase 1: todo por el hub.</li>
+      <li>Fase 2: spoke a spoke, sin resumir.</li>
+      <li>Fase 3: redirect + shortcut, permite resumir.</li></ul></div>
   </div>
+  <div class="fix"><span class="fe">Sigue con:</span> <a href="Seguridad%20de%20T%C3%BAneles%20con%20IPsec.html">Seguridad de túneles con IPsec</a>, que cifra los túneles DMVPN.</div>
 </div></section>
 
-<!-- 20 Quiz -->
 <section class="slide" data-title="Preguntas" data-agenda="Preguntas" data-sub="Comprueba lo aprendido"><div class="inner">
   <div class="head"><span class="eyebrow">Preguntas</span><h2>Comprueba lo aprendido</h2></div>
   <div class="panel quiz fill" id="quiz"></div>
 </div></section>
 
-<!-- 21 Referencias -->
 <section class="slide" data-title="Referencias"><div class="inner">
   <div class="head"><span class="eyebrow">Referencias</span><h2>Bibliografía</h2></div>
   <div class="panel"><ul>
     <li>Raymond Lacoste, Brad Edgeworth. <i>CCNP Enterprise Advanced Routing ENARSI 300-410 Official Cert Guide</i>. Cisco Press. Capítulo 19, DMVPN Tunnels.</li>
-    <li>Misma obra. Capítulo 20, Securing DMVPN Tunnels.</li>
-    <li>IETF <a href="https://www.rfc-editor.org/rfc/rfc2784" target="_blank" rel="noopener">RFC 2784</a> (GRE), <a href="https://www.rfc-editor.org/rfc/rfc2332" target="_blank" rel="noopener">RFC 2332</a> (NHRP) y <a href="https://www.rfc-editor.org/rfc/rfc4301" target="_blank" rel="noopener">RFC 4301</a> (arquitectura IPsec).</li>
-    <li>Cisco. <i>Dynamic Multipoint VPN Configuration Guide</i>, Cisco IOS XE.</li>
+    <li>IETF <a href="https://www.rfc-editor.org/rfc/rfc2784" target="_blank" rel="noopener">RFC 2784</a> (GRE) y <a href="https://www.rfc-editor.org/rfc/rfc2332" target="_blank" rel="noopener">RFC 2332</a> (NHRP).</li>
   </ul></div>
 </div></section>
 
@@ -580,6 +526,9 @@ function boot(){fit();const m=location.hash.match(/^#s(\d+)/);go(m?+m[1]-1:0);
 }
 
 const RB=(x,y,name,cls="box",w=120,h=50,sub="")=>`<rect class="${cls}" x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="8"/><text x="${x}" y="${y+(sub?-2:6)}" text-anchor="middle">${name}</text>${sub?`<text class="lbl" x="${x}" y="${y+16}" text-anchor="middle">${sub}</text>`:""}`;
+
+/* ---------- intro: dmHow ---------- */
+stepsCards("#dmHow","#dmHowX");
 
 /* ---------- 4: túnel GRE con fallas ---------- */
 const GR=[
@@ -736,66 +685,6 @@ picker("#dsList","#dsX",ds.map(v=>[v[0],v[1]]));
 $("#dsList").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("#dsT").textContent=ds[+b.dataset.i][0];$("#dsO").textContent=ds[+b.dataset.i][2]});
 $("#dsT").textContent=ds[0][0];$("#dsO").textContent=ds[0][2];
 
-/* ---------- 14: transporte seguro ---------- */
-function tsRender(v){const p=v==="p";
-  $("#tsSvg").innerHTML=`<line class="wire" x1="185" y1="150" x2="320" y2="150"/><line class="wire" x1="680" y1="150" x2="785" y2="150"/><line class="wire" x1="895" y1="150" x2="955" y2="150"/><line class="wire" x1="1125" y1="150" x2="1165" y2="150"/>
-  ${RB(120,150,"Sucursal","box",130,50)}
-  <path class="${p?"zone":"zone2"}" d="M330 110 Q500 50 670 110 Q720 150 670 190 Q500 250 330 190 Q280 150 330 110z"/><text x="500" y="155" text-anchor="middle">${p?"MPLS VPN o circuito privado":"Internet"}</text>
-  ${RB(840,150,"Borde","box",110,48)}${RB(1040,150,"Centro de datos","box",170,50)}
-  <path class="zone2" d="M1180 110 Q1260 80 1340 110 Q1380 150 1340 190 Q1260 220 1180 190 Q1140 150 1180 110z"/><text x="1260" y="155" text-anchor="middle">Internet</text>
-  <text class="lbl" x="120" y="30">controlado por la empresa</text><text class="lbl" x="500" y="30" text-anchor="middle">${p?"controlado por el proveedor (privado)":"proveedor público: acceso no controlado"}</text><text class="lbl" x="940" y="30" text-anchor="middle">controlado por la empresa</text><text class="lbl" x="1260" y="30" text-anchor="middle">no controlado</text>
-  ${p?`<text class="lbl k" x="500" y="235" text-anchor="middle">se asume confidencial, inmune a intrusión y de acceso controlado</text>`:`<text x="400" y="235" text-anchor="middle" style="fill:var(--bad)">intruso</text><text x="500" y="235" text-anchor="middle" style="fill:var(--bad)">espía</text><text x="620" y="235" text-anchor="middle" style="fill:var(--bad)">man-in-the-middle</text>
-  <circle cx="190" cy="150" r="9" fill="var(--bad)"/><circle cx="780" cy="150" r="9" fill="var(--bad)"/><text class="lbl" x="190" y="190" text-anchor="middle" style="fill:var(--bad)">punto de intrusión WAN</text><text class="lbl" x="780" y="190" text-anchor="middle" style="fill:var(--bad)">punto de intrusión WAN</text>`}`;
-  $("#tsTxt").innerHTML=p?"Con circuitos del proveedor, la confidencialidad depende de que el proveedor controle el acceso a su infraestructura. Por eso tradicionalmente no se cifraba la WAN.":"Internet no controla el acceso ni garantiza integridad ni confidencialidad. Cada borde (sucursal, WAN corporativa, Internet) se vuelve un punto de intrusión. Hay que cifrar: IPsec sobre el túnel DMVPN.";}
-seg("#tsSeg",tsRender);tsRender("p");
-
-/* ---------- 16: modos IPsec ---------- */
-const IPM=[
- ["Original",[["h0","IP"],["h0","Datos",4]],"Paquete original","Protocolo 1 (ICMP), 6 (TCP) o 17 (UDP) en la cabecera IP."],
- ["IPsec transporte",[["h0","IP"],["h1","ESP hdr"],["h2","Datos",4],["h2","ESP trailer"],["h1","ESP auth"]],"IPsec en modo transporte · protocolo 50","Conserva la cabecera IP original y cifra solo los datos. Agrega menos bytes, pero las IP de origen y destino reales quedan a la vista."],
- ["IPsec túnel",[["h0","IP nueva"],["h1","ESP hdr"],["h2","IP original"],["h2","Datos",4],["h2","ESP trailer"],["h1","ESP auth"]],"IPsec en modo túnel · protocolo 50","Cifra el paquete completo y le pone una cabecera IP nueva con las direcciones de los equipos que terminan la VPN. Es el valor por defecto."],
- ["DMVPN sin IPsec",[["h0","IP GRE"],["h0","GRE"],["h0","IP original"],["h0","Datos",4]],"DMVPN sin IPsec · protocolo 47 (GRE)","Todo viaja en claro: cualquiera en el camino ve el paquete original."],
- ["DMVPN + transporte",[["h0","IP GRE"],["h1","ESP hdr"],["h2","GRE"],["h2","IP original"],["h2","Datos",3],["h2","ESP trailer"],["h1","ESP auth"]],"DMVPN con IPsec en modo transporte · protocolo 50","La cabecera IP de GRE queda afuera y ESP protege desde GRE hacia adentro. Es la opción recomendada: no repite una cabecera IP."],
- ["DMVPN + túnel",[["h0","IPsec IP"],["h1","ESP hdr"],["h2","IP GRE"],["h2","GRE"],["h2","IP original"],["h2","Datos",3],["h2","ESP trailer"],["h1","ESP auth"]],"DMVPN con IPsec en modo túnel · protocolo 50","Funciona, pero agrega 20 bytes más por una cabecera IP que repite las mismas direcciones que la de GRE."]];
-const ipL=$("#ipmList");ipL.innerHTML=`<div class="seg" id="ipmSeg">${IPM.map((m,i)=>`<button data-v="${i}" aria-pressed="${i===4}">${m[0]}</button>`).join("")}</div>`;
-function ipmRender(i){const m=IPM[i];$("#ipmRow").innerHTML=m[1].map(c=>`<span class="${c[0]}" style="flex:${c[2]||1.2}">${c[1]}</span>`).join("");$("#ipmH").textContent=m[2];$("#ipmX").textContent=m[3];}
-seg("#ipmSeg",v=>ipmRender(+v));ipmRender(4);
-
-/* ---------- 17: IKE ---------- */
-const IK=[
- ["1. Tráfico interesante","PC1 envía datos hacia PC2. R1 detecta que ese tráfico debe protegerse (en DMVPN: todo lo que sale por el túnel) y arranca IKE.","R1# debug crypto isakmp\nISAKMP: received ke message"],
- ["2. IKE fase 1","R1 y R2 negocian la política (cifrado, hash, autenticación, grupo DH), se autentican y crean un canal seguro: la SA de ISAKMP.","R1# show crypto isakmp sa\ndst          src          state     conn-id status\n30.1.1.2     30.1.1.1     QM_IDLE      1001 ACTIVE"],
- ["3. IKE fase 2","Dentro del túnel de fase 1 negocian el transform-set y crean las SA de IPsec, una por sentido, con su SPI.","R1# show crypto ipsec sa | include spi\n  current outbound spi: 0x3D3(979)\n   spi: 0x136A010F(325714191)"],
- ["4. Transferencia de datos","Los datos viajan cifrados por las SA de IPsec. Los contadores encrypt y decrypt deben subir en ambos extremos.","R1# show crypto ipsec sa | include pkts\n #pkts encaps: 7647918, #pkts encrypt: 7647918\n #pkts decaps: 7640382, #pkts decrypt: 7640382"],
- ["5. Terminación","Las SA vencen por tiempo o por volumen (lifetime), o se borran a mano. Si vuelve a haber tráfico, IKE renegocia.","R1# clear crypto session\n! o esperar el fin del lifetime"]];
-let ikI=0;
-function ikDraw(){const s=ikI;const tun=(x,w,y,t,cls)=>`<rect x="${x}" y="${y}" width="${w}" height="36" rx="18" fill="${cls==="p1"?"var(--accent-soft)":"var(--ok-soft)"}" stroke="${cls==="p1"?"var(--accent)":"var(--ok)"}" stroke-width="2"/><text x="${x+w/2}" y="${y+23}" text-anchor="middle" font-size="14">${t}</text>`;
-  let g=`<line class="wire" x1="80" y1="150" x2="1360" y2="150"/>${RB(80,150,"PC1","box bk",90,40)}${RB(400,150,"R1","box",110,46)}${RB(1040,150,"R2","box",110,46)}${RB(1360,150,"PC2","box bk",90,40)}`;
-  if(s>=1&&s<=3)g+=tun(470,500,30,"IKE fase 1 · SA de ISAKMP","p1");
-  if(s>=2&&s<=3)g+=tun(470,500,76,"IKE fase 2 · SA de IPsec","p2");
-  if(s===4)g+=`<rect x="470" y="30" width="500" height="82" rx="20" fill="none" stroke="var(--bad)" stroke-width="2" stroke-dasharray="7 5"/><text x="720" y="78" text-anchor="middle" style="fill:var(--bad)">SA vencidas o borradas</text>`;
-  if(s===0||s===3)g+=`<path d="M${s===0?130:130} 120 L${s===0?340:1310} 120" stroke="var(--amber)" stroke-width="5" marker-end="url(#ia)"/><defs><marker id="ia" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--amber)"/></marker></defs><text class="lbl k" x="${s===0?235:720}" y="${s===0?110:142}" text-anchor="middle">${s===0?"datos":"datos cifrados"}</text>`;
-  $("#ikSvg").innerHTML=g;$("#ikH").textContent=IK[s][0];$("#ikX").textContent=IK[s][1];$("#ikO").textContent=IK[s][2];$("#ikN").textContent=`Paso ${s+1} de 5`;$("#ikPrev").disabled=s===0;$("#ikNext").disabled=s===4;}
-$("#ikPrev").onclick=()=>{ikI=Math.max(0,ikI-1);ikDraw()};$("#ikNext").onclick=()=>{ikI=Math.min(4,ikI+1);ikDraw()};ikDraw();
-
-/* ---------- 18: show crypto ipsec sa ---------- */
-annot("#saT","#saX",[
- ["R1# show crypto ipsec sa",null],["  interface: FastEthernet0/0",null],
- ["    Crypto map tag: test, local addr. 30.1.1.1","Este ejemplo usa crypto map (IPsec clásico). En DMVPN aparece la interfaz Tunnel y el perfil IPsec."],
- ["   local  ident (addr/mask/prot/port): (20.1.1.0/255.255.255.0/0/0)","El tráfico protegido de este lado. Debe ser el espejo del remote ident del otro router."],
- ["   remote ident (addr/mask/prot/port): (10.1.1.0/255.255.255.0/0/0)","El tráfico protegido del otro lado."],
- ["   current_peer: 30.1.1.2","El otro extremo del túnel."],["     PERMIT, flags={origin_is_acl,}",null],
- ["    #pkts encaps: 7647918, #pkts encrypt: 7647918, #pkts digest 7647918","Paquetes cifrados y enviados. Si sube encrypt pero no decrypt, el otro lado no responde o no descifra."],
- ["    #pkts decaps: 7640382, #pkts decrypt: 7640382, #pkts verify 7640382","Paquetes recibidos y descifrados. Deben subir junto con encrypt."],
- ["    #send errors 1, #recv errors 0","Errores aislados son normales; si crecen, revisa MTU y el transform-set."],
- ["     local crypto endpt.: 30.1.1.1, remote crypto endpt.: 30.1.1.2",null],
- ["     path mtu 1500, media mtu 1500",null],["     current outbound spi: 0x3D3(979)","Identificador de la SA de salida. Un SPI 0x0 indica que no hay SA establecida."],
- ["     inbound esp sas:",null],["      spi: 0x136A010F(325714191)",null],
- ["        transform: esp-3des esp-md5-hmac ,","El transform-set acordado. 3DES y MD5 están obsoletos; hoy se usa AES y SHA-256 o superior."],
- ["        in use settings ={Tunnel, }","Modo de la SA: Tunnel o Transport. En DMVPN se espera Transport."],
- ["        sa timing: remaining key lifetime (k/sec): (4608000/52)","Lo que le queda a la SA en kilobytes y segundos antes de renegociar."],
- ["        replay detection support: Y","Antireplay activo."]]);
-
 /* ---------- Quiz ---------- */
 quiz("#quiz",[
  {q:"¿Por qué se encapsula OSPF en GRE antes de protegerlo con IPsec?",o:["Porque GRE cifra mejor que IPsec","Porque IPsec solo protege unicast y OSPF usa multicast","Porque OSPF no funciona sobre IP","Porque GRE reduce la MTU"],ok:1,e:"GRE convierte el multicast en un paquete IP unicast entre los extremos, que IPsec sí puede proteger."},
@@ -804,8 +693,8 @@ quiz("#quiz",[
  {q:"¿En qué fase de DMVPN todo el tráfico entre spokes pasa siempre por el hub?",o:["Fase 1","Fase 2","Fase 3","En ninguna"],ok:0,e:"En fase 1 solo hay túneles spoke-hub."},
  {q:"¿Qué comandos convierten una red de fase 1 en fase 3?",o:["ip nhrp redirect en el hub e ip nhrp shortcut en los spokes (con mGRE)","tunnel key en todos","ip nhrp map multicast dynamic en los spokes","no ip split-horizon en los spokes"],ok:0,e:"Además, los spokes pasan de tunnel destination a tunnel mode gre multipoint."},
  {q:"Los spokes se registran pero no hay vecinos EIGRP con el hub. ¿Qué falta?",o:["ip nhrp shortcut","ip nhrp map multicast dynamic en el hub","ip tcp adjust-mss","tunnel protection"],ok:1,e:"Sin replicación multicast, los Hello de EIGRP no llegan a los spokes."},
- {q:"¿Qué servicio NO entrega IPsec?",o:["Confidencialidad","Integridad","Disponibilidad","Antireplay"],ok:2,e:"IPsec entrega confidencialidad, integridad, autenticación y antireplay."},
- {q:"¿Qué modo de IPsec se recomienda para DMVPN?",o:["Túnel, porque es el más seguro","Transporte, porque GRE ya aporta la cabecera externa","Ninguno: DMVPN ya cifra","Agresivo"],ok:1,e:"El modo transporte evita repetir una cabecera IP y ahorra 20 bytes por paquete."}]);
+
+ {q:"¿Qué ventaja principal tiene DMVPN frente a una malla completa de túneles configurados a mano?",o:["Cifra mejor","Los túneles entre sucursales se crean solos cuando hacen falta","No necesita hub","No usa GRE"],ok:1,e:"Cada spoke se configura solo contra el hub; los túneles spoke a spoke son dinámicos."}]);
 
 boot();
 })();
